@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QStackedWidget,
     QProgressDialog,
+    QMessageBox,
 )
 from PyQt5.QtGui import QIcon, QScreen
 from PyQt5 import QtWidgets
@@ -12,7 +13,6 @@ from init_db import conectar_base, inicializar_db
 from app.database.database import init_db
 from app.utils.enviar_notifi import (
     Mensajes,
-    configurar_estilo_message_box,
     enviar_notificacion,
 )
 from app.controllers.usuario_crud import verificar_credenciales, obtener_usuario_por_id
@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         self.usuario_actual_id = None
-        self.setWindowTitle("Systock")
+        self.setWindowTitle("System DistriCali")
         self.setWindowIcon(QIcon("assets/logo1.ico"))
         self.inicializar_db()
         self.resize(800, 600)
@@ -69,10 +69,10 @@ class MainWindow(QMainWindow):
         self.db = conectar_base()
 
     def inicializar_db(self):
-        app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "Systock"
+        app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriCali"
         app_data_dir.mkdir(parents=True, exist_ok=True)  # Crea el directorio si no existe
 
-        db_path = app_data_dir / "ladynails-cali.db"
+        db_path = app_data_dir / "systemdistricali.db"
 
         if not db_path.exists():
             progress = QProgressDialog("Creando la base de datos...      ", None, 0, 0, self)
@@ -110,14 +110,14 @@ class MainWindow(QMainWindow):
         """
         Sobrescribe el evento de cierre para mostrar una ventana de confirmación.
         """
-        respuesta = QtWidgets.QMessageBox.question(
+        respuesta = QMessageBox.question(
             self,
             "Salir del programa",
             "¿Estás seguro de que deseas cerrar el programa?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
         )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
+        if respuesta == QMessageBox.Yes:
             event.accept()  # Permite cerrar la ventana
         else:
             event.ignore()  # Cancela el cierre de la ventana
@@ -249,7 +249,6 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     QtWidgets.QMessageBox = Mensajes
-    configurar_estilo_message_box()
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
