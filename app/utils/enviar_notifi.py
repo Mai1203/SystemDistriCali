@@ -129,7 +129,7 @@ class ToastNotification(QWidget):
 
         layout_principal = QHBoxLayout(self.contenedor)
         layout_principal.setContentsMargins(18, 14, 18, 14)
-        layout_principal.setSpacing(14)
+        layout_principal.setSpacing(15)
 
         # Icono circular
         lbl_icono = QLabel(estilo["icono"])
@@ -212,8 +212,8 @@ class ToastNotification(QWidget):
         sombra.setOffset(0, 4)
         self.contenedor.setGraphicsEffect(sombra)
 
-        self.setMinimumWidth(380)
-        self.setMaximumWidth(480)
+        # Ancho fijo uniforme para todas las notificaciones (evita que unas se vean más cortas que otras)
+        self.setFixedWidth(430)
         self.adjustSize()
 
     def _posicionar(self):
@@ -223,8 +223,8 @@ class ToastNotification(QWidget):
         index = len(ToastNotification._instancias_activas) - 1
         offset_y = index * (self.sizeHint().height() + 8)
 
-        x = pantalla.width() - self.sizeHint().width() - 25
-        y = pantalla.height() - self.sizeHint().height() - 25 - offset_y
+        x = pantalla.width() - self.width() - 25
+        y = pantalla.height() - self.height() - 25 - offset_y
 
         self.move(x, max(20, y))
 
@@ -261,20 +261,24 @@ class ToastNotification(QWidget):
         event.accept()
 
 
-def enviar_notificacion(titulo: str, mensaje: str, duracion_ms: int = 3000):
+def enviar_notificacion(titulo: str, mensaje: str, duracion_ms: int = None):
     """
     Muestra una notificación flotante (Toast) temporal y no bloqueante.
     """
     titulo_norm = titulo.lower()
     if "error" in titulo_norm:
         tipo = "error"
+        tiempo = duracion_ms if duracion_ms is not None else 4000
     elif "advertencia" in titulo_norm or "warning" in titulo_norm:
         tipo = "warning"
+        tiempo = duracion_ms if duracion_ms is not None else 3500
     elif any(k in titulo_norm for k in ["éxito", "exito", "bienvenido", "correcto"]):
         tipo = "exito"
+        tiempo = duracion_ms if duracion_ms is not None else 3000
     else:
         tipo = "info"
+        tiempo = duracion_ms if duracion_ms is not None else 3000
 
-    toast = ToastNotification(titulo, mensaje, tipo=tipo, duracion_ms=duracion_ms)
+    toast = ToastNotification(titulo, mensaje, tipo=tipo, duracion_ms=tiempo)
     toast.show()
 
