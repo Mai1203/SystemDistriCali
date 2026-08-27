@@ -18,6 +18,7 @@ from app.utils.enviar_notifi import (
 from app.controllers.usuario_crud import verificar_credenciales, obtener_usuario_por_id
 from app.ventanasView import MainApp
 from app.view import Login_View
+from app.services.permisos_service import obtener_permisos_usuario
 from dotenv import load_dotenv
 import os
 import sys
@@ -206,7 +207,7 @@ class MainWindow(QMainWindow):
         Configura las vistas disponibles para el usuario autenticado.
         """
         navbar = self.MainApp.navbar
-        nombres_permitidos = set((usuario.Permisos or "").split(","))
+        nombres_permitidos = obtener_permisos_usuario(usuario)
         es_admin = usuario.rol and usuario.rol.Nombre == "ADMINISTRADOR"
         permisos = {
             "Ventas": navbar.comboVentas,

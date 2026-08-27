@@ -19,8 +19,9 @@ def crear_tipo_ingreso(
     :param id_factura: ID del detalle de factura asociado (opcional).
     :return: Objeto de tipo de ingreso creado.
     """
-    if tipo_ingreso not in ["Venta", "Abono"]:
-        raise ValueError("El tipo de ingreso debe ser 'Venta' o 'Abono'.")
+    tipos_validos = {"Venta FAC-01", "Venta FAC-02", "Venta FAC-03", "Venta FAC-04", "Venta FAC-CREDITO", "FAC-ABONO"}
+    if tipo_ingreso not in tipos_validos:
+        raise ValueError("El tipo de ingreso no es válido.")
 
     nuevo_tipo_ingreso = TipoIngreso(
         Tipo_Ingreso=tipo_ingreso,
@@ -84,8 +85,9 @@ def actualizar_tipo_ingreso(
         return None
 
     if tipo_ingreso:
-        if tipo_ingreso not in ["Venta", "Abono"]:
-            raise ValueError("El tipo de ingreso debe ser 'Venta' o 'Abono'.")
+        tipos_validos = {"Venta FAC-01", "Venta FAC-02", "Venta FAC-03", "Venta FAC-04", "Venta FAC-CREDITO", "FAC-ABONO"}
+        if tipo_ingreso not in tipos_validos:
+            raise ValueError("El tipo de ingreso no es válido.")
         tipo_ingreso_existente.Tipo_Ingreso = tipo_ingreso
     if id_pago_credito is not None:
         tipo_ingreso_existente.ID_Pago_Credito = id_pago_credito

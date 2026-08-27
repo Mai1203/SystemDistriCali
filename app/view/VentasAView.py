@@ -14,12 +14,15 @@ from ..controllers.producto_crud import *
 from ..controllers.detalle_factura_crud import *
 from ..controllers.facturas_crud import *
 from ..controllers.metodo_pago_crud import *
-from ..controllers.ingresos_crud import *
 from ..controllers.tipo_ingreso_crud import *
 from ..controllers.clientes_crud import *
 from ..controllers.ingresos_crud import *
 from ..controllers.historial_modificacion_crud import *
 from ..ui import Ui_VentasA
+from ..configuracion import obtener_precio_producto
+from ..services.ventas_service import calcular_total_venta, validar_pago
+from ..services.form_validation_service import validar_campos_requeridos
+from ..utils.formateador import formatear_numero
 from ..utils.autocomplementado import configurar_autocompletado
 from PyQt5.QtCore import Qt
 
@@ -233,46 +236,20 @@ class VentasA_View(QWidget, Ui_VentasA):
             
             
             # validaciones
-            if not client_name:
-                QMessageBox.warning(self, "Datos incompletos", "El campo 'Nombre del Cliente' está vacío.")
-                self.InputNombreCli.setFocus()
+            error_campos = validar_campos_requeridos({
+                "Nombre del Cliente": client_name,
+                "Cédula": client_id,
+                "Dirección": client_address,
+                "Teléfono": client_phone,
+            })
+            if error_campos:
+                QMessageBox.warning(self, "Datos incompletos", error_campos)
                 return
-            if not client_id:
-                QMessageBox.warning(self, "Datos incompletos", "El campo 'Cédula' está vacío.")
-                self.InputCedula.setFocus()
-                return
-            if not client_address:
-                QMessageBox.warning(self, "Datos incompletos", "El campo 'Dirección' está vacío.")
-                self.InputDireccion.setFocus()
-                return
-            if not client_phone:
-                QMessageBox.warning(self, "Datos incompletos", "El campo 'Teléfono' está vacío.")
-                self.InputTelefonoCli.setFocus()
-                return
-            if not monto_pago:
-                QMessageBox.warning(self, "Datos incompletos", "El campo 'Pago' está vacío.")
+            error_pago = validar_pago(payment_method, monto_pago, subtotal)
+            if error_pago:
+                QMessageBox.warning(self, "Datos de pago", error_pago)
                 self.InputPago.setFocus()
                 return
-            if payment_method == "Efectivo" or payment_method == "Transferencia":
-                if float(monto_pago) > subtotal:
-                    QMessageBox.warning(self, "Error", "El monto pagado no puede ser mayor al subtotal.")
-                    return 
-            elif payment_method == "Mixto":
-                if '/' in monto_pago:
-                    total = monto_pago.split("/") 
-                    efectivo = float(total[0]) if total[0] else 0
-                    tranferencia = float(total[1]) if total[1] else 0
-                    total = efectivo + tranferencia
-                    if efectivo == 0 or tranferencia == 0:
-                        QMessageBox.warning(self, "Error", "Ingrese el monto efectivo y el monto transferencia separados por un barra (/).")
-                        return
-                else:
-                    QMessageBox.warning(self, "Error", "Ingrese el monto efectivo y el monto transferencia separados por un barra (/).")
-                    return
-                
-                if total > subtotal:
-                    QMessageBox.warning(self, "Error", "El monto pagado no puede ser mayor al subtotal.")
-                    return
 
             self.verificar_cliente(client_id, client_name, client_address, client_phone)
 
@@ -302,7 +279,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             # Calcular totales
             subtotal = sum(item[3] for item in items)
             delivery_fee = float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
-            total = (subtotal + delivery_fee) - descuento
+            total = calcular_total_venta(subtotal, delivery_fee, descuento)
             pago = self.InputPago.text().strip()
             
             domicilio = True if delivery_fee > 0 else False
@@ -537,7 +514,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             else:
                 # Producto nuevo, agregarlo a la factura y ajustar el stock
                 producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-                precio_unitario = getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")
+                precio_unitario = obtener_precio_producto(producto, self.tipo_venta)
                 subtotal = nueva_cantidad * precio_unitario
 
                 nuevo_detalle = DetalleFacturas(
@@ -669,7 +646,11 @@ class VentasA_View(QWidget, Ui_VentasA):
             # Confirmar cambios en la base de datos
             db.commit()
             if self.valor_domicilio == 0.0:
-                tipo_ingreso = crear_tipo_ingreso(db=db, tipo_ingreso="Venta", id_factura=id_factura)
+                tipo_ingreso = crear_tipo_ingreso(
+                    db=db,
+                    tipo_ingreso=f"Venta FAC-{self.tipo_venta + 1:02d}",
+                    id_factura=id_factura,
+                )
                 crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
             return id_factura
             
@@ -762,7 +743,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")))
+                    self.InputPrecioUnitario.setText(str(obtener_precio_producto(producto, self.tipo_venta)))
                     self.InputPrecioUnitario.setEnabled(False)
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()  # Limpiar cantidad
@@ -786,7 +767,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")))
+                    self.InputPrecioUnitario.setText(str(obtener_precio_producto(producto, self.tipo_venta)))
                     self.InputPrecioUnitario.setEnabled(False)
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()  # Limpiar cantidad
@@ -1031,23 +1012,12 @@ class VentasA_View(QWidget, Ui_VentasA):
     def actualizar_total(self):
         subtotal = self.calcular_subtotal()
 
-        if subtotal.is_integer():
-            subtotal_formateado = f"{subtotal:,.0f}"
-        else:
-            subtotal_formateado = f"{subtotal:,.2f}"
-
-        self.LabelSubtotal.setText(f"{subtotal_formateado}")
-
         domicilio = self.obtener_valor_domicilio()  # Obtener el valor del domicilio
         
         total = subtotal + domicilio
 
-        if total.is_integer():
-            total_formateado = f"{total:,.0f}"
-        else:
-            total_formateado = f"{total:,.2f}"
-
-        self.LabelTotal.setText(f"{total_formateado}")
+        self.LabelSubtotal.setText(formatear_numero(subtotal))
+        self.LabelTotal.setText(formatear_numero(total))
             
     def aplicar_descuento(self):
         try:

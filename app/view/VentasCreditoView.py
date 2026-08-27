@@ -18,6 +18,8 @@ from ..controllers.facturas_crud import *
 from ..controllers.metodo_pago_crud import *
 from ..controllers.venta_credito_crud import *
 from ..controllers.pago_credito_crud import *
+from ..controllers.tipo_ingreso_crud import crear_tipo_ingreso
+from ..controllers.ingresos_crud import crear_ingreso
 from ..controllers.historial_modificacion_crud import *
 from ..ui import Ui_VentasCredito
 from ..utils.autocomplementado import configurar_autocompletado
@@ -640,7 +642,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 descuento=descuento,
                 estado=False,
                 id_metodo_pago=id_metodo_pago.ID_Metodo_Pago,
-                id_tipo_factura=3,
+                id_tipo_factura=5,
                 id_cliente=client_id,
                 id_usuario=id_usuario,
                 domicilio=domicilio,
@@ -673,6 +675,13 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 fecha_limite=limite_pago,
                 id_factura=id_factura,
             )
+
+            tipo_ingreso = crear_tipo_ingreso(
+                db=db,
+                tipo_ingreso="Venta FAC-CREDITO",
+                id_factura=id_factura,
+            )
+            crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
 
             # Confirmar cambios en la base de datos
             db.commit()

@@ -244,7 +244,7 @@ class Reportes_View(QWidget, Ui_Reportes):
 
                 datos = []
                 for e in ingresos:
-                    if e.tipo_ingreso == "Venta":
+                    if e.tipo_ingreso.startswith("Venta FAC-"):
                         datos.append((e.ID_Ingreso, e.tipo_ingreso, e.monto_efectivo, e.monto_transaccion, e.fecha_venta))
                     else:
                         if e.metodo_pago == "Efectivo":

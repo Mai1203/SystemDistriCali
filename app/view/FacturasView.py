@@ -68,7 +68,7 @@ class Facturas_View(QWidget, Ui_Facturas):
                 QMessageBox.warning(self, "Factura", f"La factura {id_factura} ya está pagada.")
                 return 
             
-            if facturas.tipofactura == "Credito":
+            if facturas.tipofactura == "FAC-CREDITO":
                 QMessageBox.warning(self, "Factura", f"La factura {id_factura} no es una factura de venta.")
                 return
 
@@ -196,7 +196,7 @@ class Facturas_View(QWidget, Ui_Facturas):
         for id_factura in ids:
             facturas = obtener_factura_por_id(self.db, id_factura)
             
-            if facturas.tipofactura == "Credito":
+            if facturas.tipofactura == "FAC-CREDITO":
                 QMessageBox.warning(self, "Factura", f"La factura {id_factura} no es una factura de venta.")
                 return
             
@@ -257,7 +257,7 @@ class Facturas_View(QWidget, Ui_Facturas):
         for id_factura in ids:
             facturas = obtener_factura_por_id(self.db, id_factura)
             
-            if facturas.tipofactura == "Credito":
+            if facturas.tipofactura == "FAC-CREDITO":
                 QMessageBox.warning(self, "Factura", f"La factura {id_factura} no es una factura de venta.")
                 return
 
@@ -359,7 +359,7 @@ class Facturas_View(QWidget, Ui_Facturas):
             for id_factura in ids:
                 factura = obtener_factura_por_id(db=db, id_factura=id_factura)
                 
-                if factura.tipofactura == "Credito":
+                if factura.tipofactura == "FAC-CREDITO":
                     QMessageBox.warning(self, "Factura", f"La factura {id_factura} no es una factura de venta.")
                     return
                 
@@ -369,7 +369,11 @@ class Facturas_View(QWidget, Ui_Facturas):
                     )
                 else:
                     actualizar_factura(db=db, id_factura=id_factura, estado=True)
-                    tipo_ingreso = crear_tipo_ingreso(db=db, tipo_ingreso="Venta", id_factura=id_factura)
+                    tipo_ingreso = crear_tipo_ingreso(
+                        db=db,
+                        tipo_ingreso=f"Venta {factura.tipofactura}",
+                        id_factura=id_factura,
+                    )
                     crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
             db.commit()
             enviar_notificacion(
@@ -398,7 +402,7 @@ class Facturas_View(QWidget, Ui_Facturas):
             for id_factura in ids:
                 facturas = obtener_factura_por_id(self.db, id_factura)
                 
-                if facturas.tipofactura == "Credito":
+                if facturas.tipofactura == "FAC-CREDITO":
                     QMessageBox.warning(self, "Factura", f"La factura {id_factura} no es una factura de venta.")
                     return
             
@@ -411,16 +415,16 @@ class Facturas_View(QWidget, Ui_Facturas):
                 )
                 return
 
-            if factura_completa["Factura"]["TipoFactura"] == "F-01":
+            if factura_completa["Factura"]["TipoFactura"] == "FAC-01":
                 self.enviar_facturas_A.emit(factura_completa)
-            elif factura_completa["Factura"]["TipoFactura"] == "F-02":
+            elif factura_completa["Factura"]["TipoFactura"] == "FAC-02":
                 self.enviar_facturas_B.emit(factura_completa)
-            elif factura_completa["Factura"]["TipoFactura"] == "F-03":
+            elif factura_completa["Factura"]["TipoFactura"] == "FAC-03":
                 self.enviar_facturas_C.emit(factura_completa)
-            elif factura_completa["Factura"]["TipoFactura"] == "F-04":
+            elif factura_completa["Factura"]["TipoFactura"] == "FAC-04":
                 self.enviar_facturas_D.emit(factura_completa)
 
-            elif factura_completa["Factura"]["TipoFactura"] == "Credito":
+            elif factura_completa["Factura"]["TipoFactura"] == "FAC-CREDITO":
                 self.enviar_facturas_Credito.emit(factura_completa)
 
         except Exception as e:

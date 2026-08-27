@@ -9,7 +9,9 @@ class TipoIngreso(Base):
     ID_Tipo_Ingreso = Column(Integer, primary_key=True, autoincrement=True)
     Tipo_Ingreso = Column(String, nullable=False)
 
-    __table_args__ = (CheckConstraint("Tipo_Ingreso IN ('Venta', 'Abono')"),)
+    __table_args__ = (CheckConstraint(
+        "Tipo_Ingreso IN ('Venta FAC-01', 'Venta FAC-02', 'Venta FAC-03', 'Venta FAC-04', 'Venta FAC-CREDITO', 'FAC-ABONO')"
+    ),)
 
     ID_Pago_Credito = Column(Integer, ForeignKey("PAGO_CREDITO.ID_Pago_Credito"))
     ID_Factura = Column(Integer, ForeignKey("FACTURA.ID_Factura"))

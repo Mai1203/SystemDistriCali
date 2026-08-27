@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 from ..ui import Ui_Navbar
+from ..configuracion import TIPOS_VENTA
 
 
 class Navbar_View(QWidget, Ui_Navbar):
@@ -15,7 +16,7 @@ class Navbar_View(QWidget, Ui_Navbar):
         self.setupUi(self)
 
         self.comboVentas = QComboBox(self.QWNavbar)
-        self.comboVentas.addItems(["Ventas A", "Ventas B", "Ventas C", "Ventas D"])
+        self.comboVentas.addItems([tipo["nombre"] for tipo in TIPOS_VENTA.values()])
         self.comboVentas.setObjectName("comboVentas")
         self.comboVentas.setCursor(QtCore.Qt.PointingHandCursor)
         self.comboVentas.setMinimumHeight(40)

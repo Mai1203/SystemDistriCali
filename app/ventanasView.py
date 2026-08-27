@@ -19,6 +19,7 @@ from app.view import (
     PagoCredito_View,
     Cliente_View,
 )
+from app.configuracion import TIPOS_VENTA, obtener_tipo_venta
 
 
 class MainApp(QWidget):
@@ -78,6 +79,7 @@ class MainApp(QWidget):
         self.navbar.comboVentas.currentIndexChanged.connect(
             self.cambiar_tipo_venta
         )
+        self.cambiar_tipo_venta(0)
         self.navbar.BtnCaja.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.caja)
         )
@@ -119,13 +121,21 @@ class MainApp(QWidget):
         self.crediFactura.enviar_ventaCredito.connect(self.cambiar_a_pagoCredito)
 
     def cambiar_tipo_venta(self, indice):
-        tipo_venta = ("A", "B", "C", "D")[indice]
+        tipo_venta = obtener_tipo_venta(indice)["nombre"]
         self.ventas.configurar_tipo_venta(indice)
-        self.ventas.LabelVentasA.setText(f"Ventas {tipo_venta}")
+        self.ventas.LabelVentasA.setText(tipo_venta)
         self.stacked_widget.setCurrentWidget(self.ventas)
+
+    def seleccionar_tipo_por_factura(self, factura_completa):
+        tipo_factura = factura_completa["Factura"]["TipoFactura"]
+        for indice, tipo in TIPOS_VENTA.items():
+            if tipo["factura"] == tipo_factura:
+                self.navbar.comboVentas.setCurrentIndex(indice)
+                return
 
     def cambiar_a_ventasA(self, factura_completa):
         try:
+            self.seleccionar_tipo_por_factura(factura_completa)
             self.stacked_widget.setCurrentWidget(self.ventas)
             self.ventas.cargar_información(factura_completa)
 
@@ -134,6 +144,7 @@ class MainApp(QWidget):
 
     def cambiar_a_ventasB(self, factura_completa):
         try:
+            self.seleccionar_tipo_por_factura(factura_completa)
             self.stacked_widget.setCurrentWidget(self.ventas)
             self.ventas.cargar_información(factura_completa)
 

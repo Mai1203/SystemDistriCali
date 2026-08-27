@@ -207,7 +207,7 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
             actualizar_venta = actualizar_venta_credito(db=self.db, id_venta_credito=self.id_VentaCredito, saldo_pendiente=saldo_pendiente, fecha_limite=limite_pago)
             actualizar_factura(db=self.db, id_factura=id_factura, monto_efectivo=efectivo, monto_transaccion=tranferencia, id_metodo_pago=id_metodo_pago, estado=estado)
             
-            tipo_ingreso = crear_tipo_ingreso(db=self.db, tipo_ingreso="Abono", id_pago_credito=pago_credito.ID_Pago_Credito)
+            tipo_ingreso = crear_tipo_ingreso(db=self.db, tipo_ingreso="FAC-ABONO", id_pago_credito=pago_credito.ID_Pago_Credito)
             crear_ingreso(db=self.db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
             
             id_factura = int(venta.ID_Factura)

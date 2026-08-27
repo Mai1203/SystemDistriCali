@@ -7,6 +7,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QComboBox, QLabel
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from ..ui import Ui_ControlUsuario
+from ..configuracion import PERMISOS_VISTAS
 from ..database.database import SessionLocal
 from ..controllers.usuario_crud import *
 from ..utils import *
@@ -18,19 +19,7 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
     def __init__(self, parent=None):
         super(ControlUsuario_View, self).__init__(parent)
         self.setupUi(self)
-        self.permisos_vistas = (
-            "Ventas",
-            "Caja",
-            "Credito",
-            "Egreso",
-            "Respaldo",
-            "Productos",
-            "CrediFactura",
-            "Facturas",
-            "Reportes",
-            "ControlUsuario",
-            "Clientes",
-        )
+        self.permisos_vistas = PERMISOS_VISTAS
         self.comboPermisos = QComboBox(self.widget_3)
         self.labelPermisos = QLabel("Permisos", self.widget_3)
         self.gridLayout_2.addWidget(self.labelPermisos, 4, 4, 1, 1)

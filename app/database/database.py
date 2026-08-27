@@ -87,12 +87,21 @@ def migrar_esquema():
 
         connection.execute(text("PRAGMA ignore_check_constraints = ON"))
         connection.execute(text(
-            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'F-01\' WHERE "Nombre" = \'Factura A\''
+            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'FAC-01\' WHERE "Nombre" IN (\'Factura A\', \'F-01\')'
         ))
         connection.execute(text(
-            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'F-02\' WHERE "Nombre" = \'Factura B\''
+            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'FAC-02\' WHERE "Nombre" IN (\'Factura B\', \'F-02\')'
         ))
-        for identificador, nombre in ((1, "F-01"), (2, "F-02"), (3, "F-03"), (4, "F-04")):
+        connection.execute(text(
+            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'FAC-03\' WHERE "Nombre" = \'F-03\''
+        ))
+        connection.execute(text(
+            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'FAC-04\' WHERE "Nombre" = \'F-04\''
+        ))
+        connection.execute(text(
+            'UPDATE "TIPO_FACTURA" SET "Nombre" = \'FAC-CREDITO\' WHERE "Nombre" = \'Credito\''
+        ))
+        for identificador, nombre in ((1, "FAC-01"), (2, "FAC-02"), (3, "FAC-03"), (4, "FAC-04")):
             connection.execute(
                 text(
                     'INSERT OR IGNORE INTO "TIPO_FACTURA" ("ID_Tipo_Factura", "Nombre") '
@@ -100,3 +109,45 @@ def migrar_esquema():
                 ),
                 {"identificador": identificador, "nombre": nombre},
             )
+
+        sql_tipo_ingreso = connection.execute(text(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'TIPO_INGRESO'"
+        )).scalar() or ""
+        if (
+            "Venta FAC-01" not in sql_tipo_ingreso
+            or "Venta FAC-CREDITO" not in sql_tipo_ingreso
+            or "FAC-ABONO" not in sql_tipo_ingreso
+        ):
+            connection.execute(text("PRAGMA foreign_keys = OFF"))
+            connection.execute(text('ALTER TABLE "TIPO_INGRESO" RENAME TO "TIPO_INGRESO_OLD"'))
+            connection.execute(text(
+                '''CREATE TABLE "TIPO_INGRESO" (
+                    "ID_Tipo_Ingreso" INTEGER PRIMARY KEY AUTOINCREMENT,
+                    "Tipo_Ingreso" VARCHAR NOT NULL,
+                    "ID_Pago_Credito" INTEGER,
+                    "ID_Factura" INTEGER,
+                    CHECK ("Tipo_Ingreso" IN ('Venta FAC-01', 'Venta FAC-02', 'Venta FAC-03', 'Venta FAC-04', 'Venta FAC-CREDITO', 'FAC-ABONO')),
+                    FOREIGN KEY ("ID_Pago_Credito") REFERENCES "PAGO_CREDITO" ("ID_Pago_Credito"),
+                    FOREIGN KEY ("ID_Factura") REFERENCES "FACTURA" ("ID_Factura")
+                )'''
+            ))
+            connection.execute(text(
+                '''INSERT INTO "TIPO_INGRESO" (
+                    "ID_Tipo_Ingreso", "Tipo_Ingreso", "ID_Pago_Credito", "ID_Factura"
+                )
+                SELECT old."ID_Tipo_Ingreso",
+                    CASE
+                        WHEN old."Tipo_Ingreso" = 'Venta' AND old."ID_Factura" IS NOT NULL
+                        THEN 'Venta ' || factura_tipo."Nombre"
+                        WHEN old."Tipo_Ingreso" = 'Abono'
+                        THEN 'FAC-ABONO'
+                        ELSE old."Tipo_Ingreso"
+                    END,
+                    old."ID_Pago_Credito", old."ID_Factura"
+                FROM "TIPO_INGRESO_OLD" old
+                LEFT JOIN "FACTURA" factura ON factura."ID_Factura" = old."ID_Factura"
+                LEFT JOIN "TIPO_FACTURA" factura_tipo
+                    ON factura_tipo."ID_Tipo_Factura" = factura."ID_Tipo_Factura"'''
+            ))
+            connection.execute(text('DROP TABLE "TIPO_INGRESO_OLD"'))
+            connection.execute(text('PRAGMA foreign_keys = ON'))

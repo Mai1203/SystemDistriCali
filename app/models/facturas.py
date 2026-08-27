@@ -74,7 +74,7 @@ class TipoFactura(Base):
     Nombre = Column(String, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("Nombre IN ('F-01', 'F-02', 'F-03', 'F-04', 'Credito')"),
+        CheckConstraint("Nombre IN ('FAC-01', 'FAC-02', 'FAC-03', 'FAC-04', 'FAC-CREDITO')"),
     )
 
     # Relación con Factura

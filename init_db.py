@@ -10,6 +10,7 @@ from app.controllers.clientes_crud import *
 from app.controllers.tipo_pago_crud import *
 from app.controllers.tipo_ingreso_crud import *
 from app.controllers.ingresos_crud import *
+from app.configuracion import TIPOS_VENTA
 
 
 def conectar_base():
@@ -51,11 +52,9 @@ def poblar_datos_prueba():
 
     try:
         print("creando Tipo Facturas")
-        crear_tipo_factura(db, "F-01")
-        crear_tipo_factura(db, "F-02")
-        crear_tipo_factura(db, "F-03")
-        crear_tipo_factura(db, "F-04")
-        crear_tipo_factura(db, "Credito")
+        for tipo in TIPOS_VENTA.values():
+            crear_tipo_factura(db, tipo["factura"])
+        crear_tipo_factura(db, "FAC-CREDITO")
         print("Tipo Facturas creados exitosamente.")
     except Exception as e:
         print(f"Error al crear Tipo Facturas: {e}")
