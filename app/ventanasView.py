@@ -27,7 +27,7 @@ class MainApp(QWidget):
         super(MainApp, self).__init__(parent)
 
         # Configurar la ventana principal
-        self.setWindowTitle("Systock")
+        self.setWindowTitle("System Distri Cali")
         self.setWindowIcon(QIcon("assets/logo1.ico"))
         self.resize(800, 600)
 
@@ -76,7 +76,11 @@ class MainApp(QWidget):
         self.stacked_widget.addWidget(self.Clientes)  # Índice 9
 
         # Conectar los botones del Navbar para cambiar las vistas del contenido
-        self.navbar.comboVentas.currentIndexChanged.connect(
+        # Usar activated en lugar de currentIndexChanged: currentIndexChanged
+        # solo se emite cuando el índice cambia, por lo que al seleccionar el
+        # mismo tipo de venta (p. ej. FAC-01) que ya está activo no hace nada.
+        # activated se dispara siempre que el usuario seleccione un ítem.
+        self.navbar.comboVentas.activated.connect(
             self.cambiar_tipo_venta
         )
         self.cambiar_tipo_venta(0)
@@ -131,6 +135,11 @@ class MainApp(QWidget):
         for indice, tipo in TIPOS_VENTA.items():
             if tipo["factura"] == tipo_factura:
                 self.navbar.comboVentas.setCurrentIndex(indice)
+                # activated no se dispara con setCurrentIndex (programático),
+                # entonces configuramos el tipo de venta explícitamente
+                tipo_venta = tipo["nombre"]
+                self.ventas.configurar_tipo_venta(indice)
+                self.ventas.LabelVentasA.setText(tipo_venta)
                 return
 
     def cambiar_a_ventasA(self, factura_completa):
