@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QFileDialog
 from PyQt5.QtCore import QDate
 from PyQt5.QtWidgets import QMessageBox
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from ..database.database import SessionLocal
 from ..ui import Ui_Reportes
 from..controllers.tipo_pago_crud import *

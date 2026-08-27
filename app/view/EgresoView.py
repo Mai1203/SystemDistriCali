@@ -13,6 +13,8 @@ from datetime import datetime
 from ..controllers.metodo_pago_crud import *
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtWidgets import QMessageBox
+from ..utils.enviar_notifi import Mensajes as QMessageBox
+QtWidgets.QMessageBox = QMessageBox
 from PyQt5.QtWidgets import QAbstractItemView
 
 

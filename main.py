@@ -9,7 +9,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon, QScreen
 from PyQt5 import QtWidgets
 from init_db import conectar_base, inicializar_db
-from app.utils.enviar_notifi import enviar_notificacion
+from app.database.database import init_db
+from app.utils.enviar_notifi import (
+    Mensajes,
+    configurar_estilo_message_box,
+    enviar_notificacion,
+)
 from app.controllers.usuario_crud import verificar_credenciales, obtener_usuario_por_id
 from app.ventanasView import MainApp
 from app.view import Login_View
@@ -83,6 +88,7 @@ class MainWindow(QMainWindow):
             progress.close()  # Cierra el mensaje cuando termine
         else:
             print("✅ La base de datos ya existe. Continuando con el programa...")
+            init_db()
 
     def cerrar_sesion(self):
         """
@@ -162,8 +168,7 @@ class MainWindow(QMainWindow):
 
         # Generar el token JWT
         self.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.MainApp.ventasA.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.MainApp.ventasB.usuario_actual_id = usuario_autenticado.ID_Usuario
+        self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.pagoCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.caja.usuario_actual_id = usuario_autenticado.ID_Usuario
@@ -176,8 +181,8 @@ class MainWindow(QMainWindow):
         enviar_notificacion("Inicio de sesión exitoso", "Bienvenido")
         self.stacked_widget.setCurrentWidget(self.MainApp)
 
-        # Configurar accesos por rol
-        self.configurar_accesos_por_rol(rol)
+        # Configurar accesos por usuario
+        self.configurar_accesos_por_usuario(usuario_autenticado)
 
         # Actualizar el nombre del usuario en la barra de navegación
         self.MainApp.navbar.actualizar_usuario_rol(usuario_autenticado)
@@ -196,39 +201,54 @@ class MainWindow(QMainWindow):
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
         return token
 
-    def configurar_accesos_por_rol(self, rol):
+    def configurar_accesos_por_usuario(self, usuario):
         """
-        Configurar accesos según el rol del usuario autenticado.
+        Configura las vistas disponibles para el usuario autenticado.
         """
-        self.MainApp.stacked_widget.setCurrentIndex(0)
         navbar = self.MainApp.navbar
+        nombres_permitidos = set((usuario.Permisos or "").split(","))
+        es_admin = usuario.rol and usuario.rol.Nombre == "ADMINISTRADOR"
+        permisos = {
+            "Ventas": navbar.comboVentas,
+            "Caja": navbar.BtnCaja,
+            "Credito": navbar.BtnCredito,
+            "Egreso": navbar.BtnEgreso,
+            "Respaldo": navbar.BtnRespaldo,
+            "Productos": navbar.BtnProductos,
+            "CrediFactura": navbar.BtnCrediFactura,
+            "Facturas": navbar.BtnFacturas,
+            "Reportes": navbar.BtnReportes,
+            "ControlUsuario": navbar.BtnControlUsuario,
+            "Clientes": navbar.BtnClientes,
+        }
+        for nombre, control in permisos.items():
+            control.setEnabled(es_admin or nombre in nombres_permitidos)
 
-        if rol == "ADMINISTRADOR":
-            navbar.BtnVentas.setEnabled(True)
-            navbar.BtnCaja.setEnabled(True)
-            navbar.BtnCredito.setEnabled(True)
-            navbar.BtnEgreso.setEnabled(True)
-            navbar.BtnRespaldo.setEnabled(True)
-            navbar.BtnProductos.setEnabled(True)
-            navbar.BtnCrediFactura.setEnabled(True)
-            navbar.BtnFacturas.setEnabled(True)
-            navbar.BtnReportes.setEnabled(True)
-            navbar.BtnControlUsuario.setEnabled(True)
-        elif rol == "ASESOR":
-            navbar.BtnVentas.setEnabled(True)
-            navbar.BtnCaja.setEnabled(True)
-            navbar.BtnCredito.setEnabled(True)
-            navbar.BtnEgreso.setEnabled(True)
-            navbar.BtnRespaldo.setEnabled(False)
-            navbar.BtnProductos.setEnabled(False)
-            navbar.BtnCrediFactura.setEnabled(True)
-            navbar.BtnFacturas.setEnabled(True)
-            navbar.BtnReportes.setEnabled(False)
-            navbar.BtnControlUsuario.setEnabled(False)
+        permitidos = [nombre for nombre in permisos if es_admin or nombre in nombres_permitidos]
+        if permitidos:
+            primer_permiso = permitidos[0]
+            if primer_permiso == "Ventas":
+                self.MainApp.cambiar_tipo_venta(navbar.comboVentas.currentIndex())
+            else:
+                controles_vistas = {
+                    "Caja": self.MainApp.caja,
+                    "Credito": self.MainApp.ventasCredito,
+                    "Egreso": self.MainApp.egreso,
+                    "Respaldo": self.MainApp.respaldo_view,
+                    "Productos": self.MainApp.productos,
+                    "CrediFactura": self.MainApp.crediFactura,
+                    "Facturas": self.MainApp.facturas,
+                    "Reportes": self.MainApp.reportes,
+                    "ControlUsuario": self.MainApp.control_usuario_view,
+                    "Clientes": self.MainApp.Clientes,
+                }
+                self.MainApp.stacked_widget.setCurrentWidget(controles_vistas[primer_permiso])
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    QtWidgets.QMessageBox = Mensajes
+    configurar_estilo_message_box()
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())

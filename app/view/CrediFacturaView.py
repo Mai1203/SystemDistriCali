@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal
 
@@ -218,15 +219,15 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
             factura_completa = obtener_factura_completa(self.db, venta.ID_Factura)
 
             if not factura_completa:
-                QMessageBox.showerror(
-                    "Error", f"No se encontró la factura con ID {venta.ID_Factura}."
+                QMessageBox.critical(
+                    self, "Error", f"No se encontró la factura con ID {venta.ID_Factura}."
                 )
                 return
 
             self.enviar_facturas_Credito.emit(factura_completa, ids[0])
 
         except Exception as e:
-            print(f"Error al abrir ventana de ventas: {e}")
+            QMessageBox.critical(self, "Error", f"No se pudo abrir la venta: {e}")
 
     def agregar_abono(self):
         try:

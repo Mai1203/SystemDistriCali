@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator

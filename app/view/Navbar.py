@@ -1,8 +1,10 @@
+from PyQt5 import QtCore
 from PyQt5.QtGui import QIcon
 import os
 from PyQt5.QtWidgets import (
     QWidget,
     QButtonGroup,
+    QComboBox,
 )
 from ..ui import Ui_Navbar
 
@@ -11,6 +13,26 @@ class Navbar_View(QWidget, Ui_Navbar):
     def __init__(self, parent=None):
         super(Navbar_View, self).__init__(parent)
         self.setupUi(self)
+
+        self.comboVentas = QComboBox(self.QWNavbar)
+        self.comboVentas.addItems(["Ventas A", "Ventas B", "Ventas C", "Ventas D"])
+        self.comboVentas.setObjectName("comboVentas")
+        self.comboVentas.setCursor(QtCore.Qt.PointingHandCursor)
+        self.comboVentas.setMinimumHeight(40)
+        self.comboVentas.setStyleSheet("""
+            QComboBox {
+                background-color: white;
+                border: none;
+                color: rgb(50, 50, 50);
+                padding: 5px 10px;
+                font-size: 18px;
+            }
+            QComboBox:hover {
+                background-color: #f2f2f2;
+            }
+        """)
+        self.verticalLayout.replaceWidget(self.BtnVentas, self.comboVentas)
+        self.BtnVentas.hide()
 
         self.BtnCaja.setStyleSheet("background-color: #f2f2f2;\n")
 

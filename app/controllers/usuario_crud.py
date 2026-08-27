@@ -12,6 +12,7 @@ def crear_usuario(
     contrasena: str,
     estado: bool,
     id_rol: int,
+    permisos: str = "",
 ):
     """
     Crea un nuevo usuario.
@@ -32,6 +33,7 @@ def crear_usuario(
         Contrasena=contrasena,
         Estado=estado,
         ID_Rol=id_rol,
+        Permisos=permisos,
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -53,6 +55,7 @@ def obtener_usuarios(db: Session):
             Usuarios.Usuario,
             Usuarios.Contrasena,
             Usuarios.Estado,
+            Usuarios.Permisos,
             Rol.Nombre.label("rol"),
         )
         .join(Rol, Usuarios.ID_Rol == Rol.ID_Rol)
@@ -76,6 +79,7 @@ def obtener_usuario_por_id(db: Session, id_usuario: str):
             Usuarios.Usuario,
             Usuarios.Contrasena,
             Usuarios.Estado,
+            Usuarios.Permisos,
             Rol.Nombre.label("rol"),
         )
         .join(Rol, Usuarios.ID_Rol == Rol.ID_Rol)
@@ -94,6 +98,7 @@ def actualizar_usuario(
     usuario: str = None,
     contrasena: str = None,
     estado: bool = None,
+    permisos: str = None,
 ):
     """
     Actualiza un usuario existente.
@@ -119,6 +124,8 @@ def actualizar_usuario(
         usuario_existente.Contrasena = contrasena
     if estado is not None:
         usuario_existente.Estado = estado
+    if permisos is not None:
+        usuario_existente.Permisos = permisos
 
     db.commit()
     db.refresh(usuario_existente)
@@ -138,6 +145,7 @@ def buscar_usuarios(db: Session, buscar: str):
             Usuarios.Usuario,
             Usuarios.Contrasena,
             Usuarios.Estado,
+            Usuarios.Permisos,
             Rol.Nombre.label("rol"),
         )
         .join(Rol, Usuarios.ID_Rol == Rol.ID_Rol)

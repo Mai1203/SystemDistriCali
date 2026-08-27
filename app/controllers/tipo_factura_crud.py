@@ -10,6 +10,10 @@ def crear_tipo_factura(db: Session, nombre: str):
     :param nombre: Nombre del tipo de factura (Factura A, Factura B).
     :return: Objeto de tipo de factura creado.
     """
+    tipo_existente = db.query(TipoFactura).filter(TipoFactura.Nombre == nombre).first()
+    if tipo_existente:
+        return tipo_existente
+
     nuevo_tipo = TipoFactura(Nombre=nombre)
     db.add(nuevo_tipo)
     db.commit()

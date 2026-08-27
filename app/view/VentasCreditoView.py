@@ -1,5 +1,6 @@
 # PyQt5 imports
 from PyQt5.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5.QtCore import QRegularExpression, QTimer, QUrl
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent

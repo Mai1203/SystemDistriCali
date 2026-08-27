@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QMessageBox
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt, QTimer
 
@@ -238,14 +239,14 @@ class Cliente_View(QWidget, Ui_ControlCliente):
             )
             return
         
-        respuesta = QtWidgets.QMessageBox.question(
+        respuesta = QMessageBox.question(
             self,
             "Confirmar Eliminación",
             f"¿Está seguro de que desea eliminar {len(ids)} cliente(s)?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
         )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
+        if respuesta == QMessageBox.Yes:
             try:
                 self.db = SessionLocal()
 

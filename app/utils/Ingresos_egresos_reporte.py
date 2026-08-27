@@ -4,6 +4,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from tkinter import Tk, filedialog
 from PyQt5.QtWidgets import QMessageBox
+from .enviar_notifi import Mensajes as QMessageBox
 
 def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=None):
     """

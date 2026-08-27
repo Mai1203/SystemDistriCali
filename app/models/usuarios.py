@@ -11,6 +11,7 @@ class Usuarios(Base):
     Usuario = Column(String(100), unique=True, nullable=False)
     Contrasena = Column(String(255), nullable=False)
     Estado = Column(Boolean, nullable=False)
+    Permisos = Column(String(500), nullable=False, default="")
 
     ID_Rol = Column(Integer, ForeignKey("ROL.ID_Rol"))
     # Relación con las tablas MARCA y CATEGORIA

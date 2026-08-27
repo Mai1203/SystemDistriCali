@@ -9,7 +9,6 @@ from .FacturasCredito import *
 from .Login import *
 from .Productos import *
 from .VentasA import *
-from .VentasB import *
 from .VentasCredito import *
 from .PagoCredito import *
 from .Reportes import *

@@ -12,7 +12,6 @@ from app.view import (
     Facturas_View,
     CrediFactura_View,
     VentasA_View,
-    VentasB_View,
     Caja_View,
     Egreso_View,
     Productos_View,
@@ -50,8 +49,7 @@ class MainApp(QWidget):
 
         # Crear y agregar vistas al QStackedWidget
         self.caja = Caja_View()
-        self.ventasA = VentasA_View()
-        self.ventasB = VentasB_View()
+        self.ventas = VentasA_View()
         self.ventasCredito = VentasCredito_View()
         self.facturas = Facturas_View()
         self.egreso = Egreso_View()
@@ -64,8 +62,7 @@ class MainApp(QWidget):
         self.Clientes = Cliente_View()
         
         self.stacked_widget.addWidget(self.caja)  # Índice 4
-        self.stacked_widget.addWidget(self.ventasA)  # Índice 0
-        self.stacked_widget.addWidget(self.ventasB)  # Índice 1
+        self.stacked_widget.addWidget(self.ventas)  # Índice 0
         self.stacked_widget.addWidget(self.ventasCredito)  # Índice 1
         self.stacked_widget.addWidget(self.facturas)  # Índice 2
         self.stacked_widget.addWidget(self.crediFactura)  # Índice 3
@@ -78,8 +75,8 @@ class MainApp(QWidget):
         self.stacked_widget.addWidget(self.Clientes)  # Índice 9
 
         # Conectar los botones del Navbar para cambiar las vistas del contenido
-        self.navbar.BtnVentas.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.ventasA)
+        self.navbar.comboVentas.currentIndexChanged.connect(
+            self.cambiar_tipo_venta
         )
         self.navbar.BtnCaja.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.caja)
@@ -109,34 +106,36 @@ class MainApp(QWidget):
             lambda: self.stacked_widget.setCurrentWidget(self.control_usuario_view)
         )
 
-        self.ventasA.cambiar_a_ventanab.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.ventasB)
-        )
-        self.ventasB.cambiar_a_ventanaA.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.ventasA)
-        )
         self.navbar.BtnClientes.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.Clientes)
         )
         
         self.facturas.enviar_facturas_A.connect(self.cambiar_a_ventasA)
         self.facturas.enviar_facturas_B.connect(self.cambiar_a_ventasB)
+        self.facturas.enviar_facturas_C.connect(self.cambiar_a_ventasA)
+        self.facturas.enviar_facturas_D.connect(self.cambiar_a_ventasA)
         self.facturas.enviar_facturas_Credito.connect(self.cambiar_a_ventasCredito)
         self.crediFactura.enviar_facturas_Credito.connect(self.cambiar_a_ventasCredito)
         self.crediFactura.enviar_ventaCredito.connect(self.cambiar_a_pagoCredito)
 
+    def cambiar_tipo_venta(self, indice):
+        tipo_venta = ("A", "B", "C", "D")[indice]
+        self.ventas.configurar_tipo_venta(indice)
+        self.ventas.LabelVentasA.setText(f"Ventas {tipo_venta}")
+        self.stacked_widget.setCurrentWidget(self.ventas)
+
     def cambiar_a_ventasA(self, factura_completa):
         try:
-            self.stacked_widget.setCurrentWidget(self.ventasA)
-            self.ventasA.cargar_información(factura_completa)
+            self.stacked_widget.setCurrentWidget(self.ventas)
+            self.ventas.cargar_información(factura_completa)
 
         except Exception as e:
             print(f"Error al cargar datos VentasA: {e}")
 
     def cambiar_a_ventasB(self, factura_completa):
         try:
-            self.stacked_widget.setCurrentWidget(self.ventasB)
-            self.ventasB.cargar_información(factura_completa)
+            self.stacked_widget.setCurrentWidget(self.ventas)
+            self.ventas.cargar_información(factura_completa)
 
         except Exception as e:
             print(f"Error al cargar datos VentasB: {e}")

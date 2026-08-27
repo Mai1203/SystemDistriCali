@@ -2,7 +2,10 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtWidgets import QComboBox, QLabel
+from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from ..ui import Ui_ControlUsuario
 from ..database.database import SessionLocal
 from ..controllers.usuario_crud import *
@@ -15,6 +18,37 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
     def __init__(self, parent=None):
         super(ControlUsuario_View, self).__init__(parent)
         self.setupUi(self)
+        self.permisos_vistas = (
+            "Ventas",
+            "Caja",
+            "Credito",
+            "Egreso",
+            "Respaldo",
+            "Productos",
+            "CrediFactura",
+            "Facturas",
+            "Reportes",
+            "ControlUsuario",
+            "Clientes",
+        )
+        self.comboPermisos = QComboBox(self.widget_3)
+        self.labelPermisos = QLabel("Permisos", self.widget_3)
+        self.gridLayout_2.addWidget(self.labelPermisos, 4, 4, 1, 1)
+        self.comboPermisos.setEditable(True)
+        self.comboPermisos.lineEdit().setReadOnly(True)
+        self.comboPermisos.setMinimumSize(QtCore.QSize(250, 50))
+        self.comboPermisos.setPlaceholderText("Seleccionar permisos")
+        self.comboPermisos.setObjectName("comboPermisos")
+        self.modelo_permisos = QStandardItemModel(self.comboPermisos)
+        for nombre in self.permisos_vistas:
+            item = QStandardItem(nombre)
+            item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable)
+            item.setData(QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+            self.modelo_permisos.appendRow(item)
+        self.comboPermisos.setModel(self.modelo_permisos)
+        self.modelo_permisos.itemChanged.connect(self.actualizar_texto_permisos)
+        self.gridLayout_2.addWidget(self.comboPermisos, 5, 4, 1, 1)
+        self.seleccionar_permisos(())
         QTimer.singleShot(0, self.InputIdUser.setFocus)
 
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
@@ -106,7 +140,16 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
                 enviar_notificacion("Error", "El usuario ya existe en la base de datos")
                 return
 
-            crear_usuario(self.db, id_user, nombre, usuario, contraseña, True, 2)
+            crear_usuario(
+                self.db,
+                id_user,
+                nombre,
+                usuario,
+                contraseña,
+                True,
+                2,
+                self.permisos_seleccionados(),
+            )
             enviar_notificacion("Éxito", "Usuario registrado exitosamente")
 
             self.BtnRolUser.setText("ASESOR")
@@ -130,6 +173,31 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
         self.InputNombreUser.setText("")
         self.InputUser.setText("")
         self.InputPasswordUser.setText("")
+        self.seleccionar_permisos(())
+
+    def permisos_seleccionados(self):
+        return ",".join(
+            nombre
+            for indice, nombre in enumerate(self.permisos_vistas)
+            if self.modelo_permisos.item(indice).checkState() == QtCore.Qt.Checked
+        )
+
+    def seleccionar_permisos(self, permisos):
+        permisos = set(permisos)
+        self.modelo_permisos.blockSignals(True)
+        for indice, nombre in enumerate(self.permisos_vistas):
+            estado = QtCore.Qt.Checked if nombre in permisos else QtCore.Qt.Unchecked
+            self.modelo_permisos.item(indice).setCheckState(estado)
+        self.modelo_permisos.blockSignals(False)
+        self.actualizar_texto_permisos()
+
+    def actualizar_texto_permisos(self):
+        seleccionados = [
+            nombre
+            for indice, nombre in enumerate(self.permisos_vistas)
+            if self.modelo_permisos.item(indice).checkState() == QtCore.Qt.Checked
+        ]
+        self.comboPermisos.setEditText(", ".join(seleccionados) or "Seleccionar permisos")
 
     def mostrar_usuarios(self):
         self.db = SessionLocal()
@@ -251,6 +319,13 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
         self.InputNombreUser.setText(datos_fila[1])
         self.InputUser.setText(datos_fila[2])
         self.InputPasswordUser.setText(datos_fila[3])
+        db = SessionLocal()
+        try:
+            usuario = obtener_usuario_por_id(db, datos_fila[0])
+            if usuario:
+                self.seleccionar_permisos((usuario.Permisos or "").split(","))
+        finally:
+            db.close()
 
     def editar_usuario(self):
         """
@@ -262,6 +337,7 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
         nombre = self.InputNombreUser.text()
         usuario = self.InputUser.text()
         contrasena = self.InputPasswordUser.text()
+        permisos = self.permisos_seleccionados()
 
         # Verificar que todos los campos tengan datos
         if not id or not nombre or not usuario or not contrasena:
@@ -283,7 +359,7 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
                 self.db = SessionLocal()
 
                 usuario_actualizado = actualizar_usuario(
-                    self.db, id, nombre, usuario, contrasena
+                    self.db, id, nombre, usuario, contrasena, permisos=permisos
                 )
 
                 if usuario_actualizado:

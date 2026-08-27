@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QTimer, QDate
 from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox, QInputDialog
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from ..ui import Ui_Respaldo
 import shutil
 import os

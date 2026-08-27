@@ -1,7 +1,10 @@
 from PyQt5.QtWidgets import (
     QMessageBox,
     QWidget,
+    QLabel,
+    QLineEdit,
 )
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtCore, QtGui
 from ..utils import *
 from ..utils.autocomplementado import configurar_autocompletado
@@ -17,6 +20,15 @@ class Productos_View(QWidget, Ui_Productos):
     def __init__(self, parent=None):
         super(Productos_View, self).__init__(parent)
         self.setupUi(self)
+
+        self.labelPV3 = QLabel("PV-3", self.widget_3)
+        self.InputPV3 = QLineEdit(self.widget_3)
+        self.labelPV4 = QLabel("PV-4", self.widget_3)
+        self.InputPV4 = QLineEdit(self.widget_3)
+        self.gridLayout_2.addWidget(self.labelPV3, 6, 3)
+        self.gridLayout_2.addWidget(self.InputPV3, 7, 3)
+        self.gridLayout_2.addWidget(self.labelPV4, 6, 5)
+        self.gridLayout_2.addWidget(self.InputPV4, 7, 5)
         
         # palceholder
         self.InputCodigo.setPlaceholderText("Ej: 1000")
@@ -27,8 +39,10 @@ class Productos_View(QWidget, Ui_Productos):
         self.InputCantidadMin.setPlaceholderText("Ej: 3")
         self.InputCantidadMax.setPlaceholderText("Ej: 99")
         self.InputPrecioCompra.setPlaceholderText("Ej: 2500")
-        self.InputPrecioUnitario.setPlaceholderText("Ej: 50%")
-        self.InputPrecioMayor.setPlaceholderText("Ej: 35%")
+        self.InputPrecioUnitario.setPlaceholderText("PV-1")
+        self.InputPrecioMayor.setPlaceholderText("PV-2")
+        self.InputPV3.setPlaceholderText("PV-3")
+        self.InputPV4.setPlaceholderText("PV-4")
         self.InputCodigo.textChanged.connect(self.verififcarInput)
         
         # Cambiar el orden de navegación con Tab
@@ -55,6 +69,8 @@ class Productos_View(QWidget, Ui_Productos):
         configurar_validador_numerico(self.InputCantidadMax)
         configurar_validador_numerico(self.InputCantidadMin)
         configurar_validador_numerico(self.InputPrecioMayor)
+        configurar_validador_numerico(self.InputPV3)
+        configurar_validador_numerico(self.InputPV4)
         configurar_validador_numerico(self.InputPrecioCompra)
 
         configurar_validador_texto_y_numeros(self.InputNombre)
@@ -86,6 +102,8 @@ class Productos_View(QWidget, Ui_Productos):
         self.InputCategoria.returnPressed.connect(self.editar_producto)
         self.InputPrecioUnitario.returnPressed.connect(self.editar_producto)
         self.InputPrecioMayor.returnPressed.connect(self.editar_producto)
+        self.InputPV3.returnPressed.connect(self.editar_producto)
+        self.InputPV4.returnPressed.connect(self.editar_producto)
 
         # Conectar el evento de tecla Enter para procesar el código
         self.InputCodigo.returnPressed.connect(self.procesar_codigo)
@@ -420,12 +438,18 @@ class Productos_View(QWidget, Ui_Productos):
         categoria = self.InputCategoria.text()
         precio_unitario = self.InputPrecioUnitario.text()
         precio_mayor = self.InputPrecioMayor.text()
+        precio_3 = self.InputPV3.text()
+        precio_4 = self.InputPV4.text()
 
         if not precio_unitario:
             precio_unitario = self.InputPrecioUnitario.placeholderText()
 
         if not precio_mayor:
             precio_mayor = self.InputPrecioMayor.placeholderText()
+        if not precio_3:
+            precio_3 = precio_unitario
+        if not precio_4:
+            precio_4 = precio_mayor
 
         if (
             not id
@@ -446,6 +470,8 @@ class Productos_View(QWidget, Ui_Productos):
             precio_compra = float(precio_compra)
             precio_unitario = float(precio_unitario)
             precio_mayor = float(precio_mayor)
+            precio_3 = float(precio_3)
+            precio_4 = float(precio_4)
             cantidad = int(cantidad)
             cantidad_min = int(cantidad_min)
             cantidad_max = int(cantidad_max)
@@ -480,6 +506,8 @@ class Productos_View(QWidget, Ui_Productos):
                 precio_mayor,
                 id_marca,
                 id_categoria,
+                precio_3,
+                precio_4,
             )
             enviar_notificacion("Éxito", "Producto registrado exitosamente")
             self.limpiar_formulario()
@@ -524,6 +552,8 @@ class Productos_View(QWidget, Ui_Productos):
         categoria = self.InputCategoria.text()
         precio_mayor = self.InputPrecioMayor.text()
         precio_unitario = self.InputPrecioUnitario.text()
+        precio_3 = self.InputPV3.text()
+        precio_4 = self.InputPV4.text()
 
         # Verificar que todos los campos tengan datos
         if (
@@ -561,6 +591,8 @@ class Productos_View(QWidget, Ui_Productos):
 
                 precio_mayor = float(precio_mayor) if precio_mayor else None
                 precio_unitario = float(precio_unitario) if precio_unitario else None
+                precio_3 = float(precio_3) if precio_3 else None
+                precio_4 = float(precio_4) if precio_4 else None
 
                 id_marca = obtener_o_crear_marca(self.db, marca)
                 id_categoria = obtener_o_crear_categoria(self.db, categoria)
@@ -581,6 +613,8 @@ class Productos_View(QWidget, Ui_Productos):
                         "id_categoria": id_categoria,
                         "precio_venta_mayor": precio_mayor,
                         "precio_venta_normal": precio_unitario,
+                        "precio_venta_3": precio_3,
+                        "precio_venta_4": precio_4,
                     }
                 )
 

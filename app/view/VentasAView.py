@@ -1,5 +1,6 @@
 # PyQt5 imports
 from PyQt5.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5.QtCore import QRegularExpression, QTimer, QUrl
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
@@ -47,6 +48,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.id_categoria = None
         self.valor_domicilio = 0.0
         self.invoice_number = None
+        self.tipo_venta = 0
         self.cantidades = []
         self.fila_seleccionada = None
         self.aplicando_descuento = False  # Inicializar la bandera
@@ -63,6 +65,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                 background-color: red; 
             }
         """)
+        self.BtnFacturaA.hide()
+        self.BtnFacturaB.hide()
         self.InputCodigo.setPlaceholderText("Ej: 7709991003078")
         self.InputNombre.setPlaceholderText("Ej: Esmalte")
         self.InputDomicilio.setPlaceholderText("Ej: 5000")
@@ -186,6 +190,10 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.LabelSubtotal.setText(f"{subtotal:,.2f}")
         self.LabelTotal.setText(f"{total:,.2f}")
         self.MetodoPagoBox.setCurrentText(payment_method)
+
+    def configurar_tipo_venta(self, indice):
+        self.tipo_venta = indice
+        self.LabelVentasA.setText(f"Ventas {chr(65 + indice)}")
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -528,7 +536,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                 producto.Stock_actual -= diferencia_cantidad
             else:
                 # Producto nuevo, agregarlo a la factura y ajustar el stock
-                precio_unitario = db.query(Productos).filter(Productos.ID_Producto == id_producto).first().Precio_venta_normal
+                producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
+                precio_unitario = getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")
                 subtotal = nueva_cantidad * precio_unitario
 
                 nuevo_detalle = DetalleFacturas(
@@ -632,7 +641,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 descuento=descuento,
                 estado=estado,
                 id_metodo_pago=id_metodo_pago.ID_Metodo_Pago,
-                id_tipo_factura=1,
+                id_tipo_factura=self.tipo_venta + 1,
                 id_cliente=client_id,
                 id_usuario=id_usuario,
                 domicilio=domicilio,
@@ -753,7 +762,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(producto.Precio_venta_normal))
+                    self.InputPrecioUnitario.setText(str(getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")))
                     self.InputPrecioUnitario.setEnabled(False)
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()  # Limpiar cantidad
@@ -777,7 +786,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(producto.Precio_venta_normal))
+                    self.InputPrecioUnitario.setText(str(getattr(producto, f"Precio_venta_{self.tipo_venta + 1}")))
                     self.InputPrecioUnitario.setEnabled(False)
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()  # Limpiar cantidad

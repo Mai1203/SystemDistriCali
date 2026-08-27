@@ -53,6 +53,8 @@ def crear_producto(
     precio_venta_mayor: float,
     id_marca: int,
     id_categoria: int,
+    precio_venta_3: float = None,
+    precio_venta_4: float = None,
 ):
     """
     Crea un nuevo producto.
@@ -68,6 +70,10 @@ def crear_producto(
         Precio_costo=precio_costo,
         Precio_venta_mayor=precio_venta_mayor,
         Precio_venta_normal=precio_venta_normal,
+        Precio_venta_1=precio_venta_normal,
+        Precio_venta_2=precio_venta_mayor,
+        Precio_venta_3=precio_venta_3 if precio_venta_3 is not None else precio_venta_normal,
+        Precio_venta_4=precio_venta_4 if precio_venta_4 is not None else precio_venta_mayor,
         Ganancia_Producto_mayor=ganancia_producto_mayor,
         Ganancia_Producto_normal=ganancia_producto_normal,
         Stock_actual=stock_actual,
@@ -111,6 +117,10 @@ def obtener_productos(db: Session):
             Productos.Precio_costo,
             Productos.Precio_venta_mayor,
             Productos.Precio_venta_normal,
+            Productos.Precio_venta_1,
+            Productos.Precio_venta_2,
+            Productos.Precio_venta_3,
+            Productos.Precio_venta_4,
             Productos.Ganancia_Producto_mayor,
             Productos.Ganancia_Producto_normal,
             Productos.Stock_actual,
@@ -136,6 +146,10 @@ def obtener_producto_por_id(db: Session, id_producto: int):
             Productos.Precio_costo,
             Productos.Precio_venta_mayor,
             Productos.Precio_venta_normal,
+            Productos.Precio_venta_1,
+            Productos.Precio_venta_2,
+            Productos.Precio_venta_3,
+            Productos.Precio_venta_4,
             Productos.Ganancia_Producto_mayor,
             Productos.Ganancia_Producto_normal,
             Productos.Stock_actual,
@@ -166,6 +180,10 @@ def buscar_productos(db: Session, busqueda: str):
             Productos.Precio_costo,
             Productos.Precio_venta_mayor,
             Productos.Precio_venta_normal,
+            Productos.Precio_venta_1,
+            Productos.Precio_venta_2,
+            Productos.Precio_venta_3,
+            Productos.Precio_venta_4,
             Productos.Ganancia_Producto_mayor,
             Productos.Ganancia_Producto_normal,
             Productos.Stock_actual,
@@ -198,6 +216,8 @@ def actualizar_producto(
     precio_costo: float = None,
     precio_venta_mayor: float = None,
     precio_venta_normal: float = None,
+    precio_venta_3: float = None,
+    precio_venta_4: float = None,
     stock_actual: int = None,
     stock_min: int = None,
     stock_max: int = None,
@@ -226,8 +246,14 @@ def actualizar_producto(
 
     if precio_venta_mayor:
         producto_existente.Precio_venta_mayor = precio_venta_mayor
+        producto_existente.Precio_venta_2 = precio_venta_mayor
     if precio_venta_normal:
         producto_existente.Precio_venta_normal = precio_venta_normal
+        producto_existente.Precio_venta_1 = precio_venta_normal
+    if precio_venta_3:
+        producto_existente.Precio_venta_3 = precio_venta_3
+    if precio_venta_4:
+        producto_existente.Precio_venta_4 = precio_venta_4
 
     # Recalcular ganancias si precio_costo o precios de venta fueron actualizados
     if precio_costo or precio_venta_normal:

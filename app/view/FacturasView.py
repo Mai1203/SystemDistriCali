@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal
 
@@ -18,6 +19,8 @@ from ..utils.restructura_ticket import generate_ticket
 class Facturas_View(QWidget, Ui_Facturas):
     enviar_facturas_A = pyqtSignal(dict)
     enviar_facturas_B = pyqtSignal(dict)
+    enviar_facturas_C = pyqtSignal(dict)
+    enviar_facturas_D = pyqtSignal(dict)
     enviar_facturas_Credito = pyqtSignal(dict)
 
     def __init__(self, parent=None):
@@ -403,16 +406,19 @@ class Facturas_View(QWidget, Ui_Facturas):
             factura_completa = obtener_factura_completa(self.db, ids[0])
 
             if not factura_completa:
-                QMessageBox.showerror(
-                    "Error", f"No se encontró la factura con ID {ids[0]}."
+                QMessageBox.critical(
+                    self, "Error", f"No se encontró la factura con ID {ids[0]}."
                 )
                 return
 
-            if factura_completa["Factura"]["TipoFactura"] == "Factura A":
+            if factura_completa["Factura"]["TipoFactura"] == "F-01":
                 self.enviar_facturas_A.emit(factura_completa)
-
-            elif factura_completa["Factura"]["TipoFactura"] == "Factura B":
+            elif factura_completa["Factura"]["TipoFactura"] == "F-02":
                 self.enviar_facturas_B.emit(factura_completa)
+            elif factura_completa["Factura"]["TipoFactura"] == "F-03":
+                self.enviar_facturas_C.emit(factura_completa)
+            elif factura_completa["Factura"]["TipoFactura"] == "F-04":
+                self.enviar_facturas_D.emit(factura_completa)
 
             elif factura_completa["Factura"]["TipoFactura"] == "Credito":
                 self.enviar_facturas_Credito.emit(factura_completa)

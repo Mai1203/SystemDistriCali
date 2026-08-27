@@ -13,6 +13,7 @@ from reportlab.platypus import Image
 from reportlab.platypus import PageBreak, KeepTogether
 from datetime import datetime
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from .enviar_notifi import Mensajes as QMessageBox
 from tkinter import  filedialog
 from tkinter import messagebox
 from datetime import datetime
