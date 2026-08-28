@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_Reportes(object):
@@ -293,7 +294,7 @@ class Ui_Reportes(object):
 "    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("assets/iconos/pdf.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.file-pdf', color='#F44336').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnTicketCaja.setIcon(icon)
         self.BtnTicketCaja.setIconSize(QtCore.QSize(30, 30))
         self.BtnTicketCaja.setObjectName("BtnTicketCaja")

@@ -1,6 +1,5 @@
 from PyQt6 import QtCore
-from PyQt6.QtGui import QIcon
-import os
+import qtawesome as qta
 
 from PyQt6.QtWidgets import (
     QWidget,
@@ -19,132 +18,88 @@ class Navbar_View(QWidget, Ui_Navbar):
 
         self.setupUi(self)
 
-        self.comboVentas = QComboBox(self.QWNavbar)
-        self.comboVentas.addItems(
-            [tipo["nombre"] for tipo in TIPOS_VENTA.values()]
-        )
-
+        import qtawesome as qta
+        self.comboVentas = QComboBox(self)
+        for tipo in TIPOS_VENTA.values():
+            self.comboVentas.addItem(qta.icon('fa5s.shopping-cart', color='#201A24'), f"  {tipo['nombre']}")
+            
         self.comboVentas.setObjectName("comboVentas")
-
-        self.comboVentas.setCursor(
-            QtCore.Qt.CursorShape.PointingHandCursor
-        )
-
+        self.comboVentas.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.comboVentas.setMinimumHeight(40)
-
+        self.comboVentas.setIconSize(QtCore.QSize(18, 18))
+        
+        # Estilo integrado con el nuevo diseño
         self.comboVentas.setStyleSheet("""
             QComboBox {
-                background-color: white;
+                background-color: transparent;
                 border: none;
-                color: rgb(50, 50, 50);
-                padding: 5px 10px;
-                font-size: 18px;
+                color: #201A24;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 500;
+                font-family: 'Segoe UI', Arial, sans-serif;
             }
-
             QComboBox:hover {
-                background-color: #f2f2f2;
+                background-color: #F8F5F8;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none; /* Podemos omitir la flecha nativa si queremos que parezca un btn normal */
+            }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #E2DAE1;
+                border-radius: 8px;
+                selection-background-color: #862D6D;
+                selection-color: white;
+                outline: none;
             }
         """)
 
-        self.verticalLayout.replaceWidget(
-            self.BtnVentas,
-            self.comboVentas
-        )
-
+        # Reemplazamos BtnVentas por comboVentas
+        self.rootLayout.replaceWidget(self.BtnVentas, self.comboVentas)
         self.BtnVentas.hide()
 
-        self.BtnCaja.setStyleSheet(
-            "background-color: #f2f2f2;\n"
-        )
-
+        # Usamos QButtonGroup para gestionar el estado "checked"
         self.button_group = QButtonGroup(self)
+        self.button_group.setExclusive(True)
 
-        self.button_group.addButton(self.BtnVentas)
-        self.button_group.addButton(self.BtnCredito)
-        self.button_group.addButton(self.BtnProductos)
         self.button_group.addButton(self.BtnCaja)
-        self.button_group.addButton(self.BtnCrediFactura)
-        self.button_group.addButton(self.BtnControlUsuario)
+        self.button_group.addButton(self.BtnCredito)
         self.button_group.addButton(self.BtnEgreso)
+        self.button_group.addButton(self.BtnRespaldo)
+        self.button_group.addButton(self.BtnProductos)
+        self.button_group.addButton(self.BtnCrediFactura)
         self.button_group.addButton(self.BtnFacturas)
         self.button_group.addButton(self.BtnReportes)
-        self.button_group.addButton(self.BtnRespaldo)
         self.button_group.addButton(self.BtnClientes)
 
-        self.button_group.buttonClicked.connect(
-            self.cambiar_color_boton
-        )
-
-        self.estilo_normal = """
-            QToolButton {
-                background-color: white;
-                border: none;
-                color: rgb(50, 50, 50);
-                border-radius: 15px;
-                padding: 5px 10px;
-                height: 40px;
-                text-align: left;
-                font-size: 18px;
-                cursor: pointer;
-            }
-
-            QToolButton:hover {
-                background-color: #f2f2f2;
-                cursor: pointer;
-            }
-        """
-
-        self.estilo_seleccionado = (
-            "background-color: #f2f2f2;"
-        )
-
-        self.icon_asesor = "./assets/iconos/asesor.png"
-        self.icon_admin = "./assets/iconos/perfil.png"
-
-    def cambiar_color_boton(self, boton_seleccionado):
-        """
-        Cambia el color del botón seleccionado
-        en función de su estado.
-        """
-
-        # Restaurar el estilo normal a todos los botones
-        for button in self.button_group.buttons():
-            button.setStyleSheet(self.estilo_normal)
-
-        # Aplicar el estilo seleccionado
-        # al botón que fue presionado
-        boton_seleccionado.setStyleSheet(
-            self.estilo_seleccionado
+        self.lblUserAvatar.setPixmap(
+            qta.icon("fa5s.user", color="#FFFFFF").pixmap(22, 22)
         )
 
     def actualizar_usuario_rol(self, usuario):
-        """
-        Actualiza el texto del botón con el nombre de usuario.
-        """
-
+        """Actualiza nombre, rol y ícono del usuario activo en el Navbar."""
         nombre = usuario.Nombre
-
         if " " in nombre:
             nombre = nombre.split(" ")[0]
 
-        self.BtnUsuario.setText(f"{nombre}")
+        self.BtnUsuario.setText(nombre)
 
-        # Si el usuario no es "ADMIN", cambia el ícono
-        if usuario.ID_Rol != 1:
+        rol_nombre = "Administrador" if usuario.ID_Rol == 1 else "Asesor"
+        self.lblUserRole.setText(rol_nombre)
 
-            # Verifica si el archivo existe antes de asignar el ícono
-            if os.path.exists(self.icon_asesor):
-
-                self.BtnUsuario.setIcon(
-                    QIcon(self.icon_asesor)
-                )
-
-            else:
-                print(
-                    "Error: No se encuentra el archivo de ícono."
-                )
-
+        # Ícono SVG según el rol (sin PNGs)
+        if usuario.ID_Rol == 1:
+            icon_name = "fa5s.user-shield"  # Admin = escudo
         else:
-            self.BtnUsuario.setIcon(
-                QIcon(self.icon_admin)
-            )
+            icon_name = "fa5s.user"         # Asesor = usuario simple
+        self.lblUserAvatar.setPixmap(
+            qta.icon(icon_name, color="#FFFFFF").pixmap(22, 22)
+        )

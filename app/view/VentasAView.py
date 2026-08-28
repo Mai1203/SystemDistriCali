@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
 from PyQt6.QtCore import QRegularExpression, QTimer, QUrl, Qt, pyqtSignal
 from PyQt6.QtGui import QRegularExpressionValidator
-from PyQt6.QtMultimedia import QMediaPlayer
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 # Relative imports
 from ..database.database import SessionLocal
@@ -41,6 +41,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         QTimer.singleShot(0, self.InputCodigo.setFocus)
         self.usuario_actual_id = None
         self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        self.audio_output.setVolume(1.0)
         self.InputCodigo.setFocus()
         self.id_categoria = None
         self.valor_domicilio = 0.0
@@ -89,10 +92,28 @@ class VentasA_View(QWidget, Ui_VentasA):
         configurar_autocompletado(self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo)
         configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
 
+        # ── Pill buttons → sincronizan con MetodoPagoBox oculto ──
+        metodos_validos = [self.MetodoPagoBox.itemText(i) for i in range(self.MetodoPagoBox.count())]
+        for lbl, btn in self._pill_buttons.items():
+            if lbl in metodos_validos:
+                def _pill_clicked(checked, label=lbl):
+                    if checked:
+                        idx = self.MetodoPagoBox.findText(label)
+                        if idx >= 0:
+                            self.MetodoPagoBox.setCurrentIndex(idx)
+                        self.configuracion_pago()
+                btn.toggled.connect(_pill_clicked)
+        # Seleccionar Efectivo por defecto
+        if "Efectivo" in self._pill_buttons:
+            self._pill_buttons["Efectivo"].setChecked(True)
+
         # Conexiones de señales - Botones y tabla
         self.BtnFacturaB.clicked.connect(self.cambiar_a_ventanab)
         self.BtnGenerarVenta.clicked.connect(self.generar_venta)
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
+        self.BtnAgregar.clicked.connect(self.procesar_codigo)
+        if hasattr(self, 'BtnCrearCliente'):
+            self.BtnCrearCliente.clicked.connect(self.crear_cliente_rapido)
         self.tableWidget.cellClicked.connect(self.cargar_datos)
         self.tableWidget.itemChanged.connect(self.actualizar_total)
 
@@ -217,26 +238,86 @@ class VentasA_View(QWidget, Ui_VentasA):
             client_id = self.InputCedula.text().strip()
             client_address = self.InputDireccion.text().strip()
             client_phone = self.InputTelefonoCli.text().strip()
-            monto_pago = self.InputPago.text().strip()
-            payment_method = self.MetodoPagoBox.currentText().strip()
-            descuento = float(self.InputDescuento.text().strip()) if self.InputDescuento.text() else 0.0
-            subtotal = self.LabelSubtotal.text()
-            subtotal = float(subtotal.replace(",", ""))
+            monto_efectivo_str = self.InputPago.text().strip()
+            monto_trans_str   = self.InputPagoTransferencia.text().strip()
+            payment_method    = self.MetodoPagoBox.currentText().strip()
+            descuento         = float(self.InputDescuento.text().strip()) if self.InputDescuento.text() else 0.0
 
-            error_campos = validar_campos_requeridos({
-                "Nombre del Cliente": client_name,
-                "Cédula": client_id,
-                "Dirección": client_address,
-                "Teléfono": client_phone,
-            })
-            if error_campos:
-                QMessageBox.warning(self, "Datos incompletos", error_campos)
+            # Calcular total desde la tabla
+            subtotal_items = 0.0
+            for row in range(self.tableWidget.rowCount()):
+                try:
+                    subtotal_items += float(self.tableWidget.item(row, 6).text().replace(",", ""))
+                except (AttributeError, ValueError):
+                    pass
+            domicilio_val = float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
+            total_venta = subtotal_items + domicilio_val - descuento
+
+            # ── VALIDACIÓN DE PAGO ──
+            if not payment_method:
+                QMessageBox.critical(self, "Método requerido", "Debes seleccionar un método de pago.")
                 return
-            error_pago = validar_pago(payment_method, monto_pago, subtotal)
-            if error_pago:
-                QMessageBox.warning(self, "Datos de pago", error_pago)
-                self.InputPago.setFocus()
-                return
+
+            if payment_method == "Efectivo":
+                try:
+                    monto = float(monto_efectivo_str.replace(",", "."))
+                except ValueError:
+                    QMessageBox.critical(self, "Pago inválido", "Ingresa un monto en efectivo válido.")
+                    self.InputPago.setFocus()
+                    return
+                if monto < total_venta:
+                    QMessageBox.critical(
+                        self, "❌ Pago insuficiente",
+                        f"El efectivo recibido (${monto:,.2f}) es menor al total de la venta (${total_venta:,.2f}).\n"
+                        f"Diferencia: ${total_venta - monto:,.2f}"
+                    )
+                    self.InputPago.setFocus()
+                    return
+                vuelto = monto - total_venta
+                if vuelto > 0:
+                    QMessageBox.information(
+                        self, "💰 Vuelto",
+                        f"Vuelto a entregar al cliente: ${vuelto:,.2f}"
+                    )
+                monto_pago = str(monto)
+
+            elif payment_method == "Transferencia":
+                try:
+                    monto = float(monto_efectivo_str.replace(",", "."))
+                except ValueError:
+                    QMessageBox.critical(self, "Pago inválido", "Ingresa un monto de transferencia válido.")
+                    self.InputPago.setFocus()
+                    return
+                if abs(monto - total_venta) > 0.01:
+                    QMessageBox.critical(
+                        self, "❌ Monto incorrecto",
+                        f"La transferencia (${monto:,.2f}) debe ser EXACTAMENTE igual al total (${total_venta:,.2f})."
+                    )
+                    self.InputPago.setFocus()
+                    return
+                monto_pago = str(monto)
+
+            elif payment_method == "Mixto":
+                try:
+                    m_ef = float(monto_efectivo_str.replace(",", ".")) if monto_efectivo_str else 0.0
+                    m_tr = float(monto_trans_str.replace(",", ".")) if monto_trans_str else 0.0
+                except ValueError:
+                    QMessageBox.critical(self, "Pago inválido", "Ingresa montos válidos en ambos campos.")
+                    return
+                if m_ef <= 0 or m_tr <= 0:
+                    QMessageBox.critical(self, "❌ Campos vacíos", "En pago Mixto ambos montos deben ser mayores a $0.")
+                    return
+                suma = m_ef + m_tr
+                if abs(suma - total_venta) > 0.01:
+                    QMessageBox.critical(
+                        self, "❌ Monto incorrecto",
+                        f"La suma de los pagos (${suma:,.2f}) debe ser EXACTAMENTE igual al total de la venta (${total_venta:,.2f}).\n"
+                        f"Diferencia: ${total_venta - suma:,.2f}"
+                    )
+                    return
+                monto_pago = f"{m_ef}/{m_tr}"
+            else:
+                monto_pago = monto_efectivo_str
 
             self.verificar_cliente(client_id, client_name, client_address, client_phone)
 
@@ -558,7 +639,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             raise
 
     def reproducir_sonido(self):
-        sonido_path = "./assets/sound_scanner.wav"
+        sonido_path = os.path.abspath("./assets/sound_scanner.wav")
         if os.path.exists(sonido_path):
             try:
                 self.player.setSource(QUrl.fromLocalFile(sonido_path))
@@ -803,22 +884,27 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputCodigo.setFocus()
 
     def eliminar_fila(self):
-        fila_seleccionada = self.tableWidget.currentRow()
-        if fila_seleccionada != -1:
-            reply = QMessageBox.question(
-                self,
-                "Confirmar eliminación",
-                "¿Estás seguro de que deseas eliminar este producto?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                self.tableWidget.removeRow(fila_seleccionada)
-                self.limpiar_campos()
-                self.actualizar_total()
-                self.InputPago.clear()
-        else:
-            QMessageBox.warning(self, "Error", "Por favor, selecciona un producto para eliminar.")
+        filas_seleccionadas = self.tableWidget.selectionModel().selectedRows()
+        if not filas_seleccionadas:
+            QMessageBox.warning(self, "Error", "Por favor, selecciona al menos un producto para eliminar.")
+            return
+
+        n = len(filas_seleccionadas)
+        msg = f"¿Eliminar {n} producto{'s' if n > 1 else ''}?"
+        reply = QMessageBox.question(
+            self,
+            "Confirmar eliminación",
+            msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            # Eliminar de mayor a menor índice para no desplazar filas
+            for idx in sorted([f.row() for f in filas_seleccionadas], reverse=True):
+                self.tableWidget.removeRow(idx)
+            self.limpiar_campos()
+            self.actualizar_total()
+            self.InputPago.clear()
 
     def obtener_valor_domicilio(self):
         if self.InputDomicilio.isEnabled():
@@ -1054,6 +1140,41 @@ class VentasA_View(QWidget, Ui_VentasA):
         finally:
             self.db.close()
 
+    def crear_cliente_rapido(self):
+        client_id = self.InputCedula.text().strip()
+        client_name = self.InputNombreCli.text().strip()
+        client_phone = self.InputTelefonoCli.text().strip()
+        client_address = self.InputDireccion.text().strip()
+
+        if not (client_id and client_name and client_phone and client_address):
+            QMessageBox.warning(self, "Campos incompletos", "Llena Cédula, Nombre, Teléfono y Dirección para crear el cliente.")
+            return
+
+        db = SessionLocal()
+        try:
+            if obtener_cliente_por_id(db, client_id):
+                QMessageBox.information(self, "Información", f"El cliente con cédula {client_id} ya existe en el sistema.")
+                return
+            
+            nombres = client_name.split(" ", 1)
+            nombre = nombres[0]
+            apellido = nombres[1] if len(nombres) > 1 else ""
+
+            nuevo = crear_cliente(
+                db=db,
+                id_cliente=client_id,
+                nombre=nombre,
+                apellido=apellido,
+                direccion=client_address,
+                telefono=client_phone
+            )
+            if nuevo:
+                QMessageBox.information(self, "Éxito", f"Cliente {nombre} registrado exitosamente.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo crear el cliente: {e}")
+        finally:
+            db.close()
+
     def metodo_pago(self):
         try:
             db = SessionLocal()
@@ -1072,29 +1193,44 @@ class VentasA_View(QWidget, Ui_VentasA):
             db.close()
 
     def configuracion_pago(self):
-        metodo_seleccionado = self.MetodoPagoBox.currentText()
+        """Gestiona la UI de pago según el método seleccionado por los pill buttons."""
+        metodo = self.MetodoPagoBox.currentText()
         self.InputPago.clear()
-        if metodo_seleccionado in ["Efectivo", "Transferencia"]:
-            self.InputPago.setPlaceholderText("$")
-            rx_inpago = QRegularExpression(r"^\d+\.\d+$")
-            validator_inpago = QRegularExpressionValidator(rx_inpago)
-            self.InputPago.setValidator(validator_inpago)
-        elif metodo_seleccionado == "Mixto":
-            self.InputPago.setPlaceholderText("$Efectivo / $Transferencia")
-            rx_inpago = QRegularExpression(r"^\d+(\.\d{1,2})?\s*/\s*\d+(\.\d{1,2})?$")
-            validator_inpago = QRegularExpressionValidator(rx_inpago)
-            self.InputPago.setValidator(validator_inpago)
+        self.InputPagoTransferencia.clear()
+
+        es_mixto = (metodo == "Mixto")
+        self._lblTransferencia.setVisible(es_mixto)
+        self.InputPagoTransferencia.setVisible(es_mixto)
+
+        if metodo == "Efectivo":
+            self._lblEfectivo.setText("Monto recibido (permite vuelto si es mayor)")
+            self.InputPago.setPlaceholderText("$ Efectivo recibido")
+            self.lblPagoInfo.setText("El sistema calculará el vuelto si el monto es mayor al total.")
+        elif metodo == "Transferencia":
+            self._lblEfectivo.setText("Monto de la Transferencia")
+            self.InputPago.setPlaceholderText("$ Debe ser EXACTAMENTE igual al total")
+            self.lblPagoInfo.setText("⚠️ La transferencia debe ser exactamente igual al total de la venta.")
+        elif es_mixto:
+            self._lblEfectivo.setText("Monto en Efectivo")
+            self.InputPago.setPlaceholderText("$ Parte en efectivo")
+            self.InputPagoTransferencia.setPlaceholderText("$ Parte en transferencia")
+            self.lblPagoInfo.setText("La suma de ambos montos debe ser ≥ total de la venta.")
         else:
-            self.InputPago.setText("$")
+            self.lblPagoInfo.setText("")
+
+        rx = QRegularExpression(r"^\d+(\.\d{1,2})?$")
+        self.InputPago.setValidator(QRegularExpressionValidator(rx))
+        self.InputPagoTransferencia.setValidator(QRegularExpressionValidator(rx))
 
     def limpiar_datos_cliente(self):
         self.InputPago.clear()
+        if hasattr(self, 'InputPagoTransferencia'):
+            self.InputPagoTransferencia.clear()
         self.InputCedula.clear()
         self.InputNombreCli.clear()
         self.InputTelefonoCli.clear()
         self.InputDireccion.clear()
         self.InputDescuento.clear()
-        self.InputPago.clear()
         self.LabelTotal.setText("$")
         self.LabelSubtotal.setText("$")
 

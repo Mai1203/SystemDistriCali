@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_Egreso(object):
@@ -315,7 +316,7 @@ class Ui_Egreso(object):
 "    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("assets/iconos/eliminar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.trash-alt', color='#F44336').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEliminar.setIcon(icon)
         self.BtnEliminar.setIconSize(QtCore.QSize(30, 30))
         self.BtnEliminar.setObjectName("BtnEliminar")

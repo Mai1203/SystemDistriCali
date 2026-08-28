@@ -1,0 +1,353 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           SISTEMA DE DISEÑO — LADY NAIL SHOP · Sistema de Inventario        ║
+║                       Guía de UX/UI · Login Screen                          ║
+║                         Versión 2.0 · Agosto 2026                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. PALETA DE COLORES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ COLOR DE MARCA (Primarios)
+ ─────────────────────────────────────────────────────────────────────────────
+ Token              Hex         Uso
+ ─────────────────────────────────────────────────────────────────────────────
+ _PRIMARY           #862D6D     Botón principal, bordes de foco, links, íconos activos
+ _PRIMARY_HOVER     #6E2259     Estado :hover del botón (oscurece 15%)
+ _PRIMARY_PRESSED   #551443     Estado :pressed del botón (oscurece 30%)
+
+ PANEL HERO (Gradiente vectorial izquierdo — sin imagen)
+ ─────────────────────────────────────────────────────────────────────────────
+ Posición 0%        #3D0A30     Índigo plum oscuro profundo (esquina superior izq.)
+ Posición 35%       #6B1853     Plum medio
+ Posición 70%       #862D6D     Plum Lady Nail (color de marca)
+ Posición 100%      #A83880     Berry claro vibrante (esquina inferior der.)
+
+ NEUTROS / FONDO
+ ─────────────────────────────────────────────────────────────────────────────
+ _BG                #F5F0F4     Fondo general del widget (rosa lavanda muy suave)
+ _CARD_BG           #FFFFFF     Fondo de la tarjeta de login
+ _FOCUS_BG          #FFFAFE     Fondo del input en estado focus (tinte crema)
+ _DIVIDER           #E2DAE1     Líneas separadoras / divisores
+
+ TEXTO
+ ─────────────────────────────────────────────────────────────────────────────
+ _TEXT              #201A24     Texto principal (casi negro cálido)
+ _MUTED             #7B737F     Texto secundario / subtítulos / pie de página
+ _PLACEHOLDER       #9C94A0     Placeholder de inputs
+
+ BORDES
+ ─────────────────────────────────────────────────────────────────────────────
+ _BORDER (reposo)   #D8C8D5     Borde input en estado normal
+ _BORDER (hover)    #A97099     Borde input en hover (tonalidad plum suave)
+ _BORDER (focus)    #862D6D     Borde input en focus (color primario)
+ Card border        #EAE0E8     Borde sutil de la tarjeta
+
+ SUPERPOSICIÓN (Hero panel — decorativos)
+ ─────────────────────────────────────────────────────────────────────────────
+ Overlay claro      rgba(255,255,255, 12)    Capa de luz superior
+ Overlay oscuro     rgba(0,0,0, 30)          Profundidad inferior
+ Círculos borde     rgba(255,255,255, 30-50) Anillos decorativos translúcidos
+ Dot-grid           rgba(255,255,255, 18)    Puntos textura premium
+ Línea decorativa   rgba(255,255,255, 60)    Separador horizontal sutil
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2. TIPOGRAFÍA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Familia principal:  'Segoe UI', Arial, sans-serif
+ (Fallback seguro en Windows; no requiere instalación extra)
+
+ Escala tipográfica:
+ ─────────────────────────────────────────────────────────────────────────────
+ Elemento                     Tamaño     Peso     Color
+ ─────────────────────────────────────────────────────────────────────────────
+ Título de bienvenida         16 px      700      _TEXT (#201A24)
+ Subtítulo                    12 px      400      _MUTED (#7B737F)
+ Label inputs / botón         13–14 px   400/600  _TEXT / #FFFFFF
+ Link ¿Olvidaste?             12 px      400      _PRIMARY (#862D6D)
+ Pie de tarjeta               11 px      400      _MUTED (#7B737F)
+ Acceso restringido (caps)    10 px      600      #B0A8B4  + letter-spacing 2px
+
+ Panel Hero (vectorial — pintado con QPainter):
+ ─────────────────────────────────────────────────────────────────────────────
+ "Lady Nail"             px = max(22, min(36, ancho_panel × 0.09))   Bold
+ "S H O P"              px = max(9,  min(14, ancho_panel × 0.035))   letter-spacing 6
+ "SISTEMA DE INVENTARIO" px = max(7,  min(10, ancho_panel × 0.022))   letter-spacing 2.5
+ Cita motivacional       px = max(8,  min(12, ancho_panel × 0.028))   Italic
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3. ESPACIADO Y DIMENSIONES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Grid base: 4 px  (todos los espaciados son múltiplos de 4)
+
+ Ventana
+ ─────────────────────────────────────────────────────────────────────────────
+ Inicio:       showMaximized() — ocupa el 100% del monitor
+ Mínimo:       480 × 520 px (nunca rompe el layout)
+
+ Layout raíz (QHBoxLayout sin márgenes)
+ ─────────────────────────────────────────────────────────────────────────────
+ Panel hero:   42% del ancho  (colapsa y se oculta cuando ancho < 720 px)
+ Panel form:   58% del ancho
+
+ Tarjeta (Card)
+ ─────────────────────────────────────────────────────────────────────────────
+ Ancho mín/máx:    340 – 480 px  (preferred, se estira con el viewport)
+ Padding interno:  max(24, min(40, card_w × 0.075)) horizontal
+                   max(22, min(40, height × 0.038)) vertical
+ Border-radius:    22 px
+ Sombra:           blur=40, y=12, color=rgba(100,30,80, 45)
+
+ Inputs (Usuario / Contraseña)
+ ─────────────────────────────────────────────────────────────────────────────
+ Altura mínima táctil:  max(42, min(52, height × 0.058)) px   — WCAG 44px touch target
+ Border-radius:         10 px
+ Padding interior:      38 px izquierda (ícono) / 10 px derecha
+ Borde normal:          1.5 px
+ Borde focus:           2 px
+
+ Botón "Iniciar Sesión"
+ ─────────────────────────────────────────────────────────────────────────────
+ Altura mínima:    max(44, min(54, height × 0.062)) px
+ Border-radius:    10 px
+ Padding:          10 px vertical / 16 px horizontal
+ Ícono interno:    16 × 16 px (candado blanco)
+ Letter-spacing:   0.4 px
+
+ Espaciado interno de la card (entre elementos)
+ ─────────────────────────────────────────────────────────────────────────────
+ Logo → Banner bienvenida:     14 px
+ Banner → Input usuario:       22 px
+ Input usuario → Input pass:   14 px
+ Input pass → Link olvidaste:  12 px
+ Link → Botón:                 20 px
+ Botón → Divisor:              16 px
+ Divisor → Footer:             10 px
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 4. COMPONENTES Y ESTADOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ 4.1 INPUTS (QLineEdit)
+ ─────────────────────────────────────────────────────────────────────────────
+ Estado          Borde              Fondo       Texto
+ Normal          #D8C8D5 (1.5px)   #FFFFFF     #201A24
+ Hover           #A97099 (1.5px)   #FFFFFF     #201A24
+ Focus           #862D6D (2px)     #FFFAFE     #201A24
+ Placeholder     —                  —          #9C94A0
+
+ Íconos internos (SVG monocromáticos):
+   · Ícono usuario  → assets/iconos/input_user.svg   (stroke #862D6D)
+   · Ícono candado  → assets/iconos/input_lock.svg   (stroke #862D6D)
+   · Ojo cerrado    → assets/iconos/eye_closed.svg    (stroke #7A757F)
+   · Ojo abierto    → assets/iconos/eye_open.svg      (stroke #7A757F)
+   Todos: 18–20 px, stroke-width 1.8–2, sin relleno
+
+ 4.2 BOTÓN PRIMARIO (QPushButton)
+ ─────────────────────────────────────────────────────────────────────────────
+ Estado        Fondo       Texto    Efecto
+ Normal        #862D6D     #FFFFFF  —
+ Hover         #6E2259     #FFFFFF  (oscurece fondo)
+ Pressed       #551443     #FFFFFF  padding-top +2px (efecto click)
+ Disabled      #C4A8BF     #F0E8EF  (reducción opacidad del color de marca)
+
+ 4.3 LINK ¿OLVIDASTE TU CONTRASEÑA?
+ ─────────────────────────────────────────────────────────────────────────────
+ Normal:   color #862D6D, sin subrayado
+ Hover:    color #6E2259, text-decoration: underline
+ Click:    Muestra QMessageBox.information con instrucciones
+ Cursor:   PointingHandCursor
+
+ 4.4 PANEL HERO (vectorial — _HeroPanel)
+ ─────────────────────────────────────────────────────────────────────────────
+ · Widget QWidget con paintEvent personalizado usando QPainter
+ · Renderizado con Antialiasing + TextAntialiasing activados
+ · Nunca usa imágenes rasterizadas → no pixela en ningún DPI/tamaño
+ · Elementos pintados en orden de capas (back→front):
+     1. Gradiente de fondo diagonal
+     2. Overlay suave para profundidad
+     3. 6 círculos decorativos translúcidos con borde blanco
+     4. Dot-grid (patrón de puntos) — textura premium
+     5. Línea decorativa horizontal centrada
+     6. Texto "Lady Nail" + "S H O P" + tagline
+     7. Cita motivacional en itálica (abajo)
+ · Visible solo cuando ancho de ventana ≥ 720 px
+ · Ancho mínimo del panel: 280 px
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 5. RESPONSIVIDAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Implementación: resizeEvent → _adapt_current() → adapt_to_size(w, h)
+ Cada vez que la ventana cambia de tamaño, se recalculan TODOS los valores.
+
+ Puntos de quiebre (breakpoints)
+ ─────────────────────────────────────────────────────────────────────────────
+ Ancho          Comportamiento
+ ─────────────────────────────────────────────────────────────────────────────
+ < 720 px       Panel hero OCULTO · Card ocupa todo el ancho disponible
+ 720–1000 px    Hero visible · proporción hero/form se recalcula dinámicamente
+ ≥ 1000 px      Proporción estable 42% hero / 58% form
+
+ Variables que escalan dinámicamente
+ ─────────────────────────────────────────────────────────────────────────────
+ Concepto                    Fórmula                              Rango
+ Proporción hero             max(28, min(45, 42×1000/ancho))%     28–45%
+ Márgenes formPanel H        max(16, min(60, ancho×0.05))         16–60 px
+ Márgenes formPanel V        max(16, min(48, alto×0.04))          16–48 px
+ Logo (ancho)                max(160, min(240, card_w×0.50))      160–240 px
+ Padding card H              max(24, min(40, card_w×0.075))       24–40 px
+ Padding card V              max(22, min(40, alto×0.038))         22–40 px
+ Altura inputs               max(42, min(52, alto×0.058))         42–52 px
+ Altura botón                max(44, min(54, alto×0.062))         44–54 px
+ Dot-grid spacing (hero)     max(20, min(32, min(w,h)×0.04))     20–32 px
+ Fuente "Lady Nail"          max(22, min(36, panel_w×0.09))      22–36 px
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6. ACCESIBILIDAD (WCAG 2.1)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Ratio de contraste (verificado)
+ ─────────────────────────────────────────────────────────────────────────────
+ Texto #201A24 sobre #FFFFFF     → 17.1:1   ✅ WCAG AAA
+ Texto #FFFFFF sobre #862D6D     →  7.1:1   ✅ WCAG AAA
+ Texto #7B737F sobre #FFFFFF     →  4.7:1   ✅ WCAG AA
+ Texto #862D6D sobre #FFFFFF     →  7.1:1   ✅ WCAG AAA
+ Texto #B0A8B4 sobre #FFFFFF     →  3.2:1   ⚠️ Decorativo (10px, caps)
+
+ Tamaños táctiles (touch targets)
+ ─────────────────────────────────────────────────────────────────────────────
+ · Mínimo absoluto: 44 px (estándar iOS HIG y Material Design)
+ · Inputs: mínimo 42 px (escala en pantallas grandes a 52 px)
+ · Botón: mínimo 44 px (escala a 54 px)
+ · Link ¿Olvidaste?: área clickable completa del QLabel
+
+ Teclado / Navegación
+ ─────────────────────────────────────────────────────────────────────────────
+ Tab:      Usuario → Contraseña → Botón  (orden declarativo con setTabOrder)
+ Enter:    En campo Usuario → mueve foco a Contraseña
+           En campo Contraseña → dispara Iniciar Sesión
+ ↑↓:       Navega entre campo Usuario y Contraseña
+ Foco:     InputNombreUsuario recibe foco automático al abrir (QTimer 0ms)
+
+ Estados visuales
+ ─────────────────────────────────────────────────────────────────────────────
+ · Todos los controles tienen estados :hover, :focus y :pressed explícitos
+ · El botón tiene estado :disabled con colores diferenciados
+ · El cursor cambia a PointingHandCursor en elementos clicables
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 7. ESTRUCTURA DE LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ QHBoxLayout (rootLayout, márgenes 0)
+ ├── _HeroPanel (42%) — pintado con QPainter, vectorial
+ │     └── paintEvent() → gradiente + decorativos + texto de marca
+ └── QWidget formPanel (58%) — fondo _BG
+       └── QVBoxLayout (márgenes dinámicos)
+             ├── Spacer vertical (expansivo)
+             ├── QHBoxLayout centrado
+             │     ├── Spacer horizontal (expansivo)
+             │     ├── QWidget cardWidget (shadow + border-radius)
+             │     │     └── QVBoxLayout cardLayout (padding dinámico)
+             │     │           ├── QLabel lblLogo          (logo escalable)
+             │     │           ├── Spacer 14px
+             │     │           ├── QWidget welcomeContainer
+             │     │           │     ├── QLabel lblWelcomeBadge (48×48)
+             │     │           │     └── QVBoxLayout
+             │     │           │           ├── lblWelcomeTitle (16px Bold)
+             │     │           │           └── lblWelcomeSubtitle (12px)
+             │     │           ├── Spacer 22px
+             │     │           ├── QLineEdit InputNombreUsuario
+             │     │           ├── Spacer 14px
+             │     │           ├── QLineEdit InputPassword (+ passAction ojo)
+             │     │           ├── Spacer 12px
+             │     │           ├── QWidget forgotContainer
+             │     │           │     └── QLabel lblOlvidaste (alineado derecha)
+             │     │           ├── Spacer 20px
+             │     │           ├── QPushButton BtnLogin
+             │     │           ├── QPushButton BtnRol (OCULTO — 1×1px)
+             │     │           ├── Divisor (lineLeft + lblAcceso + lineRight)
+             │     │           └── QWidget footerContainer
+             │     │                 └── lblFooterIcon + lblFooterText
+             │     └── Spacer horizontal (expansivo)
+             └── Spacer vertical (expansivo)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 8. REGLAS DE DISEÑO GENERALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ ✅ HACER
+ ─────────────────────────────────────────────────────────────────────────────
+ · Usar setMinimumHeight() en lugar de setFixedHeight() en inputs/botones
+ · Calcular todos los tamaños con fórmulas max(min_val, min(max_val, expr))
+ · Usar QSizePolicy.Expanding para que los widgets llenen el espacio
+ · Definir colores como constantes con prefijo _ en la parte superior del archivo
+ · Usar QPainter con Antialiasing para todos los elementos decorativos
+ · Proveer estados :hover, :focus, :pressed, :disabled en cada control
+ · Usar PointingHandCursor en TODOS los elementos interactivos
+ · Declarar tabOrder explícitamente con QWidget.setTabOrder()
+ · Usar SVG para todos los íconos (escalables, sin píxeles)
+ · Separar lógica (View) de estructura (Ui_*) en archivos distintos
+ · Sombras (QGraphicsDropShadowEffect) solo en la card → profundidad sutil
+
+ ❌ NO HACER
+ ─────────────────────────────────────────────────────────────────────────────
+ · setFixedSize() o setFixedHeight() en controles de formulario
+ · Imágenes rasterizadas (JPG/PNG) para fondos decorativos grandes
+ · Márgenes hardcoded que no escalen con el viewport
+ · Más de 2 pesos de fuente por pantalla (400 y 600/700)
+ · Textos con contraste inferior a 3:1 para contenido informativo
+ · Controles interactivos menores de 44 px de altura
+ · Colores sin nombre semántico (nunca '#862D6D' inline, siempre _PRIMARY)
+ · Colocar lógica de negocio dentro de los archivos Ui_*
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 9. ARCHIVOS INVOLUCRADOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ app/ui/Login.py            Estructura visual: Ui_Login + _HeroPanel (vectorial)
+ app/view/LoginView.py      Lógica de interacción: Login_View (resizeEvent, signals)
+ main.py                    Ventana principal: inicia con showMaximized()
+ assets/login_logo.png      Logo Lady Nail Shop (PNG, escalado por código)
+ assets/iconos/*.svg        Íconos vectoriales (user, lock, eye_open, eye_closed,
+                             badge_shield_user, lock_plum, lock_white)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 10. DECISIONES DE DISEÑO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Decisión                   Motivo
+ ─────────────────────────────────────────────────────────────────────────────
+ Panel hero vectorial        Imágenes JPG/PNG pixelan en pantallas grandes y
+                             monitores 4K. QPainter escala perfecto a cualquier DPI.
+
+ Sin checkbox "Recordarme"   Reduce fricción en el flujo de login. El sistema es
+                             de acceso restringido interno; se omite la función.
+
+ Pantalla completa al abrir  App de escritorio de gestión interna: maximizar
+                             aprovecha toda la superficie de trabajo del operador.
+
+ BtnRol oculto (1×1px)       Compatibilidad total con main.py sin romper la
+                             arquitectura. La detección de rol es automática.
+
+ Colores plum/berry          Identidad de marca Lady Nail (cosméticos/uñas).
+                             El contraste berry-magenta comunica feminidad premium.
+
+ Sombra solo en la card      Jerarquía visual clara: la card flota sobre el fondo.
+                             Múltiples sombras generan ruido visual.
+
+ resizeEvent → adapt_to_size Permite escalar todo: márgenes, fuentes del hero,
+                             logo, inputs, con una sola función coherente.

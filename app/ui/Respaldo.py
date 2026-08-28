@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_Respaldo(object):
@@ -292,7 +293,7 @@ class Ui_Respaldo(object):
         self.label = QtWidgets.QLabel(parent=self.widget)
         self.label.setStyleSheet("")
         self.label.setText("")
-        self.label.setPixmap(QtGui.QPixmap("assets/Respaldo.png"))
+        self.label.setPixmap(qta.icon('fa5s.database', color='#862D6D').pixmap(20, 20))
         self.label.setScaledContents(False)
         self.label.setObjectName("label")
         self.verticalLayout_3.addWidget(self.label)

@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_ControlCliente(object):
@@ -308,7 +309,7 @@ class Ui_ControlCliente(object):
 "    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("assets/iconos/eliminar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.trash-alt', color='#F44336').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEliminar.setIcon(icon)
         self.BtnEliminar.setIconSize(QtCore.QSize(30, 30))
         self.BtnEliminar.setObjectName("BtnEliminar")
@@ -362,7 +363,7 @@ class Ui_ControlCliente(object):
         self.horizontalLayout_3.addWidget(self.lineEditBuscador)
         self.label_2 = QtWidgets.QLabel(parent=self.widget_2)
         self.label_2.setText("")
-        self.label_2.setPixmap(QtGui.QPixmap("assets/iconos/buscar.png"))
+        self.label_2.setPixmap(qta.icon('fa5s.search', color='#862D6D').pixmap(20, 20))
         self.label_2.setObjectName("label_2")
         self.horizontalLayout_3.addWidget(self.label_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
         self.verticalLayout_2.addWidget(self.widget_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)

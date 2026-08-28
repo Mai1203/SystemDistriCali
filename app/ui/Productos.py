@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_Productos(object):
@@ -258,7 +259,7 @@ class Ui_Productos(object):
 "    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("assets/iconos/eliminar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.trash-alt', color='#F44336').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEliminar.setIcon(icon)
         self.BtnEliminar.setIconSize(QtCore.QSize(30, 30))
         self.BtnEliminar.setObjectName("BtnEliminar")
@@ -435,7 +436,7 @@ class Ui_Productos(object):
         self.label_11 = QtWidgets.QLabel(parent=self.frame_2)
         self.label_11.setMaximumSize(QtCore.QSize(50, 50))
         self.label_11.setText("")
-        self.label_11.setPixmap(QtGui.QPixmap("assets/iconos/buscar.png"))
+        self.label_11.setPixmap(qta.icon('fa5s.search', color='#862D6D').pixmap(20, 20))
         self.label_11.setScaledContents(True)
         self.label_11.setObjectName("label_11")
         self.horizontalLayout_3.addWidget(self.label_11)

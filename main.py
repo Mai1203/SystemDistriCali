@@ -42,8 +42,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("System DistriCali")
         self.setWindowIcon(QIcon("assets/logo1.ico"))
         self.inicializar_db()
-        self.resize(800, 600)
-        self.setStyleSheet("background-color: white;")
+        # Tamaño inicial relativo a la pantalla (80% del espacio disponible)
+        self.setMinimumSize(480, 520)
+        screen = QApplication.primaryScreen().availableGeometry()
+        init_w = max(900, min(1280, int(screen.width() * 0.80)))
+        init_h = max(560, min(800, int(screen.height() * 0.80)))
+        self.resize(init_w, init_h)
+        self.setStyleSheet("background-color: #F8F5F8;")
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
@@ -113,26 +118,12 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def showEvent(self, event):
+        # La ventana ya abre maximizada; no se necesita centrado manual.
         super().showEvent(event)
-        self.center_window()
-
-    def center_window(self):
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
-        screen_width = screen_geometry.width()
-        screen_height = screen_geometry.height()
-
-        window_width = self.width()
-        window_height = self.height()
-
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-
-        self.move(x, y)
 
     def iniciar_sesion(self):
-        usuario = self.Login.InputNombreUsuario.text()
-        contraseña = self.Login.InputPassword.text()
-        rol = self.Login.BtnRol.text()
+        usuario = self.Login.InputNombreUsuario.text().strip()
+        contraseña = self.Login.InputPassword.text().strip()
 
         if not usuario or not contraseña:
             enviar_notificacion("Error", "Por favor, ingresa tus credenciales")
@@ -144,9 +135,7 @@ class MainWindow(QMainWindow):
             return
 
         usuario_data = obtener_usuario_por_id(self.db, usuario_autenticado.ID_Usuario)
-        if usuario_data.rol != rol:
-            enviar_notificacion("Error", "El rol seleccionado no coincide con tus permisos")
-            return
+        rol = usuario_data.rol if (usuario_data and usuario_data.rol) else "ASESOR"
 
         self.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
@@ -225,5 +214,5 @@ if __name__ == "__main__":
     # QtWidgets.QMessageBox = Mensajes
     # (asegúrate de importar QtWidgets)
     main_window = MainWindow()
-    main_window.show()
+    main_window.showMaximized()  # Pantalla completa al iniciar
     sys.exit(app.exec())

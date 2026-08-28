@@ -7,6 +7,7 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+import qtawesome as qta
 
 
 class Ui_PagoCredito(object):
@@ -540,7 +541,7 @@ class Ui_PagoCredito(object):
 "    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("assets/iconos/signo_dinero.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.dollar-sign', color='#28A745').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnAbonar.setIcon(icon)
         self.BtnAbonar.setIconSize(QtCore.QSize(32, 32))
         self.BtnAbonar.setObjectName("BtnAbonar")
