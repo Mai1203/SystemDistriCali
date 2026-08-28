@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QStackedWidget,
+    QApplication,
 )
 from PyQt6.QtGui import QIcon
 from app.view import (
@@ -30,6 +31,8 @@ class MainApp(QWidget):
         self.setWindowTitle("System Distri Cali")
         self.setWindowIcon(QIcon("assets/logo1.ico"))
         self.resize(800, 600)
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.setMaximumSize(screen.width(), screen.height())
 
         self.setStyleSheet("background-color: white;")
 
