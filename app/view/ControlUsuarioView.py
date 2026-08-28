@@ -1,114 +1,260 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QMessageBox,
+    QComboBox,
+    QLabel,
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtWidgets import QComboBox, QLabel
-from PyQt5.QtGui import QStandardItem, QStandardItemModel
+
+from PyQt6 import QtWidgets, QtGui, QtCore
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QStandardItem, QStandardItemModel
+
 from ..ui import Ui_ControlUsuario
 from ..configuracion import PERMISOS_VISTAS
 from ..database.database import SessionLocal
 from ..controllers.usuario_crud import *
 from ..utils import *
-from PyQt5.QtCore import Qt
-from PyQt5.QtCore import QTimer
 
 
 class ControlUsuario_View(QWidget, Ui_ControlUsuario):
+
     def __init__(self, parent=None):
-        super(ControlUsuario_View, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
+
         self.permisos_vistas = PERMISOS_VISTAS
+
+        # ============================================================
+        # COMBO DE PERMISOS
+        # ============================================================
+
         self.comboPermisos = QComboBox(self.widget_3)
         self.labelPermisos = QLabel("Permisos", self.widget_3)
-        self.gridLayout_2.addWidget(self.labelPermisos, 4, 4, 1, 1)
+
+        self.gridLayout_2.addWidget(
+            self.labelPermisos,
+            4, 4, 1, 1
+        )
+
         self.comboPermisos.setEditable(True)
         self.comboPermisos.lineEdit().setReadOnly(True)
-        self.comboPermisos.setMinimumSize(QtCore.QSize(250, 50))
+        self.comboPermisos.setMinimumSize(250, 50)
         self.comboPermisos.setPlaceholderText("Seleccionar permisos")
         self.comboPermisos.setObjectName("comboPermisos")
+
         self.modelo_permisos = QStandardItemModel(self.comboPermisos)
+
         for nombre in self.permisos_vistas:
             item = QStandardItem(nombre)
-            item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable)
-            item.setData(QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+
+            item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsUserCheckable
+            )
+
+            item.setData(
+                Qt.CheckState.Unchecked,
+                Qt.ItemDataRole.CheckStateRole
+            )
+
             self.modelo_permisos.appendRow(item)
+
         self.comboPermisos.setModel(self.modelo_permisos)
-        self.modelo_permisos.itemChanged.connect(self.actualizar_texto_permisos)
-        self.gridLayout_2.addWidget(self.comboPermisos, 5, 4, 1, 1)
+
+        self.modelo_permisos.itemChanged.connect(
+            self.actualizar_texto_permisos
+        )
+
+        self.gridLayout_2.addWidget(
+            self.comboPermisos,
+            5, 4, 1, 1
+        )
+
         self.seleccionar_permisos(())
-        QTimer.singleShot(0, self.InputIdUser.setFocus)
 
-        self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.BtnRegistrarUser.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        # ============================================================
+        # CONFIGURACIÓN INICIAL
+        # ============================================================
+
+        QTimer.singleShot(
+            0,
+            self.InputIdUser.setFocus
+        )
+
+        self.BtnEliminar.setCursor(
+            QtGui.QCursor(Qt.CursorShape.PointingHandCursor)
+        )
+
+        self.BtnRegistrarUser.setCursor(
+            QtGui.QCursor(Qt.CursorShape.PointingHandCursor)
+        )
+
         self.BtnRolUser.setText("ASESOR")
-        self.lineEdit.textChanged.connect(self.buscar_usuarios)
-        self.lineEdit.setPlaceholderText("Buscar por Nombre o ID")
-        
-        # placeholder
-        self.InputIdUser.setPlaceholderText("Ej: # Cedula")
-        self.InputNombreUser.setPlaceholderText("Ej: Pepito Perez")
-        self.InputUser.setPlaceholderText("Ej: pepito123")
-        self.InputPasswordUser.setPlaceholderText("Ej: pepito789")
-        self.InputIdUser.textChanged.connect(self.verififcarInput)
 
-        configurar_validador_numerico(self.InputIdUser)
-        configurar_validador_texto(self.InputNombreUser)
+        # ============================================================
+        # BUSCADOR
+        # ============================================================
 
-        self.BtnRegistrarUser.clicked.connect(self.ingresar_usuario)
-        self.BtnEliminar.clicked.connect(self.eliminar_usuarios)
-        self.InputIdUser.returnPressed.connect(self.editar_usuario)
-        self.InputNombreUser.returnPressed.connect(self.editar_usuario)
-        self.InputUser.returnPressed.connect(self.editar_usuario)
-        self.InputPasswordUser.returnPressed.connect(self.editar_usuario)
+        self.lineEdit.textChanged.connect(
+            self.buscar_usuarios
+        )
 
-        self.TablaUser.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.TablaUser.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-        self.TablaUser.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.lineEdit.setPlaceholderText(
+            "Buscar por Nombre o ID"
+        )
 
-        self.TablaUser.cellClicked.connect(self.cargar_datos_fila)
+        # ============================================================
+        # PLACEHOLDERS
+        # ============================================================
+
+        self.InputIdUser.setPlaceholderText(
+            "Ej: # Cedula"
+        )
+
+        self.InputNombreUser.setPlaceholderText(
+            "Ej: Pepito Perez"
+        )
+
+        self.InputUser.setPlaceholderText(
+            "Ej: pepito123"
+        )
+
+        self.InputPasswordUser.setPlaceholderText(
+            "Ej: pepito789"
+        )
+
+        self.InputIdUser.textChanged.connect(
+            self.verififcarInput
+        )
+
+        # ============================================================
+        # VALIDADORES
+        # ============================================================
+
+        configurar_validador_numerico(
+            self.InputIdUser
+        )
+
+        configurar_validador_texto(
+            self.InputNombreUser
+        )
+
+        # ============================================================
+        # BOTONES
+        # ============================================================
+
+        self.BtnRegistrarUser.clicked.connect(
+            self.ingresar_usuario
+        )
+
+        self.BtnEliminar.clicked.connect(
+            self.eliminar_usuarios
+        )
+
+        # ============================================================
+        # ENTER PARA EDITAR
+        # ============================================================
+
+        self.InputIdUser.returnPressed.connect(
+            self.editar_usuario
+        )
+
+        self.InputNombreUser.returnPressed.connect(
+            self.editar_usuario
+        )
+
+        self.InputUser.returnPressed.connect(
+            self.editar_usuario
+        )
+
+        self.InputPasswordUser.returnPressed.connect(
+            self.editar_usuario
+        )
+
+        # ============================================================
+        # TABLA
+        # ============================================================
+
+        self.TablaUser.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+
+        self.TablaUser.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.MultiSelection
+        )
+
+        self.TablaUser.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+
+        self.TablaUser.cellClicked.connect(
+            self.cargar_datos_fila
+        )
+
+    # ================================================================
+    # EVENTOS
+    # ================================================================
 
     def showEvent(self, event):
         super().showEvent(event)
+
         self.limpiar_formulario()
         self.limpiar_tabla_usuarios()
         self.mostrar_usuarios()
-        
+
     def verififcarInput(self):
-        """ Borra los demás campos si InputTipoGasto está vacío. """
+        """
+        Borra los demás campos si InputIdUser está vacío.
+        """
         if not self.InputIdUser.text().strip():
             self.limpiar_formulario()
-        
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Up:
-            self.navegar_widgets()  # Continúa con la navegación normal
-        elif event.key() == Qt.Key_Down:
+
+        if event.key() == Qt.Key.Key_Up:
+            self.navegar_widgets()
+
+        elif event.key() == Qt.Key.Key_Down:
             self.navegar_widgets_atras()
 
-        # Llamar al método original para procesar otros eventos
         super().keyPressEvent(event)
 
+    # ================================================================
+    # NAVEGACIÓN
+    # ================================================================
+
     def navegar_widgets(self):
+
         if self.focusWidget() == self.InputIdUser:
             self.InputNombreUser.setFocus()
+
         elif self.focusWidget() == self.InputNombreUser:
             self.InputUser.setFocus()
+
         elif self.focusWidget() == self.InputUser:
             self.InputPasswordUser.setFocus()
+
         elif self.focusWidget() == self.InputPasswordUser:
             self.InputIdUser.setFocus()
 
     def navegar_widgets_atras(self):
+
         if self.focusWidget() == self.InputPasswordUser:
             self.InputUser.setFocus()
+
         elif self.focusWidget() == self.InputUser:
             self.InputNombreUser.setFocus()
+
         elif self.focusWidget() == self.InputNombreUser:
-            self.InputIdUser.setFocus()  # Volver al inicio
+            self.InputIdUser.setFocus()
+
         elif self.focusWidget() == self.InputIdUser:
             self.InputPasswordUser.setFocus()
+
+    # ================================================================
+    # INGRESAR USUARIO
+    # ================================================================
 
     def ingresar_usuario(self):
 
@@ -116,17 +262,27 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
         nombre = self.InputNombreUser.text().strip()
         usuario = self.InputUser.text().strip()
         contraseña = self.InputPasswordUser.text().strip()
-        # rol = self.BtnRolUser.text()
 
         if not id_user or not usuario or not contraseña:
-            enviar_notificacion("Error", "Por favor, rellena todos los campos")
+            enviar_notificacion(
+                "Error",
+                "Por favor, rellena todos los campos"
+            )
             return
 
         try:
             self.db = SessionLocal()
-            usuario_existente = obtener_usuario_por_id(self.db, id_user)
+
+            usuario_existente = obtener_usuario_por_id(
+                self.db,
+                id_user
+            )
+
             if usuario_existente:
-                enviar_notificacion("Error", "El usuario ya existe en la base de datos")
+                enviar_notificacion(
+                    "Error",
+                    "El usuario ya existe en la base de datos"
+                )
                 return
 
             crear_usuario(
@@ -139,7 +295,11 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
                 2,
                 self.permisos_seleccionados(),
             )
-            enviar_notificacion("Éxito", "Usuario registrado exitosamente")
+
+            enviar_notificacion(
+                "Éxito",
+                "Usuario registrado exitosamente"
+            )
 
             self.BtnRolUser.setText("ASESOR")
 
@@ -148,192 +308,364 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
             self.mostrar_usuarios()
 
         except Exception as e:
+
             print(f"Error: {e}")
-            enviar_notificacion("Error", f"Error: {e}")
+
+            enviar_notificacion(
+                "Error",
+                f"Error: {e}"
+            )
 
         finally:
+
             if hasattr(self, "db") and self.db:
                 self.db.close()
-                
+
         self.InputIdUser.setFocus()
 
+    # ================================================================
+    # LIMPIAR FORMULARIO
+    # ================================================================
+
     def limpiar_formulario(self):
-        self.InputIdUser.setText("")
-        self.InputNombreUser.setText("")
-        self.InputUser.setText("")
-        self.InputPasswordUser.setText("")
+
+        self.InputIdUser.clear()
+        self.InputNombreUser.clear()
+        self.InputUser.clear()
+        self.InputPasswordUser.clear()
+
         self.seleccionar_permisos(())
 
+    # ================================================================
+    # PERMISOS
+    # ================================================================
+
     def permisos_seleccionados(self):
+
         return ",".join(
             nombre
             for indice, nombre in enumerate(self.permisos_vistas)
-            if self.modelo_permisos.item(indice).checkState() == QtCore.Qt.Checked
+            if self.modelo_permisos.item(indice).checkState()
+            == Qt.CheckState.Checked
         )
 
     def seleccionar_permisos(self, permisos):
+
         permisos = set(permisos)
+
         self.modelo_permisos.blockSignals(True)
+
         for indice, nombre in enumerate(self.permisos_vistas):
-            estado = QtCore.Qt.Checked if nombre in permisos else QtCore.Qt.Unchecked
-            self.modelo_permisos.item(indice).setCheckState(estado)
+
+            estado = (
+                Qt.CheckState.Checked
+                if nombre in permisos
+                else Qt.CheckState.Unchecked
+            )
+
+            self.modelo_permisos.item(indice).setCheckState(
+                estado
+            )
+
         self.modelo_permisos.blockSignals(False)
+
         self.actualizar_texto_permisos()
 
     def actualizar_texto_permisos(self):
+
         seleccionados = [
             nombre
             for indice, nombre in enumerate(self.permisos_vistas)
-            if self.modelo_permisos.item(indice).checkState() == QtCore.Qt.Checked
+            if self.modelo_permisos.item(indice).checkState()
+            == Qt.CheckState.Checked
         ]
-        self.comboPermisos.setEditText(", ".join(seleccionados) or "Seleccionar permisos")
+
+        self.comboPermisos.setEditText(
+            ", ".join(seleccionados)
+            or "Seleccionar permisos"
+        )
+
+    # ================================================================
+    # MOSTRAR USUARIOS
+    # ================================================================
 
     def mostrar_usuarios(self):
+
         self.db = SessionLocal()
-        usuarios = obtener_usuarios(self.db)
 
-        self.actualizar_tabla_usuarios(usuarios)
+        try:
+            usuarios = obtener_usuarios(self.db)
 
-        self.db.close()
+            self.actualizar_tabla_usuarios(
+                usuarios
+            )
+
+        finally:
+            self.db.close()
+
+    # ================================================================
+    # ACTUALIZAR TABLA
+    # ================================================================
 
     def actualizar_tabla_usuarios(self, usuarios):
-        if usuarios:
-            self.TablaUser.setRowCount(len(usuarios))
+
+        if not usuarios:
+            self.TablaUser.setRowCount(0)
             self.TablaUser.setColumnCount(6)
+            return
 
-            for row_idx, row in enumerate(usuarios):
-                id_item = QtWidgets.QTableWidgetItem(str(row.ID_Usuario))
-                id_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                nombre_item = QtWidgets.QTableWidgetItem(str(row.Nombre))
-                nombre_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                usuario_item = QtWidgets.QTableWidgetItem(str(row.Usuario))
-                usuario_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                contrasena_item = QtWidgets.QTableWidgetItem(str(row.Contrasena))
-                contrasena_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                rol_item = QtWidgets.QTableWidgetItem(str(row.rol))
-                rol_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                estado_item = QtWidgets.QTableWidgetItem(str(row.Estado))
-                estado_item.setTextAlignment(QtCore.Qt.AlignCenter)
+        self.TablaUser.setRowCount(
+            len(usuarios)
+        )
 
-                self.TablaUser.setItem(row_idx, 0, id_item)
-                self.TablaUser.setItem(row_idx, 1, nombre_item)
-                self.TablaUser.setItem(row_idx, 2, usuario_item)
-                self.TablaUser.setItem(row_idx, 3, contrasena_item)
-                self.TablaUser.setItem(row_idx, 4, rol_item)
-                self.TablaUser.setItem(row_idx, 5, estado_item)
+        self.TablaUser.setColumnCount(6)
+
+        for row_idx, row in enumerate(usuarios):
+
+            id_item = QtWidgets.QTableWidgetItem(
+                str(row.ID_Usuario)
+            )
+
+            nombre_item = QtWidgets.QTableWidgetItem(
+                str(row.Nombre)
+            )
+
+            usuario_item = QtWidgets.QTableWidgetItem(
+                str(row.Usuario)
+            )
+
+            contrasena_item = QtWidgets.QTableWidgetItem(
+                str(row.Contrasena)
+            )
+
+            rol_item = QtWidgets.QTableWidgetItem(
+                str(row.rol)
+            )
+
+            estado_item = QtWidgets.QTableWidgetItem(
+                str(row.Estado)
+            )
+
+            items = [
+                id_item,
+                nombre_item,
+                usuario_item,
+                contrasena_item,
+                rol_item,
+                estado_item,
+            ]
+
+            for column, item in enumerate(items):
+
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignCenter
+                )
+
+                self.TablaUser.setItem(
+                    row_idx,
+                    column,
+                    item
+                )
+
+    # ================================================================
+    # LIMPIAR TABLA
+    # ================================================================
 
     def limpiar_tabla_usuarios(self):
+
         self.TablaUser.setRowCount(0)
         self.TablaUser.setColumnCount(6)
 
+    # ================================================================
+    # ELIMINAR USUARIOS
+    # ================================================================
+
     def eliminar_usuarios(self):
-        """
-        Elimina los productos seleccionados de la base de datos y actualiza la tabla.
-        """
+
         ids = self.obtener_ids_seleccionados()
 
         if not ids:
+
             enviar_notificacion(
-                "Advertencia", "No se seleccionaron usuarios para eliminar."
+                "Advertencia",
+                "No se seleccionaron usuarios para eliminar."
             )
+
             return
+
         self.db = SessionLocal()
 
         try:
-            for id in ids:
-                usuario = obtener_usuario_por_id(self.db, id)
-                if usuario.rol == "ADMINISTRADOR":
+
+            for id_usuario in ids:
+
+                usuario = obtener_usuario_por_id(
+                    self.db,
+                    id_usuario
+                )
+
+                if usuario and usuario.rol == "ADMINISTRADOR":
+
                     enviar_notificacion(
-                        "Advertencia", "No se puede eliminar un administrador."
+                        "Advertencia",
+                        "No se puede eliminar un administrador."
                     )
+
                     return
-        except Exception as e:
-            enviar_notificacion("Error", f"Error al buscar usuarios: {e}")
-            print(e)
 
-        respuesta = QtWidgets.QMessageBox.question(
-            self,
-            "Confirmar Eliminación",
-            f"¿Está seguro de que desea eliminar {len(ids)} usuario(s)?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-        )
+            respuesta = QMessageBox.question(
+                self,
+                "Confirmar Eliminación",
+                f"¿Está seguro de que desea eliminar "
+                f"{len(ids)} usuario(s)?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
-            try:
+            if respuesta == QMessageBox.Yes:
 
-                # Eliminar los usuarios de la base de datos
                 for id_usuario in ids:
-                    eliminar_usuario(self.db, id_usuario)
+                    eliminar_usuario(
+                        self.db,
+                        id_usuario
+                    )
 
                 self.db.commit()
-                enviar_notificacion("Éxito", "Usuario(s) eliminado(s) correctamente.")
 
-                # Actualizar la tabla
+                enviar_notificacion(
+                    "Éxito",
+                    "Usuario(s) eliminado(s) correctamente."
+                )
+
                 self.limpiar_tabla_usuarios()
                 self.mostrar_usuarios()
                 self.limpiar_formulario()
-            except Exception as e:
-                enviar_notificacion("Error", f"Error al eliminar usuarios: {e}")
-            finally:
-                self.db.close()
+
+        except Exception as e:
+
+            enviar_notificacion(
+                "Error",
+                f"Error al eliminar usuarios: {e}"
+            )
+
+            print(e)
+
+        finally:
+
+            self.db.close()
+
         self.InputIdUser.setFocus()
 
+    # ================================================================
+    # OBTENER IDS SELECCIONADOS
+    # ================================================================
 
     def obtener_ids_seleccionados(self):
-        """
-        Obtiene los IDs de los usuarios seleccionados en la tabla.
-        """
-        filas_seleccionadas = self.TablaUser.selectionModel().selectedRows()
+
+        filas_seleccionadas = (
+            self.TablaUser
+            .selectionModel()
+            .selectedRows()
+        )
+
         ids = []
 
         for fila in filas_seleccionadas:
+
             id_usuario = self.TablaUser.item(
-                fila.row(), 0
-            ).text()  # Columna 0: ID del usuario
-            ids.append(int(id_usuario))
+                fila.row(),
+                0
+            ).text()
+
+            ids.append(
+                int(id_usuario)
+            )
 
         return ids
 
-    def cargar_datos_fila(self):
-        """
-        Muestra los usuarios en los campos de entredada.
-        """
-        fila_seleccionada = self.TablaUser.currentRow()
-        datos_fila = []
-        for columna in range(self.TablaUser.columnCount()):
-            item = self.TablaUser.item(fila_seleccionada, columna)
-            datos_fila.append(item.text() if item else "")
+    # ================================================================
+    # CARGAR DATOS DE FILA
+    # ================================================================
 
-        self.InputIdUser.setText(datos_fila[0])
-        self.InputNombreUser.setText(datos_fila[1])
-        self.InputUser.setText(datos_fila[2])
-        self.InputPasswordUser.setText(datos_fila[3])
+    def cargar_datos_fila(self):
+
+        fila_seleccionada = (
+            self.TablaUser.currentRow()
+        )
+
+        if fila_seleccionada < 0:
+            return
+
+        datos_fila = []
+
+        for columna in range(
+            self.TablaUser.columnCount()
+        ):
+
+            item = self.TablaUser.item(
+                fila_seleccionada,
+                columna
+            )
+
+            datos_fila.append(
+                item.text() if item else ""
+            )
+
+        self.InputIdUser.setText(
+            datos_fila[0]
+        )
+
+        self.InputNombreUser.setText(
+            datos_fila[1]
+        )
+
+        self.InputUser.setText(
+            datos_fila[2]
+        )
+
+        self.InputPasswordUser.setText(
+            datos_fila[3]
+        )
+
         db = SessionLocal()
+
         try:
-            usuario = obtener_usuario_por_id(db, datos_fila[0])
+
+            usuario = obtener_usuario_por_id(
+                db,
+                datos_fila[0]
+            )
+
             if usuario:
-                self.seleccionar_permisos((usuario.Permisos or "").split(","))
+
+                self.seleccionar_permisos(
+                    (usuario.Permisos or "").split(",")
+                )
+
         finally:
+
             db.close()
 
+    # ================================================================
+    # EDITAR USUARIO
+    # ================================================================
+
     def editar_usuario(self):
-        """
-        Al presionar Enter en cualquier input, pregunta si desea guardar los cambios
-        y luego edita el usuario si es confirmado.
-        """
-        # Obtener los nuevos datos de los inputs
-        id = self.InputIdUser.text()
+
+        id_usuario = self.InputIdUser.text()
         nombre = self.InputNombreUser.text()
         usuario = self.InputUser.text()
         contrasena = self.InputPasswordUser.text()
         permisos = self.permisos_seleccionados()
 
-        # Verificar que todos los campos tengan datos
-        if not id or not nombre or not usuario or not contrasena:
-            enviar_notificacion("Error", "Por favor, rellene todos los campos")
+        if not id_usuario or not nombre or not usuario or not contrasena:
+
+            enviar_notificacion(
+                "Error",
+                "Por favor, rellene todos los campos"
+            )
+
             return
 
-        # Confirmar si el usuario desea realizar la edición
         reply = QMessageBox.question(
             self,
             "Confirmación",
@@ -343,42 +675,82 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
         )
 
         if reply == QMessageBox.Yes:
+
             try:
-                # Hacer la actualización en la base de datos
+
                 self.db = SessionLocal()
 
                 usuario_actualizado = actualizar_usuario(
-                    self.db, id, nombre, usuario, contrasena, permisos=permisos
+                    self.db,
+                    id_usuario,
+                    nombre,
+                    usuario,
+                    contrasena,
+                    permisos=permisos
                 )
 
                 if usuario_actualizado:
-                    enviar_notificacion("Éxito", "Usuario actualizado correctamente")
+
+                    enviar_notificacion(
+                        "Éxito",
+                        "Usuario actualizado correctamente"
+                    )
+
                     self.limpiar_formulario()
                     self.limpiar_tabla_usuarios()
                     self.mostrar_usuarios()
+
                 else:
+
                     enviar_notificacion(
-                        "Error", "Hubo un problema al actualizar el usuario"
+                        "Error",
+                        "Hubo un problema al actualizar el usuario"
                     )
-                self.db.close()
 
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Error: {e}")
+
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Error: {e}"
+                )
+
+            finally:
+
+                if hasattr(self, "db") and self.db:
+                    self.db.close()
+
         else:
-            # Si el usuario cancela la edición
+
             print("Edición cancelada")
 
+    # ================================================================
+    # BUSCAR USUARIOS
+    # ================================================================
+
     def buscar_usuarios(self):
-        buscar = self.lineEdit.text()
-        
+
+        buscar = self.lineEdit.text().strip()
+
         if not buscar:
+
             self.mostrar_usuarios()
             return
-        
+
         self.db = SessionLocal()
-        usuarios = buscar_usuarios(self.db, buscar)
-        
-        self.actualizar_tabla_usuarios(usuarios)
-        
-        self.db.close()
-        
+
+        try:
+
+            usuarios = buscar_usuarios(
+                self.db,
+                buscar
+            )
+
+            self.actualizar_tabla_usuarios(
+                usuarios
+            )
+
+        finally:
+
+            self.db.close()
+
