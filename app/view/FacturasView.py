@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QMessageBox,
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import pyqtSignal
+from PyQt6 import QtWidgets, QtCore, QtGui
+from PyQt6.QtCore import pyqtSignal
 
 from ..ui import Ui_Facturas
 from ..database.database import SessionLocal
@@ -32,9 +32,9 @@ class Facturas_View(QWidget, Ui_Facturas):
         )
         self.InputBuscador.textChanged.connect(self.buscar_facturas)
 
-        self.TablaFacturas.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.TablaFacturas.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-        self.TablaFacturas.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.TablaFacturas.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.TablaFacturas.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.MultiSelection)
+        self.TablaFacturas.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.TablaFacturas.setColumnWidth(0, 50)
         self.TablaFacturas.setColumnWidth(5, 120)
         self.TablaFacturas.setColumnWidth(6, 120)
@@ -158,7 +158,7 @@ class Facturas_View(QWidget, Ui_Facturas):
                 # Añadir items a la tabla
                 for value, col_idx in items:
                     item = QtWidgets.QTableWidgetItem(value)
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)
+                    item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                     item.setForeground(QtGui.QBrush(color))
                     self.TablaFacturas.setItem(0, col_idx, item)
                     
@@ -205,10 +205,10 @@ class Facturas_View(QWidget, Ui_Facturas):
             self,
             "Confirmar Eliminación",
             f"¿Está seguro de que desea eliminar {len(ids)} factura(s)?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
+        if respuesta == QtWidgets.QMessageBox.StandardButton.Yes:
             try:
                 self.db = SessionLocal()
 
