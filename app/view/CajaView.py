@@ -16,6 +16,7 @@ from ..database.database import *
 from ..controllers.caja_crud import *
 from ..controllers.egresos_crud import *
 from ..controllers.ingresos_crud import *
+from ..controllers.metodo_pago_crud import *
 
 class Caja_View(QWidget, Ui_Caja):
 
@@ -117,6 +118,9 @@ class Caja_View(QWidget, Ui_Caja):
         self.estado = estado
         self.id_usuario = id_usuario
 
+        # Cargar movimientos (ingresos + egresos) de la caja seleccionada
+        self.cargar_movimientos_caja(fecha_apertura, fecha_cierre, float(monto_base or 0))
+
     def generar_reporte(self):
         """
         Filtra los ingresos según la fecha de la caja seleccionada
@@ -187,6 +191,93 @@ class Caja_View(QWidget, Ui_Caja):
         self.TablaCaja.setRowCount(0)
         self.TablaIngresos.setRowCount(0)
 
+    def cargar_movimientos_caja(self, fecha_apertura, fecha_cierre, monto_base=0.0):
+        """Carga ingresos y egresos de una caja específica en TablaIngresos."""
+        self.TablaIngresos.setRowCount(0)
+
+        db = SessionLocal()
+        try:
+            # Parse dates
+            def to_dt(val):
+                if isinstance(val, datetime):
+                    return val
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y %H:%M:%S"):
+                    try:
+                        return datetime.strptime(str(val), fmt)
+                    except ValueError:
+                        pass
+                return None
+
+            dt_inicio = to_dt(fecha_apertura)
+            dt_fin = to_dt(fecha_cierre) if fecha_cierre and str(fecha_cierre) not in ("None", "") else datetime.now()
+
+            movimientos = []  # (fecha, tipo, descripcion, efectivo, transferencia)
+
+            # ── Ingresos ──
+            ingresos = obtener_ingresos(db=db, FechaInicio=dt_inicio, FechaFin=dt_fin) or []
+            for ing in ingresos:
+                tipo = str(ing.tipo_ingreso)
+                if tipo == "Venta":
+                    ef = float(ing.monto_efectivo or 0)
+                    tr = float(ing.monto_transaccion or 0)
+                else:
+                    metodo = str(getattr(ing, 'metodo_pago', '') or '')
+                    monto = float(getattr(ing, 'monto', 0) or 0)
+                    ef = monto if metodo == "Efectivo" else 0.0
+                    tr = monto if metodo != "Efectivo" else 0.0
+                movimientos.append((getattr(ing, 'Fecha_Ingreso', dt_inicio), tipo, tipo, ef, tr))
+
+            # ── Egresos ──
+            egresos = obtener_egresos_reporte(db=db, fecha_inicio=dt_inicio, fecha_fin=dt_fin) or []
+            for eg in egresos:
+                monto = float(getattr(eg, 'Monto_Egreso', 0) or 0)
+                # Determine method from joined query; field name is eg[3] if tuple
+                if hasattr(eg, '_fields'):  # namedtuple from query
+                    eg_id, eg_tipo, eg_fecha, eg_monto = eg
+                    metodo_id = None
+                else:
+                    eg_tipo = getattr(eg, 'Tipo_Egreso', 'Egreso')
+                    eg_fecha = getattr(eg, 'Fecha_Egreso', dt_inicio)
+                    monto = float(getattr(eg, 'Monto_Egreso', 0) or 0)
+                    metodo_id = getattr(eg, 'ID_Metodo_Pago', None)
+
+                # Resolve method name
+                metodo_nombre = "Efectivo"
+                if metodo_id:
+                    from ..controllers.metodo_pago_crud import obtener_metodo_pago_por_id
+                    mp = db.query(MetodoPago).filter(MetodoPago.ID_Metodo_Pago == metodo_id).first()
+                    if mp:
+                        metodo_nombre = mp.Nombre
+
+                ef_eg = monto if metodo_nombre == "Efectivo" else 0.0
+                tr_eg = monto if metodo_nombre != "Efectivo" else 0.0
+                movimientos.append((eg_fecha, f"Egreso - {eg_tipo}", f"Egreso - {eg_tipo}", -ef_eg, -tr_eg))
+
+            # ── Populate table ──
+            total_ef = monto_base
+            total_tr = 0.0
+            for fecha, tipo, desc, ef, tr in movimientos:
+                row = self.TablaIngresos.rowCount()
+                self.TablaIngresos.insertRow(row)
+                for col, val in enumerate([desc, f"{ef:,.2f}", f"{tr:,.2f}"]):
+                    it = QtWidgets.QTableWidgetItem(str(val))
+                    it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.TablaIngresos.setItem(row, col, it)
+                total_ef += ef
+                total_tr += tr
+
+            # ── Update summary labels ──
+            self.OutEfectivo.setText(f"{total_ef:,.2f}")
+            self.OutTransferencia.setText(f"{total_tr:,.2f}")
+            self.OutTotal.setText(f"{total_ef + total_tr:,.2f}")
+            if hasattr(self, 'OutMontoBase'):
+                self.OutMontoBase.setText(f"{monto_base:,.2f}")
+
+        except Exception as e:
+            print(f"Error cargando movimientos: {e}")
+        finally:
+            db.close()
+
     def mostrar_tabla(self):
         self.db = SessionLocal()
 
@@ -219,63 +310,6 @@ class Caja_View(QWidget, Ui_Caja):
         )
 
     def actualizar_tabla(self, ingresos=None, caja=None):
-
-        # ==============================
-        # TABLA DE INGRESOS
-        # ==============================
-
-        try:
-            if ingresos:
-
-                ingresos.sort(
-                    key=lambda x: x.ID_Ingreso,
-                    reverse=False
-                )
-
-                for ingreso in ingresos:
-
-                    id_ingreso = str(ingreso.ID_Ingreso)
-                    tipo = str(ingreso.tipo_ingreso)
-
-                    if tipo == "Venta":
-                        efectivo = str(ingreso.monto_efectivo)
-                        trasferencia = str(ingreso.monto_transaccion)
-
-                    else:
-
-                        if ingreso.metodo_pago == "Efectivo":
-                            efectivo = str(ingreso.monto)
-                            trasferencia = "0.0"
-
-                        else:
-                            trasferencia = str(ingreso.monto)
-                            efectivo = "0.0"
-
-                    self.TablaIngresos.insertRow(0)
-
-                    items = [
-                        (id_ingreso, 0),
-                        (tipo, 1),
-                        (efectivo, 2),
-                        (trasferencia, 3),
-                    ]
-
-                    for value, col_idx in items:
-
-                        item = QtWidgets.QTableWidgetItem(value)
-
-                        item.setTextAlignment(
-                            Qt.AlignmentFlag.AlignCenter
-                        )
-
-                        self.TablaIngresos.setItem(
-                            0,
-                            col_idx,
-                            item
-                        )
-
-        except Exception as e:
-            print(f"Error en Tabla Ingreso: {e}")
 
         # ==============================
         # TABLA DE CAJAS
@@ -338,44 +372,10 @@ class Caja_View(QWidget, Ui_Caja):
             print(f"Error en Tabla caja: {e}")
 
     def sumar_total(self):
-
-        try:
-            monto = []
-
-            for row in range(self.TablaIngresos.rowCount()):
-
-                efectivo = self.TablaIngresos.item(row, 2).text()
-                trasferencia = self.TablaIngresos.item(row, 3).text()
-
-                monto.append(
-                    (
-                        float(efectivo),
-                        float(trasferencia)
-                    )
-                )
-
-            efectivo = sum(
-                item[0] for item in monto
-            )
-
-            trasferencia = sum(
-                item[1] for item in monto
-            )
-
-            self.OutEfectivo.setText(
-                f"{efectivo:,.2f}"
-            )
-
-            self.OutTransferencia.setText(
-                f"{trasferencia:,.2f}"
-            )
-
-            self.OutTotal.setText(
-                f"{efectivo + trasferencia:,.2f}"
-            )
-
-        except Exception as e:
-            print(f"Error al sumar total: {e}")
+        """Reset summary; it is now driven by cargar_movimientos_caja."""
+        self.OutEfectivo.setText("0.00")
+        self.OutTransferencia.setText("0.00")
+        self.OutTotal.setText("0.00")
 
     def crear_caja(self):
 
@@ -480,17 +480,17 @@ class Caja_View(QWidget, Ui_Caja):
 
                 efectivo = self.OutEfectivo.text().strip()
                 efectivo = float(
-                    efectivo.replace(",", "")
+                    efectivo.replace("$", "").replace(",", "").strip()
                 )
 
                 trasferencia = self.OutTransferencia.text().strip()
                 trasferencia = float(
-                    trasferencia.replace(",", "")
+                    trasferencia.replace("$", "").replace(",", "").strip()
                 )
 
                 total = self.OutTotal.text().strip()
                 total = float(
-                    total.replace(",", "")
+                    total.replace("$", "").replace(",", "").strip()
                 )
 
                 id_caja = self.TablaCaja.item(row, 0).text()

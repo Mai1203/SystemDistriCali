@@ -48,37 +48,37 @@ def crear_producto(
     precio_costo: float,
     stock_actual: int,
     stock_min: int,
-    stock_max: int,
-    precio_venta_normal: float,
-    precio_venta_mayor: float,
+    precio_venta_1: float,
+    precio_venta_2: float,
     id_marca: int,
     id_categoria: int,
-    precio_venta_3: float = None,
-    precio_venta_4: float = None,
+    precio_venta_3: float = 0,
+    precio_venta_4: float = 0,
 ):
     """
     Crea un nuevo producto.
     """
     estado = cambiar_estado(stock_actual)
 
-    ganancia_producto_normal = calcular_ganancia(precio_venta_normal, precio_costo)
-    ganancia_producto_mayor = calcular_ganancia(precio_venta_mayor, precio_costo)
+    ganancia_1 = calcular_ganancia(precio_venta_1, precio_costo)
+    ganancia_2 = calcular_ganancia(precio_venta_2, precio_costo)
+    ganancia_3 = calcular_ganancia(precio_venta_3, precio_costo)
+    ganancia_4 = calcular_ganancia(precio_venta_4, precio_costo)
 
     nuevo_producto = Productos(
         ID_Producto=id_producto,
         Nombre=nombre,
         Precio_costo=precio_costo,
-        Precio_venta_mayor=precio_venta_mayor,
-        Precio_venta_normal=precio_venta_normal,
-        Precio_venta_1=precio_venta_normal,
-        Precio_venta_2=precio_venta_mayor,
-        Precio_venta_3=precio_venta_3 if precio_venta_3 is not None else precio_venta_normal,
-        Precio_venta_4=precio_venta_4 if precio_venta_4 is not None else precio_venta_mayor,
-        Ganancia_Producto_mayor=ganancia_producto_mayor,
-        Ganancia_Producto_normal=ganancia_producto_normal,
+        Precio_venta_1=precio_venta_1,
+        Precio_venta_2=precio_venta_2,
+        Precio_venta_3=precio_venta_3,
+        Precio_venta_4=precio_venta_4,
+        Ganancia_1=ganancia_1,
+        Ganancia_2=ganancia_2,
+        Ganancia_3=ganancia_3,
+        Ganancia_4=ganancia_4,
         Stock_actual=stock_actual,
         Stock_min=stock_min,
-        Stock_max=stock_max,
         ID_Marca=id_marca,
         ID_Categoria=id_categoria,
         Estado=estado,
@@ -115,17 +115,16 @@ def obtener_productos(db: Session):
             Productos.ID_Producto,
             Productos.Nombre,
             Productos.Precio_costo,
-            Productos.Precio_venta_mayor,
-            Productos.Precio_venta_normal,
             Productos.Precio_venta_1,
             Productos.Precio_venta_2,
             Productos.Precio_venta_3,
             Productos.Precio_venta_4,
-            Productos.Ganancia_Producto_mayor,
-            Productos.Ganancia_Producto_normal,
+            Productos.Ganancia_1,
+            Productos.Ganancia_2,
+            Productos.Ganancia_3,
+            Productos.Ganancia_4,
             Productos.Stock_actual,
             Productos.Stock_min,
-            Productos.Stock_max,
             Productos.Estado,
             Marcas.Nombre.label("marcas"),
             Categorias.Nombre.label("categorias"),
@@ -144,17 +143,16 @@ def obtener_producto_por_id(db: Session, id_producto: int):
             Productos.ID_Producto,
             Productos.Nombre,
             Productos.Precio_costo,
-            Productos.Precio_venta_mayor,
-            Productos.Precio_venta_normal,
             Productos.Precio_venta_1,
             Productos.Precio_venta_2,
             Productos.Precio_venta_3,
             Productos.Precio_venta_4,
-            Productos.Ganancia_Producto_mayor,
-            Productos.Ganancia_Producto_normal,
+            Productos.Ganancia_1,
+            Productos.Ganancia_2,
+            Productos.Ganancia_3,
+            Productos.Ganancia_4,
             Productos.Stock_actual,
             Productos.Stock_min,
-            Productos.Stock_max,
             Marcas.Nombre.label("marcas"),
             Categorias.Nombre.label("categorias"),
         )
@@ -178,17 +176,16 @@ def buscar_productos(db: Session, busqueda: str):
             Productos.ID_Producto,
             Productos.Nombre,
             Productos.Precio_costo,
-            Productos.Precio_venta_mayor,
-            Productos.Precio_venta_normal,
             Productos.Precio_venta_1,
             Productos.Precio_venta_2,
             Productos.Precio_venta_3,
             Productos.Precio_venta_4,
-            Productos.Ganancia_Producto_mayor,
-            Productos.Ganancia_Producto_normal,
+            Productos.Ganancia_1,
+            Productos.Ganancia_2,
+            Productos.Ganancia_3,
+            Productos.Ganancia_4,
             Productos.Stock_actual,
             Productos.Stock_min,
-            Productos.Stock_max,
             Productos.Estado,
             Marcas.Nombre.label("marcas"),
             Categorias.Nombre.label("categorias"),
@@ -214,13 +211,12 @@ def actualizar_producto(
     id_producto: int,
     nombre: str = None,
     precio_costo: float = None,
-    precio_venta_mayor: float = None,
-    precio_venta_normal: float = None,
+    precio_venta_1: float = None,
+    precio_venta_2: float = None,
     precio_venta_3: float = None,
     precio_venta_4: float = None,
     stock_actual: int = None,
     stock_min: int = None,
-    stock_max: int = None,
     id_marca: int = None,
     id_categoria: int = None,
 ):
@@ -239,31 +235,34 @@ def actualizar_producto(
     if precio_costo:
         producto_existente.Precio_costo = precio_costo
 
-    if precio_costo and not precio_venta_normal:
-        producto_existente.Precio_venta_normal = calcular_precio(precio_costo, 0.5)
-    if precio_costo and not precio_venta_mayor:
-        producto_existente.Precio_venta_mayor = calcular_precio(precio_costo, 0.35)
-
-    if precio_venta_mayor:
-        producto_existente.Precio_venta_mayor = precio_venta_mayor
-        producto_existente.Precio_venta_2 = precio_venta_mayor
-    if precio_venta_normal:
-        producto_existente.Precio_venta_normal = precio_venta_normal
-        producto_existente.Precio_venta_1 = precio_venta_normal
-    if precio_venta_3:
+    if precio_venta_1 is not None:
+        producto_existente.Precio_venta_1 = precio_venta_1
+    if precio_venta_2 is not None:
+        producto_existente.Precio_venta_2 = precio_venta_2
+    if precio_venta_3 is not None:
         producto_existente.Precio_venta_3 = precio_venta_3
-    if precio_venta_4:
+    if precio_venta_4 is not None:
         producto_existente.Precio_venta_4 = precio_venta_4
 
     # Recalcular ganancias si precio_costo o precios de venta fueron actualizados
-    if precio_costo or precio_venta_normal:
-        producto_existente.Ganancia_Producto_normal = calcular_ganancia(
-            producto_existente.Precio_venta_normal, producto_existente.Precio_costo
+    if precio_costo or precio_venta_1 is not None:
+        producto_existente.Ganancia_1 = calcular_ganancia(
+            producto_existente.Precio_venta_1, producto_existente.Precio_costo
         )
         
-    if precio_costo or precio_venta_mayor:
-        producto_existente.Ganancia_Producto_mayor = calcular_ganancia(
-            producto_existente.Precio_venta_mayor, producto_existente.Precio_costo
+    if precio_costo or precio_venta_2 is not None:
+        producto_existente.Ganancia_2 = calcular_ganancia(
+            producto_existente.Precio_venta_2, producto_existente.Precio_costo
+        )
+
+    if precio_costo or precio_venta_3 is not None:
+        producto_existente.Ganancia_3 = calcular_ganancia(
+            producto_existente.Precio_venta_3, producto_existente.Precio_costo
+        )
+        
+    if precio_costo or precio_venta_4 is not None:
+        producto_existente.Ganancia_4 = calcular_ganancia(
+            producto_existente.Precio_venta_4, producto_existente.Precio_costo
         )
 
     if stock_actual is not None:
@@ -272,8 +271,6 @@ def actualizar_producto(
         producto_existente.Estado = cambiar_estado(stock_actual)
     if stock_min is not None:
         producto_existente.Stock_min = stock_min
-    if stock_max is not None:
-        producto_existente.Stock_max = stock_max
 
     if id_marca:
         producto_existente.ID_Marca = id_marca

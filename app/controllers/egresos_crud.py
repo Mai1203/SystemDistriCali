@@ -126,24 +126,41 @@ def obtener_egresos_reporte(db: Session, fecha_inicio: datetime=None , fecha_fin
     """
     Obtiene todos los registros de egresos.
     :param db: Sesión de base de datos.
-    :param fecha_inicio: Fecha de inicio del periodo.
-    :param fecha_fin: Fecha de fin del periodo.
+    :param fecha_inicio: Fecha de inicio del periodo (datetime o str).
+    :param fecha_fin: Fecha de fin del periodo (datetime o str).
     :return: Lista de egresos.
     """
+    from app.models.egresos import Egresos
+
     egresos = (
         db.query(
             Egresos.ID_Egreso,
             Egresos.Tipo_Egreso,
             Egresos.Fecha_Egreso,
             Egresos.Monto_Egreso,
+            Egresos.ID_Metodo_Pago,
         )
     )
-    
-    if fecha_fin:
-        egresos = egresos.filter(Egresos.Fecha_Egreso.between(fecha_inicio, fecha_fin))
-    else:
-        fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
-        fecha_fin_dt = fecha_inicio_dt + timedelta(days=1) - timedelta(seconds=1)
-        egresos = egresos.filter(Egresos.Fecha_Egreso.between(fecha_inicio_dt, fecha_fin_dt))
-        
-    return egresos.all()
+
+    def to_dt(val):
+        if isinstance(val, datetime):
+            return val
+        if val is None:
+            return None
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(str(val), fmt)
+            except ValueError:
+                pass
+        return None
+
+    dt_inicio = to_dt(fecha_inicio)
+    dt_fin = to_dt(fecha_fin)
+
+    if dt_inicio and dt_fin:
+        egresos = egresos.filter(Egresos.Fecha_Egreso.between(dt_inicio, dt_fin))
+    elif dt_inicio:
+        dt_fin_calc = dt_inicio + timedelta(days=1) - timedelta(seconds=1)
+        egresos = egresos.filter(Egresos.Fecha_Egreso.between(dt_inicio, dt_fin_calc))
+
+    return egresos.all()

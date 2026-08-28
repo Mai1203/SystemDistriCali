@@ -14,6 +14,7 @@ from ..controllers.tipo_ingreso_crud import *
 from ..controllers.clientes_crud import *
 from ..controllers.ingresos_crud import *
 from ..controllers.historial_modificacion_crud import *
+from ..controllers.caja_crud import obtener_cajas
 from ..ui import Ui_VentasA
 from ..configuracion import obtener_precio_producto
 from ..services.ventas_service import calcular_total_venta, validar_pago
@@ -229,6 +230,22 @@ class VentasA_View(QWidget, Ui_VentasA):
         msg_box.exec()
 
     def generar_venta(self):
+        # Verificar que haya una caja abierta
+        try:
+            _db = SessionLocal()
+            cajas = obtener_cajas(db=_db)
+            _db.close()
+            caja_abierta = any(c.Estado is True for c in cajas)
+        except Exception:
+            caja_abierta = False
+        if not caja_abierta:
+            QMessageBox.critical(
+                self, "⚠️ Caja cerrada",
+                "No puedes realizar ventas si la caja no está abierta.\n"
+                "Por favor abre la caja antes de continuar."
+            )
+            return
+
         if self.tableWidget.rowCount() == 0:
             QMessageBox.warning(self, "Error", "No hay productos en la venta.")
             self.InputCodigo.setFocus()
@@ -639,7 +656,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             raise
 
     def reproducir_sonido(self):
-        sonido_path = os.path.abspath("./assets/sound_scanner.wav")
+        sonido_path = os.path.abspath("./assets/Sonido.mp3")
         if os.path.exists(sonido_path):
             try:
                 self.player.setSource(QUrl.fromLocalFile(sonido_path))
