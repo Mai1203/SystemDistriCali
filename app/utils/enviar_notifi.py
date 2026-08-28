@@ -145,9 +145,7 @@ class Mensajes(QMessageBox):
 class ToastNotification(QWidget):
     """
     Widget flotante no bloqueante para notificaciones temporales.
-    """
-
-
+    """ 
     _instancias_activas = []
 
     def __init__(
@@ -242,7 +240,7 @@ class ToastNotification(QWidget):
             #ToastContainer {{
                 background-color: {estilo["bg"]};
                 border: 1.5px solid {estilo["borde"]};
-                border-radius: 10px;
+                border-radius: 8px;
             }}
             """
         )
@@ -252,13 +250,13 @@ class ToastNotification(QWidget):
         )
 
         layout_principal.setContentsMargins(
-            18,
             14,
-            18,
-            14
+            10,
+            14,
+            10
         )
 
-        layout_principal.setSpacing(15)
+        layout_principal.setSpacing(10)
 
         # Icono circular
         lbl_icono = QLabel(
@@ -266,8 +264,8 @@ class ToastNotification(QWidget):
         )
 
         lbl_icono.setFixedSize(
-            36,
-            36
+            28,
+            28
         )
 
         lbl_icono.setAlignment(
@@ -278,9 +276,9 @@ class ToastNotification(QWidget):
             """
             background-color: rgba(255, 255, 255, 0.22);
             color: #FFFFFF;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            border-radius: 18px;
+            border-radius: 14px;
             """
         )
 
@@ -306,7 +304,7 @@ class ToastNotification(QWidget):
         lbl_titulo.setStyleSheet(
             """
             color: #FFFFFF;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: bold;
             background: transparent;
             """
@@ -319,8 +317,8 @@ class ToastNotification(QWidget):
         lbl_mensaje.setStyleSheet(
             """
             color: #F8F9FA;
-            font-size: 13.5px;
-            line-height: 1.3;
+            font-size: 12px;
+            line-height: 1.25;
             background: transparent;
             """
         )
@@ -344,8 +342,8 @@ class ToastNotification(QWidget):
         btn_cerrar = QPushButton("✕")
 
         btn_cerrar.setFixedSize(
-            24,
-            24
+            20,
+            20
         )
 
         btn_cerrar.setCursor(
@@ -357,10 +355,10 @@ class ToastNotification(QWidget):
             QPushButton {
                 background: transparent;
                 color: rgba(255, 255, 255, 0.75);
-                font-size: 13px;
+                font-size: 11px;
                 font-weight: bold;
                 border: none;
-                border-radius: 12px;
+                border-radius: 10px;
             }
 
             QPushButton:hover {
@@ -383,10 +381,10 @@ class ToastNotification(QWidget):
         root_layout = QVBoxLayout(self)
 
         root_layout.setContentsMargins(
-            10,
-            10,
-            10,
-            10
+            8,
+            8,
+            8,
+            8
         )
 
         root_layout.addWidget(
@@ -398,7 +396,7 @@ class ToastNotification(QWidget):
             self
         )
 
-        sombra.setBlurRadius(18)
+        sombra.setBlurRadius(12)
 
         sombra.setColor(
             QtGui.QColor(
@@ -411,7 +409,7 @@ class ToastNotification(QWidget):
 
         sombra.setOffset(
             0,
-            4
+            3
         )
 
         self.contenedor.setGraphicsEffect(
@@ -419,7 +417,7 @@ class ToastNotification(QWidget):
         )
 
         # Ancho fijo uniforme
-        self.setFixedWidth(430)
+        self.setFixedWidth(320)
 
         self.adjustSize()
 
@@ -610,12 +608,12 @@ def enviar_notificacion(
             else 3000
         )
 
-        toast = ToastNotification(
-            titulo,
-            mensaje,
-            tipo=tipo,
-            duracion_ms=tiempo
-        )
+    toast = ToastNotification(
+        titulo,
+        mensaje,
+        tipo=tipo,
+        duracion_ms=tiempo
+    )
 
-        toast.show()
+    toast.show()
 
