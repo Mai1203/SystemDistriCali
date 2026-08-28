@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QMessageBox,
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import pyqtSignal
+from PyQt6 import QtWidgets, QtCore, QtGui
+from PyQt6.QtCore import pyqtSignal
 
 from ..ui import Ui_FacturasCredito
 from ..database.database import SessionLocal
@@ -32,13 +32,13 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
         self.InputBuscador.textChanged.connect(self.buscar_ventasCredito)
 
         self.TablaFacturasCredito.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectRows
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.TablaFacturasCredito.setSelectionMode(
-            QtWidgets.QAbstractItemView.MultiSelection
+            QtWidgets.QAbstractItemView.SelectionMode.MultiSelection
         )
         self.TablaFacturasCredito.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
         )
 
         self.BtnEliminarFactura.clicked.connect(self.eliminar_factura)
@@ -115,7 +115,7 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
                 # Añadir items a la tabla
                 for value, col_idx in items:
                     item = QtWidgets.QTableWidgetItem(value)
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)
+                    item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                     item.setForeground(QtGui.QBrush(color))  # Aplicar color
                     self.TablaFacturasCredito.setItem(0, col_idx, item)
         except Exception as e:
@@ -153,10 +153,10 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
             self,
             "Confirmar Eliminación",
             f"¿Está seguro de que desea eliminar {len(ids)} factura(s)?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
+        if respuesta == QtWidgets.QMessageBox.StandardButton.Yes:
             try:
                 self.db = SessionLocal()
 

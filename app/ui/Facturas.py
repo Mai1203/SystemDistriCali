@@ -252,7 +252,7 @@ class Ui_Facturas(object):
         self.label_11.setSizePolicy(sizePolicy)
         self.label_11.setMaximumSize(QtCore.QSize(50, 35))
         self.label_11.setText("")
-        self.label_11.setPixmap(QtGui.QPixmap(".\\../../assets/iconos/buscar.png"))
+        self.label_11.setPixmap(QtGui.QPixmap("assets/iconos/buscar.png"))
         self.label_11.setScaledContents(True)
         self.label_11.setObjectName("label_11")
         self.gridLayout_3.addWidget(self.label_11, 1, 1, 1, 1)
@@ -493,7 +493,7 @@ class Ui_Facturas(object):
 "    cursor: pointer;\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(".\\../../assets/iconos/editar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(QtGui.QPixmap("assets/iconos/editar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEditarFactura.setIcon(icon)
         self.BtnEditarFactura.setIconSize(QtCore.QSize(30, 30))
         self.BtnEditarFactura.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -521,7 +521,7 @@ class Ui_Facturas(object):
 "    cursor: pointer;\n"
 "}")
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(".\\../../assets/iconos/visto.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon1.addPixmap(QtGui.QPixmap("assets/iconos/visto.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnFacturaPagada.setIcon(icon1)
         self.BtnFacturaPagada.setIconSize(QtCore.QSize(30, 30))
         self.BtnFacturaPagada.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -563,7 +563,7 @@ class Ui_Facturas(object):
 "    cursor: pointer;\n"
 "}")
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(".\\../../assets/iconos/eliminar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon2.addPixmap(QtGui.QPixmap("assets/iconos/eliminar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEliminarFactura.setIcon(icon2)
         self.BtnEliminarFactura.setIconSize(QtCore.QSize(30, 30))
         self.BtnEliminarFactura.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -597,7 +597,7 @@ class Ui_Facturas(object):
 "    cursor: pointer;\n"
 "}")
         icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(".\\../../assets/iconos/cerrar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon3.addPixmap(QtGui.QPixmap("assets/iconos/cerrar.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnVerCancelarVenta.setIcon(icon3)
         self.BtnVerCancelarVenta.setIconSize(QtCore.QSize(30, 30))
         self.BtnVerCancelarVenta.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -625,7 +625,7 @@ class Ui_Facturas(object):
 "    cursor: pointer;\n"
 "}")
         icon4 = QtGui.QIcon()
-        icon4.addPixmap(QtGui.QPixmap(".\\../../assets/iconos/pdf.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon4.addPixmap(QtGui.QPixmap("assets/iconos/pdf.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnGenerarTicket.setIcon(icon4)
         self.BtnGenerarTicket.setIconSize(QtCore.QSize(30, 30))
         self.BtnGenerarTicket.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
