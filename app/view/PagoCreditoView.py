@@ -1,11 +1,11 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QMessageBox,
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
+from PyQt6 import QtWidgets, QtCore
+from PyQt6.QtCore import QRegularExpression
+from PyQt6.QtGui import QRegularExpressionValidator
 from datetime import datetime, timedelta
 import win32print
 import win32ui
@@ -48,55 +48,55 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
         fecha_futura = fecha_actual + timedelta(days=dias)
         return fecha_futura.replace(microsecond=0)
     
-    def cargar_información(self, id_ventaCredito):
+    # def cargar_información(self, id_ventaCredito):
 
-        self.id_VentaCredito = id_ventaCredito
-        self.db = SessionLocal()
-        ventaCreditos = obtener_ventaCredito_id(self.db, id_ventaCredito)
-        pago_credito = obtener_pagos_credito(self.db, id_ventaCredito)
-        ventaCredito = ventaCreditos[0]
+    #     self.id_VentaCredito = id_ventaCredito
+    #     self.db = SessionLocal()
+    #     ventaCreditos = obtener_ventaCredito_id(self.db, id_ventaCredito)
+    #     pago_credito = obtener_pagos_credito(self.db, id_ventaCredito)
+    #     ventaCredito = ventaCreditos[0]
         
-        self.LabelDeuda.setText(f"${ventaCredito.Total_Deuda:,}")
-        self.LabelPendiente.setText(f"${ventaCredito.Saldo_Pendiente:,}")
+    #     self.LabelDeuda.setText(f"${ventaCredito.Total_Deuda:,}")
+    #     self.LabelPendiente.setText(f"${ventaCredito.Saldo_Pendiente:,}")
         
-        estado = ventaCredito.estado
+    #     estado = ventaCredito.estado
         
-        if estado:
-            self.LabelEstado.setText("Pagada")
-            self.LabelEstado.setStyleSheet("color: green; font-weight: bold;")
-        else:
-            self.LabelEstado.setText("Pendiente")
-            self.LabelEstado.setStyleSheet("color: red; font-weight: bold;")  
+    #     if estado:
+    #         self.LabelEstado.setText("Pagada")
+    #         self.LabelEstado.setStyleSheet("color: green; font-weight: bold;")
+    #     else:
+    #         self.LabelEstado.setText("Pendiente")
+    #         self.LabelEstado.setStyleSheet("color: red; font-weight: bold;")  
         
-        self.TablaPagoCredito.setRowCount(len(pago_credito))
-        self.TablaPagoCredito.setColumnCount(7)
+    #     self.TablaPagoCredito.setRowCount(len(pago_credito))
+    #     self.TablaPagoCredito.setColumnCount(7)
         
-        for row, pago in enumerate(pago_credito):
-            id_venta = str(pago.ID_Pago_Credito)
-            cliente = str(ventaCredito.cliente)
-            fecha_registro = str(pago.Fecha_Registro)
-            id_ventacredito = str(ventaCredito.ID_Venta_Credito)
-            metodo_pago = str(pago.metodopago)
-            tipo_pago = str(pago.tipopago)
-            monto = str(pago.Monto)
+    #     for row, pago in enumerate(pago_credito):
+    #         id_venta = str(pago.ID_Pago_Credito)
+    #         cliente = str(ventaCredito.cliente)
+    #         fecha_registro = str(pago.Fecha_Registro)
+    #         id_ventacredito = str(ventaCredito.ID_Venta_Credito)
+    #         metodo_pago = str(pago.metodopago)
+    #         tipo_pago = str(pago.tipopago)
+    #         monto = str(pago.Monto)
             
-            # Configurar items de la tabla
-            items = [
-                (id_venta, 0),
-                (cliente, 1),
-                (fecha_registro, 2),
-                (id_ventacredito, 3),
-                (metodo_pago, 4),
-                (tipo_pago, 5),
-                (monto, 6),
-            ]
+    #         # Configurar items de la tabla
+    #         items = [
+    #             (id_venta, 0),
+    #             (cliente, 1),
+    #             (fecha_registro, 2),
+    #             (id_ventacredito, 3),
+    #             (metodo_pago, 4),
+    #             (tipo_pago, 5),
+    #             (monto, 6),
+    #         ]
             
-            for value, col_idx in items:
-                item = QtWidgets.QTableWidgetItem(value)
-                item.setTextAlignment(QtCore.Qt.AlignCenter)
-                self.TablaPagoCredito.setItem(row, col_idx, item)
+    #         for value, col_idx in items:
+    #             item = QtWidgets.QTableWidgetItem(value)
+    #             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+    #             self.TablaPagoCredito.setItem(row, col_idx, item)
                 
-            self.db.close()
+    #         self.db.close()
             
     def metodo_pago(self):
         try:
@@ -383,7 +383,7 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
                 y += line_height
 
             hDC.TextOut(x, y, "Abonos:")  # Imprime el título 
-            y += line_height  # Mueve la posición de la siguiente línea hacia abajo
+            y += line_height  # Mueve la posición de la siguiente línea hacia abajo
             
             for abono in abonos:
                 abono_linea = f"{abono[0]} x {abono[1]} - {abono[2]}"

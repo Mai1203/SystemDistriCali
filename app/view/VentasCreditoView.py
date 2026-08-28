@@ -1,13 +1,10 @@
-# PyQt5 imports
-from PyQt5.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
-from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5.QtCore import QRegularExpression, QTimer, QUrl
-from PyQt5.QtGui import QRegularExpressionValidator
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from decimal import Decimal  # Importar Decimal para manejar números con precisión
-from PyQt5 import QtCore, QtWidgets
+# PyQt6 imports
+from PyQt6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
+from PyQt6.QtCore import QRegularExpression, QTimer, QUrl, Qt
+from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtMultimedia import QMediaPlayer
+from decimal import Decimal
 from datetime import datetime, timedelta
-
 
 # Relative imports
 from ..database.database import SessionLocal
@@ -27,22 +24,21 @@ from ..utils.restructura_ticket import *
 
 # Standard library imports
 import os
-from PyQt5.QtCore import Qt
 import locale
 import win32print
 import win32ui
 import win32con
 
 
-
 class VentasCredito_View(QWidget, Ui_VentasCredito):
     def __init__(self, parent=None):
-        super(VentasCredito_View, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
-        # configuración inicial
+
+        # Configuración inicial
         self.usuario_actual_id = None
-        self.productos = []  # Lista de productos para calcular el subtotal
-        self.player = QMediaPlayer()
+        self.productos = []
+        # self.player = QMediaPlayer()
         QTimer.singleShot(0, self.InputCodigo.setFocus)
         self.id_categoria = None
         self.valor_domicilio = 0.0
@@ -50,9 +46,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.invoice_number = None
         self.id_venta_credito = None
         self.fila_seleccionada = None
-        self.timer = QTimer(self)  # Timer para evitar consultas excesivas
+        self.timer = QTimer(self)
 
-        # placeholder
+        # Placeholders
         self.InputCedula.setPlaceholderText("Ej: 10004194608")
         self.InputNombreCli.setPlaceholderText("Ej: Pepito")
         self.InputApellidoCli.setPlaceholderText("Ej: Perez")
@@ -68,9 +64,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.limpiar_tabla()
         self.configurar_localizacion()
         self.validar_campos()
-   
 
-        # Conexiones de señales - Entradas de texto
+        # Conexiones de señales
         self.db = SessionLocal()
         self.InputCodigo.returnPressed.connect(self.procesar_codigo)
         self.InputCodigo.textChanged.connect(self.iniciar_timer)
@@ -84,9 +79,15 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         configurar_autocompletado(
             self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
         )
-        configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
+        configurar_autocompletado(
+            self.InputNombreCli,
+            obtener_cliente_nombre_apellido,
+            "NombreCompleto",
+            self.db,
+            self.insertar_cliente,
+        )
 
-        # Conexiones de señales - Botones y tabla
+        # Botones y tabla
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
         self.BtnGenerarVentaCredito.clicked.connect(self.generar_venta)
         self.TablaVentasCredito.cellClicked.connect(self.cargar_datos)
@@ -94,82 +95,75 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
 
-    def cargar_información(self, factura_completa, id_venta_credito=None):
+    # def cargar_información(self, factura_completa, id_venta_credito=None):
+    #     self.id_venta_credito = id_venta_credito
 
-        self.id_venta_credito = id_venta_credito
+    #     factura = factura_completa["Factura"]
+    #     cliente = factura_completa["Cliente"]
+    #     detalles = factura_completa["Detalles"]
 
-        factura = factura_completa["Factura"]
-        cliente = factura_completa["Cliente"]
-        detalles = factura_completa["Detalles"]
+    #     subtotal = sum(detalle["Subtotal"] for detalle in detalles)
 
-        # Calcular subtotal y descuento
-        subtotal = sum(detalle["Subtotal"] for detalle in detalles)
+    #     client_name = cliente["Nombre"]
+    #     client_apellido = cliente["Apellido"]
+    #     client_id = cliente["ID_Cliente"]
+    #     client_address = cliente["Direccion"]
+    #     client_phone = cliente["Teléfono"]
 
-        # Extraer información necesaria para el ticket
-        client_name = cliente["Nombre"]
-        client_apellido = cliente["Apellido"]
-        client_id = cliente["ID_Cliente"]
-        client_address = cliente["Direccion"]
-        client_phone = cliente["Teléfono"]
+    #     total = subtotal
 
-        total = subtotal
+    #     self.invoice_number = factura["ID_Factura"]
 
-        self.invoice_number = factura["ID_Factura"]
+    #     try:
+    #         self.TablaVentasCredito.setRowCount(len(detalles))
+    #         cant = []
+    #         for row_idx, row in enumerate(detalles):
+    #             id_producto = str(row["ID_Producto"])
+    #             try:
+    #                 id_producto_int = int(row["ID_Producto"])
+    #             except ValueError:
+    #                 print(f"Valor inválido para id_producto en la fila {row_idx}. Se asigna valor 0.")
+    #                 id_producto_int = 0
+    #             producto = str(row["Producto"])
+    #             marca = str(row["Marca"])
+    #             categoria = str(row["Categoria"])
+    #             cantidad = str(row["Cantidad"])
+    #             try:
+    #                 cantidad_num = int(row["Cantidad"])
+    #             except ValueError:
+    #                 print(f"Valor inválido para cantidad en la fila {row_idx}. Se asigna valor 0.")
+    #                 cantidad_num = 0
+    #             cant.append((id_producto_int, cantidad_num))
+    #             precio_unitario = str(row["Precio_Unitario"])
+    #             subtotal_producto = str(row["Subtotal"])
 
-        try:
-            self.TablaVentasCredito.setRowCount(len(detalles))
-            cant = []
-            # Iterar sobre las filas
-            for row_idx, row in enumerate(detalles):
-                # Datos de la fila
-                id_producto = str(row["ID_Producto"])
-                try:
-                    id_producto_int = int(row["ID_Producto"])  # Convertir 'id_producto' a entero
-                except ValueError:
-                    print(f"Valor inválido para id_producto en la fila {row_idx}. Se asigna valor 0.")
-                    id_producto_int = 0  # Si no es numérico, asignamos 0
-                producto = str(row["Producto"])
-                marca = str(row["Marca"])
-                categoria = str(row["Categoria"])
-                cantidad = str(row["Cantidad"])
-                try:
-                    cantidad_num = int(row["Cantidad"])  # Convertir 'cantidad' a float para operaciones
-                except ValueError:
-                    print(f"Valor inválido para cantidad en la fila {row_idx}. Se asigna valor 0.")
-                    cantidad_num = 0  # Si no es numérico, asignamos 0.0
-                cant.append((id_producto_int, cantidad_num))
-                precio_unitario = str(row["Precio_Unitario"])
-                subtotal_producto = str(row["Subtotal"])
+    #             items = [
+    #                 (id_producto, 0),
+    #                 (producto, 1),
+    #                 (marca, 2),
+    #                 (categoria, 3),
+    #                 (cantidad, 4),
+    #                 (precio_unitario, 5),
+    #                 (subtotal_producto, 6),
+    #             ]
 
-                # Configurar items de la tabla
-                items = [
-                    (id_producto, 0),
-                    (producto, 1),
-                    (marca, 2),
-                    (categoria, 3),
-                    (cantidad, 4),
-                    (precio_unitario, 5),
-                    (subtotal_producto, 6),
-                ]
+    #             for value, col_idx in items:
+    #                 item = QTableWidgetItem(value)
+    #                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+    #                 self.TablaVentasCredito.setItem(row_idx, col_idx, item)
+    #         self.cantidades = cant
+    #         self.TablaVentasCredito.resizeColumnsToContents()
 
-                # Añadir items a la tabla
-                for value, col_idx in items:
-                    item = QtWidgets.QTableWidgetItem(value)
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)
-                    self.TablaVentasCredito.setItem(row_idx, col_idx, item)
-            self.cantidades = cant
-            self.TablaVentasCredito.resizeColumnsToContents()
+    #     except Exception as e:
+    #         print(f"Error al cargar datos en la tablaVentasCredito: {e}")
 
-        except Exception as e:
-            print(f"Error al cargar datos en la tablaVentasCredito: {e}")
-
-        self.InputCedula.setText(str(client_id))
-        self.InputNombreCli.setText(str(client_name))
-        self.InputApellidoCli.setText(str(client_apellido))
-        self.InputTelefonoCli.setText(str(client_phone))
-        self.InputDireccion.setText(str(client_address))
-        self.LabelSubtotal.setText(f"{subtotal:,.2f}")
-        self.LabelTotal.setText(f"{total:,.2f}")
+    #     self.InputCedula.setText(str(client_id))
+    #     self.InputNombreCli.setText(str(client_name))
+    #     self.InputApellidoCli.setText(str(client_apellido))
+    #     self.InputTelefonoCli.setText(str(client_phone))
+    #     self.InputDireccion.setText(str(client_address))
+    #     self.LabelSubtotal.setText(f"{subtotal:,.2f}")
+    #     self.LabelTotal.setText(f"{total:,.2f}")
 
     def actualizar_factura(
         self,
@@ -180,12 +174,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         deuda,
         limite_pago,
     ):
-        
         venta_credito = obtener_ventaCredito_id(db, self.id_venta_credito)
         venta = venta_credito[0]
-        
-        pagado = venta.Total_Deuda - venta.Saldo_Pendiente 
-        
+
+        pagado = venta.Total_Deuda - venta.Saldo_Pendiente
+
         # Obtener los detalles actuales de la factura
         detalles_actuales = (
             db.query(DetalleFacturas)
@@ -193,28 +186,24 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             .all()
         )
 
-        # Convertir los detalles actuales en un diccionario para comparar
         productos_actuales = {
             detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales
         }
 
-        # Productos enviados desde la interfaz (nuevos o editados)
         productos_nuevos = {
             int(codigo): cantidad for codigo, cantidad, _ in produc_datos
         }
 
-        # Productos eliminados (presentes en la factura actual, pero no en la nueva lista)
         productos_eliminados = set(productos_actuales.keys()) - set(
             productos_nuevos.keys()
         )
 
-        # Restaurar stock de productos eliminados
         for id_producto in productos_eliminados:
             cantidad_vendida = productos_actuales[id_producto]
             producto = (
                 db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
             )
-            producto.Stock_actual += cantidad_vendida  # Restaurar el stock
+            producto.Stock_actual += cantidad_vendida
             db.delete(
                 db.query(DetalleFacturas)
                 .filter(
@@ -222,12 +211,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     DetalleFacturas.ID_Producto == id_producto,
                 )
                 .first()
-            )  # Eliminar el detalle de la factura
+            )
 
-        # Actualizar cantidades de productos existentes y agregar nuevos
         for id_producto, nueva_cantidad in productos_nuevos.items():
             if id_producto in productos_actuales:
-                # Producto ya existe, verificar cambios en la cantidad
                 detalle = (
                     db.query(DetalleFacturas)
                     .filter(
@@ -241,7 +228,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 detalle.Cantidad = nueva_cantidad
                 detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
 
-                # Ajustar el stock del producto
                 producto = (
                     db.query(Productos)
                     .filter(Productos.ID_Producto == id_producto)
@@ -249,7 +235,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 )
                 producto.Stock_actual -= diferencia_cantidad
             else:
-                # Producto nuevo, agregarlo a la factura y ajustar el stock
                 precio_unitario = (
                     db.query(Productos)
                     .filter(Productos.ID_Producto == id_producto)
@@ -267,14 +252,13 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 )
                 db.add(nuevo_detalle)
 
-                # Ajustar el stock
                 producto = (
                     db.query(Productos)
                     .filter(Productos.ID_Producto == id_producto)
                     .first()
                 )
                 producto.Stock_actual -= nueva_cantidad
-        
+
         saldo = deuda - pagado
         actualizar_venta_credito(
             db=db,
@@ -283,14 +267,17 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             saldo_pendiente=saldo,
             fecha_limite=limite_pago,
         )
-        
-        # Actualizar información general de la factura
+
         factura = db.query(Facturas).filter(Facturas.ID_Factura == id_factura).first()
         factura.ID_Usuario = usuario_actual_id
 
-        crear_historial_modificacion(db=db,id_usuario=usuario_actual_id, descripcion="Factura actualizada", id_factura=id_factura)
+        crear_historial_modificacion(
+            db=db,
+            id_usuario=usuario_actual_id,
+            descripcion="Factura actualizada",
+            id_factura=id_factura,
+        )
 
-        # Confirmar los cambios
         db.commit()
 
         self.invoice_number = None
@@ -305,23 +292,25 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         configurar_autocompletado(
             self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
         )
-        configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
+        configurar_autocompletado(
+            self.InputNombreCli,
+            obtener_cliente_nombre_apellido,
+            "NombreCompleto",
+            self.db,
+            self.insertar_cliente,
+        )
 
     def calcular_fecha_futura(self, dias):
-        # Obtener la fecha y hora actual
         fecha_actual = datetime.now()
-        # Sumar los días a la fecha actual
         fecha_futura = fecha_actual + timedelta(days=dias)
         return fecha_futura.replace(microsecond=0)
 
     def generar_venta(self):
-
         if self.TablaVentasCredito.rowCount() == 0:
             QMessageBox.warning(self, "Error", "No hay productos en la venta.")
             self.InputCodigo.setFocus()
             return
         try:
-            # Obtener datos del cliente
             client_name = self.InputNombreCli.text().strip()
             client_apellido = self.InputApellidoCli.text().strip()
             client_id = self.InputCedula.text().strip()
@@ -335,15 +324,14 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 limite_pago = self.calcular_fecha_futura(7)
             elif limite_pago == "15 días":
                 limite_pago = self.calcular_fecha_futura(15)
-                
-            # Validación de campos obligatorios
+
             if not client_name or not client_apellido or not client_address or not client_phone or not client_id:
                 QMessageBox.information(
                     self, "Campos obligatorios", "Todos los campos son obligatorios"
                 )
                 QTimer.singleShot(0, self.InputNombreCli.setFocus)
                 return
-            # Validación de cédula
+
             if len(client_id) < 6 or len(client_id) > 11 or not client_id.isdigit():
                 QMessageBox.warning(
                     self, "Cédula inválida", "La cédula debe tener entre 6 y 11 dígitos."
@@ -351,20 +339,18 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 QTimer.singleShot(0, self.InputCedula.setFocus)
                 self.limpiar_datos_cliente()
                 return
-            # Validación de teléfono
+
             if len(client_phone) != 10 or not client_phone.isdigit():
                 QMessageBox.warning(
                     self, "Teléfono inválido", "El teléfono debe tener 10 dígitos."
                 )
                 QTimer.singleShot(0, self.InputTelefonoCli.setFocus)
-
                 return
 
             self.verificar_cliente()
 
             db = SessionLocal()
 
-            # Obtener los artículos de la tabla
             produc_datos = []
             items = []
             for row in range(self.TablaVentasCredito.rowCount()):
@@ -375,7 +361,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 value = float(self.TablaVentasCredito.item(row, 6).text())
 
                 producto = obtener_producto_por_id(db, int(codigo))
-
                 if not producto:
                     QMessageBox.warning(
                         self, "Error", f"Producto con código {codigo} no encontrado."
@@ -386,7 +371,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 items.append((description, quantity, precio_unitario, value))
                 produc_datos.append((codigo, quantity, precio_unitario))
 
-            # Calcular totales
             subtotal = sum(item[3] for item in items)
             delivery_fee = (
                 float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
@@ -407,8 +391,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 mensaje = "Factura actualizada exitosamente."
             else:
                 for codigo, quantity, _ in produc_datos:
-                    producto = obtener_producto_por_id(db, codigo)
-                    producto = producto[0]
+                    producto = obtener_producto_por_id(db, codigo)[0]
                     stock_actual = producto.Stock_actual - quantity
                     actualizar_producto(
                         db, id_producto=int(codigo), stock_actual=stock_actual
@@ -424,98 +407,66 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.usuario_actual_id,
                     subtotal,
                     limite_pago,
-                    domicilio
+                    domicilio,
                 )
                 self.invoice_number = f"0000{id_factura}"
                 mensaje = "Factura generada exitosamente."
 
-            # Configuración inicial
-            max_lines_per_page = 30  # Límite de líneas por página
-            current_line = 0  # Contador de líneas
+            # Impresión del ticket (no requiere cambios de PyQt6)
+            max_lines_per_page = 30
+            current_line = 0
             empresa_nombre = "LadyNailShop"
             empresa_direccion = "Pasto, Colombia"
             empresa_telefono = "+57 316-144-44-74"
-
-            # Obtener la fecha actual
-            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")  # ✅ Correcto
-
-            # Formatear valores monetarios
+            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             subtotal_formateado = f"${subtotal:,.2f}"
             total_formateado = f"${total:,.2f}"
-            
-
-            # Formatear el costo de envío
             delivery_fee = float(delivery_fee)
             if delivery_fee.is_integer():
                 delivery_fee_formateado = f"${int(delivery_fee):,.0f}"
             else:
                 delivery_fee_formateado = f"${delivery_fee:,.2f}"
 
-            # Limitar la dirección del cliente a 25 caracteres por línea
             direccion = client_address
             direccion_linea1 = direccion[:35]
             direccion_linea2 = direccion[35:] if len(direccion) > 35 else ""
-            
-            # Obtener la impresora predeterminada
+
             impresora = win32print.GetDefaultPrinter()
             hDC = win32ui.CreateDC()
             hDC.CreatePrinterDC(impresora)
-
-            # Crear un documento de impresión
             hDC.StartDoc("Ticket de Venta")
             hDC.StartPage()
-            # Generar el contenido del ticket
-            ticket_content = f"""
-            Ticket No. {self.invoice_number}
-            Cliente: {client_name}
-            Cédula: {client_id}
-            Teléfono: {client_phone}
-            Dirección: {direccion_linea1}
-            {direccion_linea2}
-            -----------------------------------------------------------------------------------------------------
-            Productos:
-            """
-            # Fuente grande SOLO para encabezado
+
             font_encabezado = win32ui.CreateFont({
                 "name": "Lucida Console",
-                "height": 28,  # Más grande
-                "weight": win32con.FW_BOLD
+                "height": 28,
+                "weight": win32con.FW_BOLD,
             })
-
-            
-            # Configurar la fuente
             font_size = 18
             line_height = font_size + 10
             font = win32ui.CreateFont({
                 "name": "Lucida Console",
                 "height": font_size,
-                "weight": win32con.FW_BOLD
+                "weight": win32con.FW_BOLD,
             })
-            # Seleccionar la fuente grande
             hDC.SelectObject(font_encabezado)
 
-            # Obtener el tamaño del papel para centrar el texto
             printer_width = hDC.GetDeviceCaps(win32con.HORZRES)
-            center_x = printer_width // 2  # Punto central
+            center_x = printer_width // 2
+            x, y = 2, 2 + 5 * line_height
 
-            x, y = 2, 2 + 5 * line_height  # Espacio después de la información de la empresa, la línea y la fecha
-            
-            # Imprimir los datos de la empresa
-            # Calcular y centrar texto con precisión
             for i, linea in enumerate([empresa_nombre, empresa_direccion, empresa_telefono, fecha_actual]):
-                text_size = hDC.GetTextExtent(linea)  # (ancho, alto)
+                text_size = hDC.GetTextExtent(linea)
                 text_width = text_size[0]
                 hDC.TextOut(center_x - (text_width // 2), 50 + (i * line_height), linea)
             y += line_height
             hDC.SelectObject(font)
 
-            # Línea separadora
-            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")  # Imprime la línea separadora
-            
+            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
             y += line_height
-            hDC.TextOut(x, y, "Crédito")  # Imprime el título "Productos:"
+            hDC.TextOut(x, y, "Crédito")
             y += line_height
-            hDC.TextOut(x, y, f"COT No. {self.invoice_number}")# Aquí se agrega el número de factura
+            hDC.TextOut(x, y, f"COT No. {self.invoice_number}")
             y += line_height
             hDC.TextOut(x, y, f"Cliente: {client_name}")
             y += line_height
@@ -525,45 +476,33 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             y += line_height
             hDC.TextOut(x, y, f"Dirección: {direccion_linea1}")
             y += line_height
-            if direccion_linea2:  # Si hay una segunda línea de dirección, imprimirla
+            if direccion_linea2:
                 hDC.TextOut(x, y, direccion_linea2)
                 y += line_height
 
-            # 🔹 Imprimir "Productos:" y la línea separadora
-            
-            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")  # Imprime la línea separadora
-            y += line_height  # Mueve la posición para empezar a imprimir los productos
-           # Encabezado de tabla productos
+            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
+            y += line_height
             header = "{:<18} {:>6} {:>10} {:>10}".format("Producto", "Cant.", "Precio", "Total")
             hDC.TextOut(x, y, header)
             y += line_height
 
-           # Productos
-                        # Productos
             for item in items:
-                # Limitar y alinear nombre del producto
                 nombre_producto = item[0].strip().replace('\n', ' ')[:18].ljust(18)
-
                 cantidad = str(item[1])
                 precio_unitario = f"{item[2]:,.0f}".replace(",", ".")
                 total_producto = f"{item[3]:,.0f}".replace(",", ".")
-
-                # Formatear la línea con alineación fija
                 linea = "{:<18} {:>6} {:>10} {:>10}".format(
                     nombre_producto, cantidad, precio_unitario, total_producto
                 )
                 hDC.TextOut(x, y, linea)
                 y += line_height
                 current_line += 1
-
-                # Si se alcanza el límite de líneas, crear una nueva página
                 if current_line >= max_lines_per_page:
-                    hDC.EndPage()  # Finalizar la página actual
-                    hDC.StartPage()  # Iniciar una nueva página
-                    y = 2  # Reiniciar la posición Y
-                    current_line = 0  # Reiniciar el contador de líneas
+                    hDC.EndPage()
+                    hDC.StartPage()
+                    y = 2
+                    current_line = 0
 
-            # Imprimir los totales y el mensaje final
             totales = f"""
             -----------------------------------------------------------------------------------------------------
             Deuda Total: {subtotal_formateado}
@@ -577,12 +516,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 hDC.TextOut(x, y, line.strip())
                 y += line_height
 
-            # Finalizar la impresión
             hDC.EndPage()
             hDC.EndDoc()
             hDC.DeleteDC()
 
-            # Cerrar la base de datos y mostrar mensaje de éxito
             db.close()
             QMessageBox.information(self, "Éxito", mensaje)
 
@@ -597,8 +534,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputDomicilio.clear()
         self.limpiar_datos_cliente()
         self.invoice_number = None
-        
-    
 
     def guardar_factura(
         self,
@@ -611,15 +546,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         id_usuario,
         deuda,
         limite_pago,
-        domicilio
+        domicilio,
     ):
-        """
-        Registra la factura y sus detalles en la base de datos.
-        """
         try:
-
             id_metodo_pago = obtener_metodo_pago_por_nombre(db, payment_method)
-            print(id_metodo_pago)
             if not id_metodo_pago:
                 QMessageBox.warning(
                     self, "Error", f"Método de pago {payment_method} no encontrado."
@@ -634,7 +564,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 efectivo = float(monto_pago)
                 tranferencia = float(monto_pago)
 
-            # Crear registro en la tabla 'facturas'
             factura = crear_factura(
                 db=db,
                 monto_efectivo=efectivo if payment_method != "Transferencia" else 0.0,
@@ -648,16 +577,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 domicilio=domicilio,
             )
 
-            # Obtener el ID de la factura recién creada
             id_factura = factura.ID_Factura
 
-            # Crear registros en la tabla 'detalle_factura' para cada producto
             for item in items:
                 codigo, quantity, precio_unitario = item
-
                 total = quantity * precio_unitario
-
-                # Crear detalle de factura
                 crear_detalle_factura(
                     db=db,
                     cantidad=quantity,
@@ -667,7 +591,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     id_factura=id_factura,
                 )
 
-            # Crear registro en la tabla ventasCredito
             crear_venta_credito(
                 db=db,
                 total_deuda=deuda,
@@ -683,9 +606,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             )
             crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
 
-            # Confirmar cambios en la base de datos
             db.commit()
-
             return id_factura
 
         except Exception as e:
@@ -706,31 +627,25 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle(titulo)
         msg_box.setText(mensaje)
-        msg_box.setIcon(QMessageBox.Warning)
-        QTimer.singleShot(
-            duracion, msg_box.close
-        )  # Cierra el mensaje después de 'duracion' milisegundos
-        msg_box.exec_()
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        QTimer.singleShot(duracion, msg_box.close)
+        msg_box.exec()
 
     def reproducir_sonido(self):
         sonido_path = "./assets/sound_scanner.wav"
         if os.path.exists(sonido_path):
-            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(sonido_path)))
+            self.player.setSource(QUrl.fromLocalFile(sonido_path))
             self.player.play()
         else:
             print("No se encontró el archivo de sonido")
 
     def keyPressEvent(self, event):
-        # Si presionas Enter en InputDomicilio, realiza una acción especial
-        if self.InputDomicilio.hasFocus() and event.key() == Qt.Key_Return:
-            self.actualizar_datos()  # Acción personalizada para InputDomicilio
-        elif event.key() == Qt.Key_Up:
-
+        if self.InputDomicilio.hasFocus() and event.key() == Qt.Key.Key_Return:
+            self.actualizar_datos()
+        elif event.key() == Qt.Key.Key_Up:
             self.navegar_widgets()
-
-        elif event.key() == Qt.Key_Down:
+        elif event.key() == Qt.Key.Key_Down:
             self.navegar_widgets_atras()
-        # Llamar al método original para procesar otros eventos
         super().keyPressEvent(event)
 
     def navegar_widgets(self):
@@ -747,17 +662,13 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         elif self.focusWidget() == self.InputTelefonoCli:
             self.InputDireccion.setFocus()
         elif self.focusWidget() == self.InputDireccion:
-            self.InputDomicilio.setFocus()  # Volver al inicio Volver al inicio
+            self.InputDomicilio.setFocus()
         elif self.focusWidget() == self.InputDomicilio:
             self.InputCodigo.setFocus()
 
     def navegar_widgets_atras(self):
-        """
-        Navega hacia atrás entre los widgets en el siguiente orden:
-        Código <- Nombre <- Nombre Cliente <- Apellido Cliente <- Dirección <- Teléfono <- Cédula <- Nombre <- Código
-        """
         if self.focusWidget() == self.InputCodigo:
-            self.InputDomicilio.setFocus()  # Volver al final
+            self.InputDomicilio.setFocus()
         elif self.focusWidget() == self.InputDomicilio:
             self.InputDireccion.setFocus()
         elif self.focusWidget() == self.InputDireccion:
@@ -771,7 +682,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         elif self.focusWidget() == self.InputCedula:
             self.InputNombre.setFocus()
         elif self.focusWidget() == self.InputNombre:
-            self.InputCodigo.setFocus()  # Volver al inicio
+            self.InputCodigo.setFocus()
 
     def configurar_localizacion(self):
         try:
@@ -780,16 +691,12 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             print("No se pudo configurar la localización de Colombia.")
 
     def procesar_codigo(self):
-        # Obtener los valores de los inputs
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
         tipo_precio = self.comboBoxPrecio.currentText().strip()
 
-        # Conexión a la base de datos
         db = SessionLocal()
-
         try:
-            # Caso 1: Si se proporciona el código
             if codigo:
                 if not codigo.isdigit():
                     QMessageBox.warning(
@@ -797,31 +704,21 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     )
                     return
 
-                # Convertir el código a entero
                 codigo = int(codigo)
-
-                # Buscar producto por código
                 productos = obtener_producto_por_id(db, codigo)
 
                 if productos:
                     producto = productos[0]
-                    # Actualizar los campos con los datos del producto
                     self.InputCodigo.setText(str(producto.ID_Producto))
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()
-
                     if tipo_precio == "PU":
-                        self.InputPrecioUnitario.setText(
-                            str(producto.Precio_venta_normal)
-                        )
+                        self.InputPrecioUnitario.setText(str(producto.Precio_venta_normal))
                     else:
-                        self.InputPrecioUnitario.setText(
-                            str(producto.Precio_venta_mayor)
-                        )
-
+                        self.InputPrecioUnitario.setText(str(producto.Precio_venta_mayor))
                     self.InputPrecioUnitario.setEnabled(False)
                 else:
                     self.mostrar_mensaje_temporal(
@@ -829,32 +726,22 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                         "No existe un producto asociado a este código.",
                     )
                     self.limpiar_campos()
-                return  # Terminar el procesamiento si el código fue encontrado
+                return
 
-            # Caso 2: Si no se proporciona el código pero sí el nombre
             elif nombre:
-                # Buscar producto por nombre
                 productos_nom = buscar_productos(db, nombre)
-
                 if productos_nom:
                     producto = productos_nom[0]
-                    # Actualizar los campos con los datos del producto
                     self.InputCodigo.setText(str(producto.ID_Producto))
                     self.InputNombre.setText(producto.Nombre)
                     self.InputMarca.setText(str(producto.marcas))
                     self.InputMarca.setEnabled(False)
                     self.id_categoria = producto.categorias
-                    self.InputCantidad.clear()  # Limpiar cantidad
-
+                    self.InputCantidad.clear()
                     if tipo_precio == "PU":
-                        self.InputPrecioUnitario.setText(
-                            str(producto.Precio_venta_normal)
-                        )
+                        self.InputPrecioUnitario.setText(str(producto.Precio_venta_normal))
                     else:
-                        self.InputPrecioUnitario.setText(
-                            str(producto.Precio_venta_mayor)
-                        )
-
+                        self.InputPrecioUnitario.setText(str(producto.Precio_venta_mayor))
                     self.InputPrecioUnitario.setEnabled(False)
                 else:
                     QMessageBox.warning(
@@ -862,9 +749,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                         "Producto no encontrado",
                         "No existe un producto asociado a este nombre.",
                     )
-                return  # Terminar el procesamiento si el nombre fue encontrado
+                return
 
-            # Caso 3: Si no se proporciona ni código ni nombre
             else:
                 QMessageBox.warning(
                     self,
@@ -873,23 +759,21 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 )
 
         except Exception as e:
-            QMessageBox.critical(
+             QMessageBox.critical(
                 self, "Error", f"Error al buscar el producto: {str(e)}"
             )
-
         finally:
-            # Asegurarse de cerrar la sesión de la base de datos
             db.close()
 
     def limpiar_tabla(self):
         self.TablaVentasCredito.setRowCount(0)
 
     def iniciar_timer(self):
-        self.timer.stop()  # Reiniciar el timer con cada pulsación de tecla
-        self.timer.start(500)  # Iniciar el timer con un retraso de 500ms
+        self.timer.stop()
+        self.timer.start(500)
 
     def procesar_codigo_y_agregar(self):
-        self.timer.stop()  # Detener el timer para evitar ejecuciones duplicadas
+        self.timer.stop()
         codigo = self.InputCodigo.text().strip()
         if codigo:
             self.procesar_codigo()
@@ -900,17 +784,16 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 self.InputCodigo.setFocus()
 
     def agregar_producto(self, mostrar_mensaje=True):
-        # Leer los datos de los campos de entrada
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
         marca = self.InputMarca.text().strip()
-        categoria = str(self.id_categoria)  # Usamos el valor guardado de id_categoria
+        categoria = str(self.id_categoria)
         cantidad = self.InputCantidad.text().strip()
         precio_unitario = self.InputPrecioUnitario.text().strip()
 
         try:
-            cantidad = int(cantidad)  # Convertimos la cantidad a entero
-            precio_unitario = float(precio_unitario)  # Convertimos el precio a flotante
+            cantidad = int(cantidad)
+            precio_unitario = float(precio_unitario)
         except ValueError:
             if mostrar_mensaje:
                 QMessageBox.warning(
@@ -919,39 +802,29 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     "Por favor, ingrese valores numéricos válidos para la cantidad y el precio.",
                 )
             return
-        # Calcular el total del producto
+
         for row in range(self.TablaVentasCredito.rowCount()):
-            item_codigo = self.TablaVentasCredito.item(
-                row, 0
-            )  # Obtener el código de la fila
-            if item_codigo and item_codigo.text() == codigo:  # Si el código ya existe
+            item_codigo = self.TablaVentasCredito.item(row, 0)
+            if item_codigo and item_codigo.text() == codigo:
                 self.mostrar_mensaje_temporal(
                     "Error", "Este código de producto ya existe."
                 )
                 self.limpiar_campos()
-                return  # No agregar el producto si ya existe el código
+                return
 
-        # Conexión a la base de datos
         db = SessionLocal()
-
         try:
-            # Obtener el producto desde la base de datos usando la función obtener_producto_por_id
             productos = obtener_producto_por_id(db, int(codigo))
-
             if productos:
                 producto = productos[0]
-                # Obtener el stock disponible
                 stock_disponible = producto.Stock_actual
-
-                # Verificar si la cantidad ingresada es mayor al stock disponible
                 if cantidad > stock_disponible:
                     QMessageBox.warning(
                         self,
                         "Stock insuficiente",
                         f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
                     )
-                    return  # No proceder con la venta si no hay suficiente stock
-
+                    return
             else:
                 QMessageBox.warning(
                     self,
@@ -960,58 +833,48 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 )
                 return
 
-            # Calcular el total
             total = cantidad * precio_unitario
             total_redondeado = round(total / 100) * 100
 
-            # Obtener la posición de la nueva fila en la tabla
-            rowPosition = (
-                self.TablaVentasCredito.rowCount()
-            )  # Esta es la cantidad de filas actuales en la tabla
-
-            # Insertar una nueva fila en la tabla
+            rowPosition = self.TablaVentasCredito.rowCount()
             self.TablaVentasCredito.insertRow(rowPosition)
 
-            # Agregar los datos a la nueva fila
-            item_codigo = QtWidgets.QTableWidgetItem(codigo)
-            item_codigo.setFlags(item_codigo.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_codigo.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_codigo = QTableWidgetItem(codigo)
+            item_codigo.setFlags(item_codigo.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_codigo.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 0, item_codigo)
 
-            item_nombre = QtWidgets.QTableWidgetItem(nombre)
-            item_nombre.setFlags(item_nombre.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_nombre.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_nombre = QTableWidgetItem(nombre)
+            item_nombre.setFlags(item_nombre.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 1, item_nombre)
 
-            item_marca = QtWidgets.QTableWidgetItem(marca)
-            item_marca.setFlags(item_marca.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_marca.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_marca = QTableWidgetItem(marca)
+            item_marca.setFlags(item_marca.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_marca.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 2, item_marca)
 
-            item_categoria = QtWidgets.QTableWidgetItem(categoria)
-            item_categoria.setFlags(item_categoria.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_categoria.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_categoria = QTableWidgetItem(categoria)
+            item_categoria.setFlags(item_categoria.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_categoria.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 3, item_categoria)
 
-            item_cantidad = QtWidgets.QTableWidgetItem(str(cantidad))
-            item_cantidad.setFlags(item_cantidad.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_cantidad.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_cantidad = QTableWidgetItem(str(cantidad))
+            item_cantidad.setFlags(item_cantidad.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_cantidad.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 4, item_cantidad)
 
-            item_precio = QtWidgets.QTableWidgetItem(str(precio_unitario))
-            item_precio.setFlags(item_precio.flags() & ~QtCore.Qt.ItemIsEditable)
-            item_precio.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_precio = QTableWidgetItem(str(precio_unitario))
+            item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 5, item_precio)
 
-            item_total_redondeado = QtWidgets.QTableWidgetItem(str(total_redondeado))
-            item_total_redondeado.setFlags(
-                item_total_redondeado.flags() & ~QtCore.Qt.ItemIsEditable
-            )
-            item_total_redondeado.setTextAlignment(QtCore.Qt.AlignCenter)
+            item_total_redondeado = QTableWidgetItem(str(total_redondeado))
+            item_total_redondeado.setFlags(item_total_redondeado.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_total_redondeado.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 6, item_total_redondeado)
-            # Limpiar los campos después de agregar
-            # Dentro de la función donde agregas el producto
-            self.reproducir_sonido()
+
+            # self.reproducir_sonido()
             self.limpiar_campos()
 
         except Exception as e:
@@ -1029,28 +892,18 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputPrecioUnitario.clear()
 
     def eliminar_fila(self):
-        # Obtener la fila seleccionada
         fila_seleccionada = self.TablaVentasCredito.currentRow()
-
-        # Verificar si se ha seleccionado una fila
-        if (
-            fila_seleccionada != -1
-        ):  # -1 significa que no se ha seleccionado ninguna fila
-            # Confirmar la eliminación con el usuario
+        if fila_seleccionada != -1:
             reply = QMessageBox.question(
                 self,
                 "Confirmar eliminación",
                 "¿Estás seguro de que deseas eliminar este producto?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-
-            if reply == QMessageBox.Yes:
-                # Eliminar la fila seleccionada
+            if reply == QMessageBox.StandardButton.Yes:
                 self.TablaVentasCredito.removeRow(fila_seleccionada)
                 self.limpiar_campos()
-
-                # Actualizar el subtotal y total después de eliminar la fila
                 self.actualizar_total()
         else:
             QMessageBox.warning(
@@ -1064,29 +917,25 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 self.valor_domicilio = float(VarDomicilio) if VarDomicilio else 0.0
             except ValueError:
                 QMessageBox.warning(self, "Error", "Ingrese un número válido.")
-                self.valor_domicilio = 0.0  # Resetear el valor
-                self.InputDomicilio.clear()  # Limpiar el input
+                self.valor_domicilio = 0.0
+                self.InputDomicilio.clear()
                 return 0.0
             return self.valor_domicilio
         else:
-            return self.valor_domicilio  # Retornar el valor actual
+            return self.valor_domicilio
 
     def calcular_subtotal(self):
-        # Calcular el subtotal sumando los valores de la columna "Total" (columna 6)
         subtotal = 0.0
         for row in range(self.TablaVentasCredito.rowCount()):
-            total_item = self.TablaVentasCredito.item(
-                row, 6
-            )  # Columna 6 contiene el total por producto
+            total_item = self.TablaVentasCredito.item(row, 6)
             if total_item is not None:
                 try:
                     subtotal += float(total_item.text())
                 except ValueError:
-                    continue  # Ignorar valores inválidos
+                    continue
         return subtotal
 
     def actualizar_total(self):
-        # traceback.print_stack()
         subtotal = self.calcular_subtotal()
         if subtotal.is_integer():
             subtotal_formateado = f"{subtotal:,.0f}"
@@ -1095,8 +944,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         self.LabelSubtotal.setText(f"{subtotal_formateado}")
 
-        domicilio = self.obtener_valor_domicilio()  # Obtener el valor del domicilio
-
+        domicilio = self.obtener_valor_domicilio()
         total = subtotal + domicilio
 
         if total.is_integer():
@@ -1105,14 +953,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             total_formateado = f"{total:,.2f}"
 
         self.LabelTotal.setText(f"{total_formateado}")
-
         return subtotal
 
     def cargar_datos(self, row, column):
         try:
-            if (
-                row >= 0 and row < self.TablaVentasCredito.rowCount()
-            ):  # Comprobar que la fila existe
+            if row >= 0 and row < self.TablaVentasCredito.rowCount():
                 nombre_item = self.TablaVentasCredito.item(row, 1)
                 marca_item = self.TablaVentasCredito.item(row, 2)
                 categoria_item = self.TablaVentasCredito.item(row, 3)
@@ -1122,22 +967,19 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 if all(
                     item is not None
                     for item in [
-                        #       codigo_item,
                         nombre_item,
                         marca_item,
                         categoria_item,
                         cantidad_item,
                         precio_unitario_item,
                     ]
-                ):  # Comprobar que los items no son None
-                    #   codigo = codigo_item.text()
+                ):
                     nombre = nombre_item.text()
                     marca = marca_item.text()
                     categoria = categoria_item.text()
                     cantidad = cantidad_item.text()
                     precio_unitario = precio_unitario_item.text()
 
-                    #   self.InputCodigo.setText(codigo)
                     self.InputNombre.setText(nombre)
                     self.InputMarca.setText(marca)
                     self.InputCantidad.setText(cantidad)
@@ -1145,11 +987,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
                     self.fila_seleccionada = row
                     self.InputDomicilio.setEnabled(True)
-
-                    # *** MOSTRAR el valor de self.valor_domicilio en InputDomicilio ***
                     self.InputDomicilio.setText(str(self.valor_domicilio))
                     self.InputCantidad.setFocus()
-
                 else:
                     QMessageBox.warning(
                         self,
@@ -1160,12 +999,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 QMessageBox.warning(self, "Error", "Fila seleccionada fuera de rango.")
                 self.fila_seleccionada = None
                 self.InputDomicilio.clear()
-        except (
-            AttributeError
-        ):  # Capturar la excepcion en caso de que algun item sea None
+        except AttributeError:
             QMessageBox.warning(
                 self, "Error", "Algunas celdas de la fila seleccionada están vacías."
-            )
+             )
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", f"Ocurrió un error al cargar los datos: {e}"
@@ -1174,12 +1011,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
     def actualizar_datos(self):
         self.InputCodigo.setFocus()
-
         if self.fila_seleccionada is not None:
             try:
                 cantidad_str = self.InputCantidad.text().strip()
                 precio_unitario_str = self.InputPrecioUnitario.text().strip()
-                # domicilio_str = self.InputDomicilio.text().strip()
 
                 if not cantidad_str or not precio_unitario_str:
                     QMessageBox.warning(
@@ -1191,14 +1026,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
                 cantidad = int(cantidad_str)
                 precio_unitario = float(precio_unitario_str)
-                # domicilio = float(domicilio_str)
 
-                # Obtener el código del producto desde la fila seleccionada
                 row = self.fila_seleccionada
                 if row < self.TablaVentasCredito.rowCount():
-                    item_codigo = self.TablaVentasCredito.item(
-                        row, 0
-                    )  # Suponiendo que la columna 0 contiene el código
+                    item_codigo = self.TablaVentasCredito.item(row, 0)
                     if item_codigo:
                         codigo = item_codigo.text().strip()
                     else:
@@ -1216,13 +1047,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     )
                     return
 
-                # Conexión a la base de datos
                 db = SessionLocal()
-
                 try:
-                    # Obtener el producto desde la base de datos usando la función obtener_producto_por_id
                     productos = obtener_producto_por_id(db, int(codigo))
-                    
                     if productos:
                         producto = productos[0]
                         stock_disponible = producto.Stock_actual
@@ -1234,63 +1061,50 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                         )
                         return
 
-                    # Si hay número de factura, validamos contra cantidades ya registradas
                     if self.invoice_number and self.invoice_number != "":
-                        # Buscar cantidad anterior en la tupla para este código
                         cant = 0
                         for id_producto, canti in self.cantidades:
                             if id_producto == int(codigo):
                                 cant = canti
                                 break
-                        
-                        # Calculamos la cantidad adicional que se intenta ingresar (nueva - anterior)
+
                         cantidad_adicional = cantidad - cant
-                        
-                        # Validamos que la cantidad adicional no supere el stock disponible
                         if cantidad_adicional > stock_disponible:
                             QMessageBox.warning(
                                 self,
                                 "Stock insuficiente",
                                 f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
                             )
-                            return  # No proceder con la venta si no hay suficiente stock
-
-                        # Si pasa la validación, ya puedes actualizar la tupla o seguir con el flujo
-
+                            return
                     else:
-                        # No hay número de factura, solo validar contra stock total
                         if cantidad > stock_disponible:
                             QMessageBox.warning(
                                 self,
                                 "Stock insuficiente",
                                 f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
                             )
-                            return  # No proceder con la venta si no hay suficiente stock
+                            return
 
                 finally:
                     db.close()
 
-
-
-                # Actualizar los datos
                 self.TablaVentasCredito.setItem(row, 4, QTableWidgetItem(str(cantidad)))
                 self.TablaVentasCredito.item(row, 4).setTextAlignment(
-                    QtCore.Qt.AlignCenter
+                    Qt.AlignmentFlag.AlignCenter
                 )
                 self.TablaVentasCredito.setItem(
                     row, 5, QTableWidgetItem(str(precio_unitario))
                 )
                 self.TablaVentasCredito.item(row, 5).setTextAlignment(
-                    QtCore.Qt.AlignCenter
+                    Qt.AlignmentFlag.AlignCenter
                 )
                 total = cantidad * precio_unitario
                 self.TablaVentasCredito.setItem(row, 6, QTableWidgetItem(str(total)))
                 self.TablaVentasCredito.item(row, 6).setTextAlignment(
-                    QtCore.Qt.AlignCenter
+                    Qt.AlignmentFlag.AlignCenter
                 )
 
-                self.actualizar_total()  # Recalcular el total
-
+                self.actualizar_total()
                 self.limpiar_campos()
                 QMessageBox.information(
                     self, "Actualización", "Datos actualizados satisfactoriamente."
@@ -1313,30 +1127,26 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             )
 
     def validar_campos(self):
-        rx_codigo = QRegularExpression(r"^\d+$")  # Expresión para solo números
+        rx_codigo = QRegularExpression(r"^\d+$")
         validator_codigo = QRegularExpressionValidator(rx_codigo)
         self.InputCodigo.setValidator(validator_codigo)
 
-        rx_domicilio = QRegularExpression(
-            r"^\d+\.\d+$"
-        )  # Expresión para números y puntos
+        rx_domicilio = QRegularExpression(r"^\d+\.\d+$")
         validator_domicilio = QRegularExpressionValidator(rx_domicilio)
         self.InputDomicilio.setValidator(validator_domicilio)
 
-        rx_cantidad = QRegularExpression(r"^\d+$")  # Expresión para solo números
+        rx_cantidad = QRegularExpression(r"^\d+$")
         validator_cantidad = QRegularExpressionValidator(rx_cantidad)
         self.InputCantidad.setValidator(validator_cantidad)
 
-        rx_precio_unitario = QRegularExpression(
-            r"^\d+\.\d+$"
-        )  # Expresión para números y puntos
+        rx_precio_unitario = QRegularExpression(r"^\d+\.\d+$")
         validator_precio_unitario = QRegularExpressionValidator(rx_precio_unitario)
         self.InputPrecioUnitario.setValidator(validator_precio_unitario)
 
-        rx_cedula = QRegularExpression(r"^\d+$")  # Expresión para solo números
+        rx_cedula = QRegularExpression(r"^\d+$")
         validator_cedula = QRegularExpressionValidator(rx_cedula)
         self.InputCedula.setValidator(validator_cedula)
-        # Nombre (solo letras y espacios)
+
         rx_nombre = QRegularExpression(r"^[a-zA-Z]+$")
         validator_nombre = QRegularExpressionValidator(rx_nombre)
         self.InputNombreCli.setValidator(validator_nombre)
@@ -1345,10 +1155,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         validator_apellido = QRegularExpressionValidator(rx_apellido)
         self.InputApellidoCli.setValidator(validator_apellido)
 
-        # Teléfono (solo números y guiones)
-        rx_telefono = QRegularExpression(
-            r"^[0-9]{10}$"
-        )  # Expresión para números y guiones
+        rx_telefono = QRegularExpression(r"^[0-9]{10}$")
         validator_telefono = QRegularExpressionValidator(rx_telefono)
         self.InputTelefonoCli.setValidator(validator_telefono)
 
@@ -1359,15 +1166,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         direccion = self.InputDireccion.text().strip()
         telefono = self.InputTelefonoCli.text().strip()
 
-        # Crear una sesión de base de datos
-        db = (
-            SessionLocal()
-        )  # Asegúrate de que `SessionLocal` está correctamente configurado
+        db = SessionLocal()
         try:
-            # Verificar si el cliente ya existe
             cliente_existente = obtener_cliente_por_id(db, cedula)
             if not cliente_existente:
-                # Crear un nuevo cliente si no existe
                 nuevo_cliente = crear_cliente(
                     db=db,
                     id_cliente=cedula,
@@ -1380,22 +1182,16 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     QMessageBox.information(
                         self, "Cliente creado", "El cliente ha sido creado exitosamente"
                     )
-
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", f"Error al procesar el cliente: {str(e)}"
             )
-
         finally:
-            # Cerrar la sesión para liberar recursos
             db.close()
 
     def completar_campos(self):
-
-        # Obtener cliente
         id_cliente = int(self.InputCedula.text().strip())
         self.db = SessionLocal()
-
         try:
             cliente = obtener_cliente_por_id(self.db, id_cliente)
             if cliente:
@@ -1416,14 +1212,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         metodo_seleccionado = self.comboBoxPrecio.currentText().strip()
 
         if metodo_seleccionado == "PU":
-
             for row in range(self.TablaVentasCredito.rowCount()):
                 codigo = self.TablaVentasCredito.item(row, 0).text()
                 cantidad = int(self.TablaVentasCredito.item(row, 4).text())
-
-                producto = obtener_producto_por_id(self.db, int(codigo))
-
-                producto = producto[0]
+                producto = obtener_producto_por_id(self.db, int(codigo))[0]
                 if producto:
                     precio = float(producto.Precio_venta_normal)
                     self.TablaVentasCredito.item(row, 5).setText(str(precio))
@@ -1431,14 +1223,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.TablaVentasCredito.item(row, 6).setText(str(total))
 
         elif metodo_seleccionado == "PAM":
-
             for row in range(self.TablaVentasCredito.rowCount()):
                 codigo = self.TablaVentasCredito.item(row, 0).text()
                 cantidad = int(self.TablaVentasCredito.item(row, 4).text())
-
-                producto = obtener_producto_por_id(self.db, int(codigo))
-
-                producto = producto[0]
+                producto = obtener_producto_por_id(self.db, int(codigo))[0]
                 if producto:
                     precio = float(producto.Precio_venta_mayor)
                     self.TablaVentasCredito.item(row, 5).setText(str(precio))
@@ -1448,20 +1236,18 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.actualizar_total()
 
     def insertar_cliente(self):
-
         nombreCompleto = self.InputNombreCli.text().strip()
         self.InputNombreCli.clear()
         self.db = SessionLocal()
-
         try:
-            datos_cliente = obtener_cliente_por_nombre_completo(db=self.db, nombre_completo=nombreCompleto)
-
+            datos_cliente = obtener_cliente_por_nombre_completo(
+                db=self.db, nombre_completo=nombreCompleto
+            )
             if datos_cliente:
                 self.InputCedula.setText(datos_cliente.ID_Cliente)
                 self.InputNombreCli.setText(datos_cliente.Nombre)
                 self.InputApellidoCli.setText(datos_cliente.Apellido)
                 self.InputDireccion.setText(datos_cliente.Direccion)
                 self.InputTelefonoCli.setText(datos_cliente.Teléfono)
-        
         except Exception as e:
             print(e)

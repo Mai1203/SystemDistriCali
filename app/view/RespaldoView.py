@@ -1,6 +1,5 @@
-from PyQt5.QtCore import QTimer, QDate
-from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox, QInputDialog
-from ..utils.enviar_notifi import Mensajes as QMessageBox
+from PyQt6.QtCore import QTimer, QDate
+from PyQt6.QtWidgets import QWidget, QFileDialog, QMessageBox, QInputDialog
 from ..ui import Ui_Respaldo
 import shutil
 import os
@@ -8,12 +7,12 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "Systock"
-DATABASE_PATH = app_data_dir / "systock.db"
+app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "SystemDistriCali"
+DATABASE_PATH = app_data_dir / "systemdistricali.db"
 
 class Respaldo_View(QWidget, Ui_Respaldo):
     def __init__(self, parent=None):
-        super(Respaldo_View, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         # Configuración inicial
         self.ruta_carpeta_respaldos = os.path.join(
@@ -29,10 +28,8 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.respaldo_automatico)
         self.timer.start(1 * 60 * 1000)  # Verificar cada hora (60 minutos)
-        # self.timer.start(3600000)  # Cada hora en milisegundos (1 hora = 3600000 ms)
 
     def exportar_base_datos(self):
-        
         if not os.path.exists(DATABASE_PATH):
             QMessageBox.warning(self, "Error", "No se encontró la base de datos.")
             return
@@ -63,15 +60,14 @@ class Respaldo_View(QWidget, Ui_Respaldo):
 
             if ruta_exportar:
                 try:
-                    # Aquí se incluiría la lógica para exportar una tabla específica
-                    # Por simplicidad, copiaremos toda la base de datos como ejemplo
+                    # Lógica para exportar tabla específica (en este ejemplo se copia toda la BD)
                     shutil.copy(DATABASE_PATH, ruta_exportar)
                     QMessageBox.information(
                         self, "Éxito", f"Tabla '{tabla}' exportada correctamente."
                     )
                 except Exception as e:
                     QMessageBox.critical(
-                        self, "Error", f"Error al exportar la tabla:{str(e)}"
+                        self, "Error", f"Error al exportar la tabla: {str(e)}"
                     )
 
         elif opcion == "Exportar toda la base de datos":
@@ -92,9 +88,8 @@ class Respaldo_View(QWidget, Ui_Respaldo):
                     )
                 except Exception as e:
                     QMessageBox.critical(
-                        self, "Error", f"Error al exportar la base de datos:{str(e)}"
+                        self, "Error", f"Error al exportar la base de datos: {str(e)}"
                     )
-
 
     def importar_base_datos(self):
         ruta_importar, _ = QFileDialog.getOpenFileName(
@@ -112,28 +107,25 @@ class Respaldo_View(QWidget, Ui_Respaldo):
             self,
             "Confirmar Importación",
             "Esto importará los datos del respaldo sin borrar tu base actual. ¿Deseas continuar?",
-            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        if respuesta != QMessageBox.Yes:
+        if respuesta != QMessageBox.StandardButton.Yes:
             return
 
         self.importar_y_migrar_datos(ruta_importar)
 
     def respaldo_automatico(self):
         """Verifica si ya se realizó un respaldo hoy y lo realiza si no existe. Máximo 2 intentos por día."""
-        
         if not os.path.exists(DATABASE_PATH):
             print("No se encontró la base de datos para el respaldo automático.")
             return
 
-        # Fecha actual
         fecha_actual = QDate.currentDate().toString("yyyy-MM-dd")
 
         # Verificar si ya se hizo el respaldo para hoy
         if self.ultima_fecha_respaldo == fecha_actual:
             print("Ya existe un respaldo para hoy. No se hará otro respaldo.")
             self.timer.stop()
-
             return
 
         # Límite de intentos de respaldo
@@ -142,33 +134,27 @@ class Respaldo_View(QWidget, Ui_Respaldo):
             return
 
         # Intentar realizar respaldo (máximo 2 veces por día)
-        for _ in range(2):  # Solo permite ejecutar una iteración
-            # Verificar si ya hay un archivo de respaldo con la fecha actual
+        for _ in range(2):
             nombre_respaldo_hoy = f"Backup_{fecha_actual}.db"
             ruta_respaldo_hoy = os.path.join(
                 self.ruta_carpeta_respaldos, nombre_respaldo_hoy
             )
             if os.path.exists(ruta_respaldo_hoy):
                 print(f"Ya existe un respaldo para hoy en: {ruta_respaldo_hoy}")
-                self.ultima_fecha_respaldo = (
-                    fecha_actual  # Actualizar para evitar bucles
-                )
+                self.ultima_fecha_respaldo = fecha_actual
                 return
 
-            # Crear carpeta de respaldos si no existe
             os.makedirs(self.ruta_carpeta_respaldos, exist_ok=True)
 
-            # Crear respaldo
             try:
                 shutil.copy(DATABASE_PATH, ruta_respaldo_hoy)
                 print(f"Respaldo automático creado: {ruta_respaldo_hoy}")
                 self.ultima_fecha_respaldo = fecha_actual
-                self.intentos_respaldo += 1  # Incrementar contador de intentos
-                return  # Salir después de un respaldo exitoso
-            
+                self.intentos_respaldo += 1
+                return
             except Exception as e:
                 print(f"Error al crear el respaldo automático: {str(e)}")
-                self.intentos_respaldo += 1  # Incrementar contador en caso de error
+                self.intentos_respaldo += 1
 
     def importar_y_migrar_datos(self, ruta_importar):
         # Crear conexión a la base actual (estructura nueva)
@@ -186,13 +172,11 @@ class Respaldo_View(QWidget, Ui_Respaldo):
 
             for tabla in tablas:
                 if tabla == "sqlite_sequence":
-                    continue  # Saltar tabla interna
+                    continue
 
-                # Leer todas las filas de la tabla antigua
                 antigua_cursor.execute(f"SELECT * FROM {tabla}")
                 filas = antigua_cursor.fetchall()
 
-                # Obtener columnas comunes entre vieja y nueva base
                 antigua_cursor.execute(f"PRAGMA table_info({tabla})")
                 columnas_antiguas = [col[1] for col in antigua_cursor.fetchall()]
 
@@ -201,14 +185,12 @@ class Respaldo_View(QWidget, Ui_Respaldo):
 
                 columnas_comunes = [col for col in columnas_antiguas if col in columnas_nuevas]
                 if not columnas_comunes:
-                    continue  # No hay columnas en común, saltar tabla
+                    continue
 
                 columnas_str = ", ".join(columnas_comunes)
                 placeholders = ", ".join("?" for _ in columnas_comunes)
 
-                # Insertar cada fila en la tabla nueva
                 for fila in filas:
-                    # Usar solo los datos de las columnas comunes
                     datos = [
                         fila[columnas_antiguas.index(col)] for col in columnas_comunes
                     ]

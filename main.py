@@ -1,4 +1,13 @@
-from PyQt5.QtWidgets import (
+import sys
+import os
+import time
+import datetime
+from pathlib import Path
+
+import jwt
+from dotenv import load_dotenv
+
+from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
@@ -7,8 +16,9 @@ from PyQt5.QtWidgets import (
     QProgressDialog,
     QMessageBox,
 )
-from PyQt5.QtGui import QIcon, QScreen
-from PyQt5 import QtWidgets
+from PyQt6.QtGui import QIcon
+from PyQt6 import QtWidgets  # Para poder reasignar QMessageBox si es necesario
+
 from init_db import conectar_base, inicializar_db
 from app.database.database import init_db
 from app.utils.enviar_notifi import (
@@ -19,37 +29,27 @@ from app.controllers.usuario_crud import verificar_credenciales, obtener_usuario
 from app.ventanasView import MainApp
 from app.view import Login_View
 from app.services.permisos_service import obtener_permisos_usuario
-from dotenv import load_dotenv
-import os
-import sys
-import time
-import jwt
-import datetime
-from pathlib import Path
 
-
-load_dotenv()  # Carga las variables de entorno desde el archivo .env
+load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super(MainWindow, self).__init__()
+        super().__init__()
 
         self.usuario_actual_id = None
         self.setWindowTitle("System DistriCali")
         self.setWindowIcon(QIcon("assets/logo1.ico"))
         self.inicializar_db()
         self.resize(800, 600)
-        
-
         self.setStyleSheet("background-color: white;")
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
-        # Crear el diseño principal
         layout = QHBoxLayout(central_widget)
-        layout.setContentsMargins(0, 0, 0, 0)  # Sin márgenes
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self.stacked_widget = QStackedWidget()
@@ -70,104 +70,84 @@ class MainWindow(QMainWindow):
 
     def inicializar_db(self):
         app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriCali"
-        app_data_dir.mkdir(parents=True, exist_ok=True)  # Crea el directorio si no existe
+        app_data_dir.mkdir(parents=True, exist_ok=True)
 
         db_path = app_data_dir / "systemdistricali.db"
 
         if not db_path.exists():
-            progress = QProgressDialog("Creando la base de datos...      ", None, 0, 0, self)
-            progress.setWindowTitle("Por favor espera     ")
-            progress.setCancelButton(None)  # Evita que el usuario lo cierre
-            progress.setMinimumDuration(0)  # Se muestra inmediatamente
+            progress = QProgressDialog("Creando la base de datos...", None, 0, 0, self)
+            progress.setWindowTitle("Por favor espera")
+            progress.setCancelButton(None)
+            progress.setMinimumDuration(0)
             progress.show()
 
-            QApplication.processEvents()  # Permite actualizar la UI
+            QApplication.processEvents()
 
-            inicializar_db()  # Crear la base de datos
-            time.sleep(2)  # Simula el proceso
+            inicializar_db()
+            time.sleep(2)
 
-            progress.close()  # Cierra el mensaje cuando termine
+            progress.close()
         else:
             print("✅ La base de datos ya existe. Continuando con el programa...")
             init_db()
 
     def cerrar_sesion(self):
-        """
-        Manejar el evento de cierre de sesión.
-        """
         enviar_notificacion("Sesión cerrada", "Puedes iniciar sesión nuevamente")
         self.stacked_widget.setCurrentWidget(self.Login)
         self.limpiar_campos()
 
     def limpiar_campos(self):
-        """
-        Limpiar los campos de entrada del formulario de login.
-        """
         self.Login.InputNombreUsuario.clear()
         self.Login.InputPassword.clear()
 
     def closeEvent(self, event):
-        """
-        Sobrescribe el evento de cierre para mostrar una ventana de confirmación.
-        """
         respuesta = QMessageBox.question(
             self,
             "Salir del programa",
             "¿Estás seguro de que deseas cerrar el programa?",
-            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-
-        if respuesta == QMessageBox.Yes:
-            event.accept()  # Permite cerrar la ventana
+        if respuesta == QMessageBox.StandardButton.Yes:
+            event.accept()
         else:
-            event.ignore()  # Cancela el cierre de la ventana
+            event.ignore()
 
     def showEvent(self, event):
-        super(MainWindow, self).showEvent(event)
+        super().showEvent(event)
         self.center_window()
 
     def center_window(self):
-        screen_geometry = QScreen.availableGeometry(QApplication.primaryScreen())
-        acreen_width = screen_geometry.width()
-        acreen_height = screen_geometry.height()
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
 
         window_width = self.width()
         window_height = self.height()
 
-        # Calcular la posición del centro
-        x = (acreen_width - window_width) // 2
-        y = (acreen_height - window_height) // 2
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
 
         self.move(x, y)
 
     def iniciar_sesion(self):
-        """
-        Maneja el inicio de sesión y genera un token JWT.
-        """
-        # Obtener los datos ingresados por el usuario
         usuario = self.Login.InputNombreUsuario.text()
         contraseña = self.Login.InputPassword.text()
-        rol = self.Login.BtnRol.text()  # Asegúrate de obtener el rol del usuario
+        rol = self.Login.BtnRol.text()
 
         if not usuario or not contraseña:
             enviar_notificacion("Error", "Por favor, ingresa tus credenciales")
             return
 
-        # Verificar las credenciales
         usuario_autenticado = verificar_credenciales(self.db, usuario, contraseña)
         if not usuario_autenticado:
             enviar_notificacion("Error", "Usuario o contraseña incorrectos")
             return
 
-        # Verificar que el rol sea correcto
         usuario_data = obtener_usuario_por_id(self.db, usuario_autenticado.ID_Usuario)
         if usuario_data.rol != rol:
-            enviar_notificacion(
-                "Error", "El rol seleccionado no coincide con tus permisos"
-            )
+            enviar_notificacion("Error", "El rol seleccionado no coincide con tus permisos")
             return
 
-        # Generar el token JWT
         self.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
@@ -175,40 +155,32 @@ class MainWindow(QMainWindow):
         self.MainApp.caja.usuario_actual_id = usuario_autenticado.ID_Usuario
         token = self.generar_token(usuario_autenticado.ID_Usuario, rol)
 
-        # Almacenar el token en el objeto MainWindow
         self.token_actual = token
 
-        # Mostrar la ventana principal
         enviar_notificacion("Inicio de sesión exitoso", "Bienvenido")
         self.stacked_widget.setCurrentWidget(self.MainApp)
 
-        # Configurar accesos por usuario
         self.configurar_accesos_por_usuario(usuario_autenticado)
-
-        # Actualizar el nombre del usuario en la barra de navegación
         self.MainApp.navbar.actualizar_usuario_rol(usuario_autenticado)
         self.db.close()
 
     def generar_token(self, usuario_id, rol):
-        """
-        Genera un token JWT con el ID del usuario y su rol.
-        """
         payload = {
             "id_usuario": usuario_id,
             "rol": rol,
-            "exp": datetime.datetime.utcnow()
-            + datetime.timedelta(hours=1),  # Expira en 1 hora
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1),
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        # PyJWT 2.x devuelve bytes, lo convertimos a string si es necesario
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
         return token
 
     def configurar_accesos_por_usuario(self, usuario):
-        """
-        Configura las vistas disponibles para el usuario autenticado.
-        """
         navbar = self.MainApp.navbar
         nombres_permitidos = obtener_permisos_usuario(usuario)
         es_admin = usuario.rol and usuario.rol.Nombre == "ADMINISTRADOR"
+
         permisos = {
             "Ventas": navbar.comboVentas,
             "Caja": navbar.BtnCaja,
@@ -222,6 +194,7 @@ class MainWindow(QMainWindow):
             "ControlUsuario": navbar.BtnControlUsuario,
             "Clientes": navbar.BtnClientes,
         }
+
         for nombre, control in permisos.items():
             control.setEnabled(es_admin or nombre in nombres_permitidos)
 
@@ -248,7 +221,9 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    QtWidgets.QMessageBox = Mensajes
+    # Si deseas reemplazar QMessageBox globalmente, usa:
+    # QtWidgets.QMessageBox = Mensajes
+    # (asegúrate de importar QtWidgets)
     main_window = MainWindow()
     main_window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

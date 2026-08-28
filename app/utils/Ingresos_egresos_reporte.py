@@ -2,9 +2,7 @@ import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
-from tkinter import Tk, filedialog
-from PyQt5.QtWidgets import QMessageBox
-from .enviar_notifi import Mensajes as QMessageBox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=None):
     """
@@ -12,17 +10,14 @@ def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=
     :param transacciones: Lista de transacciones (ingresos o egresos).
     :param tipo: "ingresos" o "egresos" para personalizar el reporte.
     """
-    # Ocultar la ventana de Tkinter
-    root = Tk()
-    root.withdraw()
-    
     default_filename = f"{tipo}_{fecha_inicio}.pdf"
 
-    # Elegir dónde guardar el archivo con un nombre por defecto
-    file_path = filedialog.asksaveasfilename(
-        defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")],
-        initialfile=default_filename,  # Nombre por defecto
-        title=f"Guardar Reporte de {tipo.capitalize()}"
+    # Diálogo de guardado con PyQt6
+    file_path, _ = QFileDialog.getSaveFileName(
+        None,
+        f"Guardar Reporte de {tipo.capitalize()}",
+        default_filename,
+        "PDF files (*.pdf)"
     )
     
     if not file_path:
@@ -33,8 +28,6 @@ def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=
     c = canvas.Canvas(file_path, pagesize=letter)
     width, height = letter
     
-    # Agrega
-
     # Título del reporte
     c.setFont("Helvetica-Bold", 18)
     c.setFillColor(colors.black)
@@ -82,8 +75,8 @@ def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=
             c.drawString(450, y_position, str(trans[4]))  # Fecha venta
             
             # Actualizar los totales
-            total_efectivo += float(trans[2])
-            total_transferencia += float(trans[3])
+            total_efectivo += float(trans[2] or 0)
+            total_transferencia += float(trans[3] or 0)
             
         elif tipo == "egresos":
             c.drawString(50, y_position, str(trans[0]))  # ID
@@ -91,7 +84,7 @@ def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=
             c.drawString(250, y_position, str(trans[2]))  # Monto
             c.drawString(400, y_position, str(trans[3]))  # Fecha
             
-            total_egresos += float(trans[2])
+            total_egresos += float(trans[2] or 0)
         
         y_position -= 20
         if y_position < 50:

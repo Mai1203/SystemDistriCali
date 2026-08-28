@@ -1,11 +1,11 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMessageBox,
     QWidget,
     QLabel,
     QLineEdit,
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt6 import QtWidgets, QtCore, QtGui
 from ..utils import *
 from ..utils.autocomplementado import configurar_autocompletado
 from ..database.database import SessionLocal
@@ -13,7 +13,7 @@ from ..controllers.producto_crud import *
 from ..controllers.marca_crud import *
 from ..controllers.categorias_crud import *
 from ..ui import Ui_Productos
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class Productos_View(QWidget, Ui_Productos):
@@ -85,9 +85,9 @@ class Productos_View(QWidget, Ui_Productos):
             self.InputCategoria, obtener_categorias, "Nombre", self.db
         )
 
-        self.TablaProductos.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.TablaProductos.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-        self.TablaProductos.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.TablaProductos.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.TablaProductos.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.MultiSelection)
+        self.TablaProductos.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.TablaProductos.setColumnWidth(4, 80)
         self.TablaProductos.setColumnWidth(5, 80)
         self.TablaProductos.setColumnWidth(6, 80)
@@ -118,11 +118,11 @@ class Productos_View(QWidget, Ui_Productos):
         
     def keyPressEvent(self, event):
         # Si presionas Enter en InputDomicilio, realiza una acción especial
-        if event.key() == Qt.Key_Up:
+        if event.key() == Qt.Key.Key_Up:
 
             self.navegar_widgets()
 
-        elif event.key() == Qt.Key_Down:
+        elif event.key() == Qt.Key.Key_Down:
             self.navegar_widgets_atras()
         # Llamar al método original para procesar otros eventos
         super().keyPressEvent(event)
@@ -287,61 +287,61 @@ class Productos_View(QWidget, Ui_Productos):
                 
 
                 id_item = QtWidgets.QTableWidgetItem(id_producto)
-                id_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                id_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 0, id_item)
 
                 nombre_item = QtWidgets.QTableWidgetItem(nombre)
-                nombre_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                nombre_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 1, nombre_item)
 
                 marca_item = QtWidgets.QTableWidgetItem(marca)
-                marca_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                marca_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 2, marca_item)
 
                 categoria_item = QtWidgets.QTableWidgetItem(categoria)
-                categoria_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                categoria_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 3, categoria_item)
 
                 cantidad_item = QtWidgets.QTableWidgetItem(cantidad)
-                cantidad_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                cantidad_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 4, cantidad_item)
 
                 cantidad_min_item = QtWidgets.QTableWidgetItem(cantidad_min)
-                cantidad_min_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                cantidad_min_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 5, cantidad_min_item)
 
                 cantidad_max_item = QtWidgets.QTableWidgetItem(cantidad_max)
-                cantidad_max_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                cantidad_max_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 6, cantidad_max_item)
 
                 precio_compra_item = QtWidgets.QTableWidgetItem(precio_compra)
-                precio_compra_item.setTextAlignment(QtCore.Qt.AlignRight)
+                precio_compra_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
                 self.TablaProductos.setItem(row_idx, 7, precio_compra_item)
 
                 precio_venta_normal_item = QtWidgets.QTableWidgetItem(
                     precio_venta_normal
                 )
-                precio_venta_normal_item.setTextAlignment(QtCore.Qt.AlignRight)
+                precio_venta_normal_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
                 self.TablaProductos.setItem(row_idx, 8, precio_venta_normal_item)
 
                 precio_venta_mayor_item = QtWidgets.QTableWidgetItem(precio_venta_mayor)
-                precio_venta_mayor_item.setTextAlignment(QtCore.Qt.AlignRight)
+                precio_venta_mayor_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
                 self.TablaProductos.setItem(row_idx, 9, precio_venta_mayor_item)
 
                 ganancia_producto_normal_item = QtWidgets.QTableWidgetItem(
                     ganancia_producto_normal
                 )
-                ganancia_producto_normal_item.setTextAlignment(QtCore.Qt.AlignRight)
+                ganancia_producto_normal_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
                 self.TablaProductos.setItem(row_idx, 10, ganancia_producto_normal_item)
 
                 ganancia_producto_mayor_item = QtWidgets.QTableWidgetItem(
                     ganancia_producto_mayor
                 )
-                ganancia_producto_mayor_item.setTextAlignment(QtCore.Qt.AlignRight)
+                ganancia_producto_mayor_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
                 self.TablaProductos.setItem(row_idx, 11, ganancia_producto_mayor_item)
 
                 estado_item = QtWidgets.QTableWidgetItem(estado)
-                estado_item.setTextAlignment(QtCore.Qt.AlignCenter)
+                estado_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.TablaProductos.setItem(row_idx, 12, estado_item)
 
                 if row.Stock_actual <= row.Stock_min:
@@ -694,10 +694,10 @@ class Productos_View(QWidget, Ui_Productos):
             self,
             "Confirmar Eliminación",
             f"¿Está seguro de que desea eliminar {len(ids)} producto(s)?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         )
 
-        if respuesta == QtWidgets.QMessageBox.Yes:
+        if respuesta == QtWidgets.QMessageBox.StandardButton.Yes:
             try:
                 self.db = SessionLocal()
 

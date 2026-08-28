@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QStackedWidget,
 )
-from PyQt5.QtGui import QIcon
+from PyQt6.QtGui import QIcon
 from app.view import (
     Navbar_View,
     Respaldo_View,
@@ -24,7 +24,7 @@ from app.configuracion import TIPOS_VENTA, obtener_tipo_venta
 
 class MainApp(QWidget):
     def __init__(self, parent=None):
-        super(MainApp, self).__init__(parent)
+        super().__init__(parent)
 
         # Configurar la ventana principal
         self.setWindowTitle("System Distri Cali")
@@ -35,18 +35,16 @@ class MainApp(QWidget):
 
         # Widget central que contiene el diseño principal
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)  # Sin márgenes
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # Crear el Navbar
         self.navbar = Navbar_View()
-        layout.addWidget(self.navbar)  # Agregar el Navbar al lado izquierdo
+        layout.addWidget(self.navbar)
 
         # Crear el QStackedWidget para el contenido
         self.stacked_widget = QStackedWidget()
-        layout.addWidget(
-            self.stacked_widget
-        )  # Agregar el QStackedWidget al lado derecho
+        layout.addWidget(self.stacked_widget)
 
         # Crear y agregar vistas al QStackedWidget
         self.caja = Caja_View()
@@ -61,28 +59,22 @@ class MainApp(QWidget):
         self.crediFactura = CrediFactura_View()
         self.pagoCredito = PagoCredito_View()
         self.Clientes = Cliente_View()
-        
-        self.stacked_widget.addWidget(self.caja)  # Índice 4
-        self.stacked_widget.addWidget(self.ventas)  # Índice 0
-        self.stacked_widget.addWidget(self.ventasCredito)  # Índice 1
-        self.stacked_widget.addWidget(self.facturas)  # Índice 2
-        self.stacked_widget.addWidget(self.crediFactura)  # Índice 3
-        self.stacked_widget.addWidget(self.egreso)  # Índice 5
-        self.stacked_widget.addWidget(self.productos)  # Índice 6
-        self.stacked_widget.addWidget(self.respaldo_view)  # Índice 7
-        self.stacked_widget.addWidget(self.control_usuario_view)  # Índice 8
-        self.stacked_widget.addWidget(self.reportes)  # Índice 9
-        self.stacked_widget.addWidget(self.pagoCredito)  # Índice 9
-        self.stacked_widget.addWidget(self.Clientes)  # Índice 9
 
-        # Conectar los botones del Navbar para cambiar las vistas del contenido
-        # Usar activated en lugar de currentIndexChanged: currentIndexChanged
-        # solo se emite cuando el índice cambia, por lo que al seleccionar el
-        # mismo tipo de venta (p. ej. FAC-01) que ya está activo no hace nada.
-        # activated se dispara siempre que el usuario seleccione un ítem.
-        self.navbar.comboVentas.activated.connect(
-            self.cambiar_tipo_venta
-        )
+        self.stacked_widget.addWidget(self.caja)
+        self.stacked_widget.addWidget(self.ventas)
+        self.stacked_widget.addWidget(self.ventasCredito)
+        self.stacked_widget.addWidget(self.facturas)
+        self.stacked_widget.addWidget(self.crediFactura)
+        self.stacked_widget.addWidget(self.egreso)
+        self.stacked_widget.addWidget(self.productos)
+        self.stacked_widget.addWidget(self.respaldo_view)
+        self.stacked_widget.addWidget(self.control_usuario_view)
+        self.stacked_widget.addWidget(self.reportes)
+        self.stacked_widget.addWidget(self.pagoCredito)
+        self.stacked_widget.addWidget(self.Clientes)
+
+        # Conectar los botones del Navbar
+        self.navbar.comboVentas.activated.connect(self.cambiar_tipo_venta)
         self.cambiar_tipo_venta(0)
         self.navbar.BtnCaja.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.caja)
@@ -111,11 +103,10 @@ class MainApp(QWidget):
         self.navbar.BtnControlUsuario.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.control_usuario_view)
         )
-
         self.navbar.BtnClientes.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.Clientes)
         )
-        
+
         self.facturas.enviar_facturas_A.connect(self.cambiar_a_ventasA)
         self.facturas.enviar_facturas_B.connect(self.cambiar_a_ventasB)
         self.facturas.enviar_facturas_C.connect(self.cambiar_a_ventasA)
@@ -135,8 +126,6 @@ class MainApp(QWidget):
         for indice, tipo in TIPOS_VENTA.items():
             if tipo["factura"] == tipo_factura:
                 self.navbar.comboVentas.setCurrentIndex(indice)
-                # activated no se dispara con setCurrentIndex (programático),
-                # entonces configuramos el tipo de venta explícitamente
                 tipo_venta = tipo["nombre"]
                 self.ventas.configurar_tipo_venta(indice)
                 self.ventas.LabelVentasA.setText(tipo_venta)
@@ -147,7 +136,6 @@ class MainApp(QWidget):
             self.seleccionar_tipo_por_factura(factura_completa)
             self.stacked_widget.setCurrentWidget(self.ventas)
             self.ventas.cargar_información(factura_completa)
-
         except Exception as e:
             print(f"Error al cargar datos VentasA: {e}")
 
@@ -156,7 +144,6 @@ class MainApp(QWidget):
             self.seleccionar_tipo_por_factura(factura_completa)
             self.stacked_widget.setCurrentWidget(self.ventas)
             self.ventas.cargar_información(factura_completa)
-
         except Exception as e:
             print(f"Error al cargar datos VentasB: {e}")
 
@@ -164,7 +151,6 @@ class MainApp(QWidget):
         try:
             self.stacked_widget.setCurrentWidget(self.ventasCredito)
             self.ventasCredito.cargar_información(factura_completa, id_venta_credito)
-
         except Exception as e:
             print(f"Error al cargar datos VentasCredito: {e}")
 
@@ -172,6 +158,5 @@ class MainApp(QWidget):
         try:
             self.stacked_widget.setCurrentWidget(self.pagoCredito)
             self.pagoCredito.cargar_información(id_ventaCredito)
-
         except Exception as e:
             print(f"Error al cargar datos PagoCredito: {e}")

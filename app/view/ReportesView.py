@@ -1,32 +1,26 @@
-from PyQt5.QtWidgets import QWidget, QFileDialog
-from PyQt5.QtCore import QDate
-from PyQt5.QtWidgets import QMessageBox
-from ..utils.enviar_notifi import Mensajes as QMessageBox
+from PyQt6.QtWidgets import QWidget, QFileDialog, QMessageBox
+from PyQt6.QtCore import QDate  # No se usa, pero se puede eliminar si no es necesario
 from ..database.database import SessionLocal
 from ..ui import Ui_Reportes
-from..controllers.tipo_pago_crud import *
+from ..controllers.tipo_pago_crud import *
 from ..controllers.metodo_pago_crud import *
 from ..controllers.pago_credito_crud import *
 from ..controllers.venta_credito_crud import *
-from ..controllers.producto_crud import * 
+from ..controllers.producto_crud import *
 from ..controllers.ingresos_crud import *
 from ..controllers.egresos_crud import *
 from ..controllers.facturas_crud import obtener_reporte_facturas
-from ..utils.Estructura_Reporte import crear_pdf, generar_analisis_financiero
+from ..utils.Estructura_Reporte import crear_pdf, generar_analisis_financiero, generar_pdf_productos_mas_vendidos
 from ..utils.Credito__Reporte import generar_pdf_creditos
-from ..utils.Estructura_Reporte import crear_pdf, generar_pdf_productos_mas_vendidos
 from ..utils import Ingresos_egresos_reporte
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 import os
 from datetime import datetime
-import tkinter as tk
-from tkinter import messagebox
-from sqlalchemy import and_, func
 
 
 class Reportes_View(QWidget, Ui_Reportes):
     def __init__(self, parent=None):
-        super(Reportes_View, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
 
         # Variables para almacenar fechas
@@ -46,60 +40,45 @@ class Reportes_View(QWidget, Ui_Reportes):
         self.TiempoCajaComboBox.addItems(["Diario", "Intervalo de días"])
         self.TipoProductosComboBox.addItems(["Bajo Stock", "Más  Vendidos - Menos Vendidos", "Inactivos"])
         self.ReporteAnalisisComboBox.addItems(["Comparación Financiera", "Análisis de crédito"])
-        self.ReporteAnalisisComboBox.currentIndexChanged.connect(self.cambiar_estado)   #cambiar estado de combobox y calendario
+        self.ReporteAnalisisComboBox.currentIndexChanged.connect(self.cambiar_estado)
         self.TiempoAnalisisComboBox.addItems(["Diario", "Intervalo de días"])
 
-        # Conectar ComboBox de tiempo con la función de habilitar/deshabilitar el calendario
+        # Conectar ComboBox de tiempo
         self.TiempoCajaComboBox.currentIndexChanged.connect(lambda: self.cambiar_estado_calendario("caja"))
         self.TiempoAnalisisComboBox.currentIndexChanged.connect(lambda: self.cambiar_estado_calendario("analisis"))
         self.BtnTicketProducto.clicked.connect(lambda: self.generar_pdf())
         self.BtnTicketCaja.clicked.connect(lambda: self.obtener_ingresos_egresos(self.TipoCajaComboBox.currentText()))
         self.BtnTicketAnalisis.clicked.connect(
-        lambda: self.obtener_creditos_analisis(self.ReporteAnalisisComboBox.currentText()))
+            lambda: self.obtener_creditos_analisis(self.ReporteAnalisisComboBox.currentText())
+        )
 
-        # Deshabilitar calendarios por defecto
+        # Habilitar calendarios (ya están habilitados por defecto, pero por claridad)
         self.CalendarioCaja.setEnabled(True)
         self.CalendarioAnalisis.setEnabled(True)
-    
+
     def cambiar_estado(self):
-        """
-        Cambiar estado de combobox y calendario
-        """
-        try:
-            opcion = self.ReporteAnalisisComboBox.currentText()
-            
-            if opcion == "Análisis de crédito":
-                self.CalendarioAnalisis.setEnabled(False)
-                self.TiempoAnalisisComboBox.setEnabled(False)
-            else:
-                self.CalendarioAnalisis.setEnabled(True)
-                self.TiempoAnalisisComboBox.setEnabled(True)
-        except Exception as e:
-            print(e)
-            
-    def obtener_creditos(self, tipo):
-        tipo = "Análisis de crédito"
-        resultado = self.obtener_creditos_analisis(tipo)
-        if resultado:
-            # Aquí podrías hacer algo con el resultado, como mostrarlo en una nueva ventana
-            messagebox.showinfo("Resultado", f"Análisis: {resultado}")
+        """Cambiar estado de combobox y calendario."""
+        opcion = self.ReporteAnalisisComboBox.currentText()
+        if opcion == "Análisis de crédito":
+            self.CalendarioAnalisis.setEnabled(False)
+            self.TiempoAnalisisComboBox.setEnabled(False)
         else:
-            messagebox.showwarning("Error", "No se pudo obtener el análisis.")
-    
-    
+            self.CalendarioAnalisis.setEnabled(True)
+            self.TiempoAnalisisComboBox.setEnabled(True)
+
+    def obtener_creditos(self, tipo):
+        # Este método parece no usarse; se mantiene por compatibilidad
+        tipo = "Análisis de crédito"
+        self.obtener_creditos_analisis(tipo)
+
     def obtener_creditos_analisis(self, tipo):
-        db = SessionLocal()  # Iniciamos la sesión de base de datos
+        db = SessionLocal()
         try:
             if tipo == "Análisis de crédito":
-                
                 ventas = obtener_ventas_credito(db)
-                resultado = [] 
-
+                resultado = []
                 for venta in ventas:
-                    # Obtener los pagos asociados a cada venta usando el ID_Venta_Credito
                     pagos = db.query(PagoCredito).filter(PagoCredito.ID_Venta_Credito == venta.ID_Venta_Credito).all()
-
-                    # Agregar los datos de la venta y sus pagos al resultado
                     resultado.append({
                         "venta": {
                             "ID_Venta_Credito": venta.ID_Venta_Credito,
@@ -115,131 +94,86 @@ class Reportes_View(QWidget, Ui_Reportes):
                             "Tipo_Pago": self.obtener_tipo_pago(db, pago.ID_Tipo_Pago)
                         } for pago in pagos]
                     })
-
-                # Enviar el resultado a la función que genera el reporte (por ejemplo, generar_pdf_creditos)
                 generar_pdf_creditos(self, resultado)
-
             else:
-                #Reporte Comparación Financiera
+                # Comparación Financiera
                 if not self.fecha_inicio_analisis:
                     QMessageBox.warning(self, "Error", "Debes seleccionar una fecha inicial")
                     return
                 print(f"Fecha inicio seleccionada: {self.fecha_inicio_analisis}")
                 print(f"Fecha fin seleccionada: {self.fecha_fin_analisis}")
-                # Filtramos por las fechas si están definidas
+
                 if self.fecha_inicio_analisis and self.fecha_fin_analisis:
                     fecha_inicio = self.fecha_inicio_analisis.toString('yyyy-MM-dd')
-                    fecha_fin = self.fecha_fin_analisis.toString('yyyy-MM-dd')
-                    # Asegurarse de que la fecha fin tenga la hora hasta el último minuto
-                    fecha_fin += " 23:59:59"  # Añadir las horas al final de la fecha de fin
+                    fecha_fin = self.fecha_fin_analisis.toString('yyyy-MM-dd') + " 23:59:59"
                     analisis = obtener_reporte_facturas(db=db, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
                     ingresos = obtener_ingresos_reportes(db=db, FechaInicio=fecha_inicio, FechaFin=fecha_fin)
                     egresos = obtener_egresos_reporte(db=db, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
-                                        
                     try:
                         generar_analisis_financiero(analisis, ingresos, egresos)
-                    
                     except Exception as e:
                         print(f"Error al generar pdf Comparación Financiera - Intervalo de días: {e}")
-                                        
-                    #Generar_pdf(analisis)
-                    #analisis.ID_Factura
-                    #analisis.Tipo_Ingreso,
-                    #analisis.Monto_efectivo,
-                    #analisis.Monto_TRANSACCION,
-                    #analisis.ganancia_por_factura
-                    #analisis.Fecha_Factura,
-                    
                 elif self.fecha_inicio_analisis:
-                    
                     fecha_inicio = self.fecha_inicio_analisis.toString('yyyy-MM-dd')
                     fecha_fin = None
-                    
                     analisis = obtener_reporte_facturas(db=db, fecha_inicio=fecha_inicio)
                     ingresos = obtener_ingresos_reportes(db=db, FechaInicio=fecha_inicio)
                     egresos = obtener_egresos_reporte(db=db, fecha_inicio=fecha_inicio)
-                                    
-                    try: 
+                    try:
                         generar_analisis_financiero(analisis, ingresos, egresos)
                     except Exception as e:
                         print(f"Error al generar pdf Análisis de crédito por fecha: {e}")
-                    #Generar_pdf(analisis)
-                    #analisis.ID_Factura
-                    #analisis.Tipo_Ingreso,
-                    #analisis.Monto_efectivo,
-                    #analisis.Monto_TRANSACCION,
-                    #analisis.ganancia_por_factura
-                    #analisis.Fecha_Factura,
-            
         except Exception as e:
             print(f"Error al generar el reporte Comparación Financiera: {e}")
         finally:
-            db.close()  # Cerrar la sesión
+            db.close()
 
-    # Funciones auxiliares para obtener los detalles del método de pago y tipo de pago
     def obtener_metodo_pago(self, db, id_metodo_pago):
-        # Obtiene el nombre o detalle del método de pago
         metodo_pago = db.query(MetodoPago).filter(MetodoPago.ID_Metodo_Pago == id_metodo_pago).first()
         return metodo_pago.Nombre if metodo_pago else "Desconocido"
 
     def obtener_tipo_pago(self, db, id_tipo_pago):
-        # Obtiene el nombre o detalle del tipo de pago
         tipo_pago = db.query(TipoPago).filter(TipoPago.ID_Tipo_Pago == id_tipo_pago).first()
         return tipo_pago.Nombre if tipo_pago else "Desconocido"
 
     def obtener_ingresos_egresos(self, tipo):
-       
         db = SessionLocal()
         try:
             if not self.fecha_inicio_caja:
                 QMessageBox.warning(self, "Error", "Debes seleccionar una fecha inicial")
                 return
-            
-            if tipo == "Egresos":
-                query = db.query(Egresos)  # Asegúrate de que "Egresos" es el nombre de tu modelo
 
-                # Depurar: Verificar las fechas seleccionadas
+            if tipo == "Egresos":
+                query = db.query(Egresos)
                 print(f"Fecha inicio seleccionada: {self.fecha_inicio_caja}")
                 print(f"Fecha fin seleccionada: {self.fecha_fin_caja}")
 
-                # Filtramos por las fechas si están definidas
                 if self.fecha_inicio_caja and self.fecha_fin_caja:
                     fecha_inicio = self.fecha_inicio_caja.toString('yyyy-MM-dd')
-                    fecha_fin = self.fecha_fin_caja.toString('yyyy-MM-dd')
-                    
-                    # Asegurarse de que la fecha fin tenga la hora hasta el último minuto
-                    fecha_fin += " 23:59:59"  # Añadir las horas al final de la fecha de fin
+                    fecha_fin = self.fecha_fin_caja.toString('yyyy-MM-dd') + " 23:59:59"
                     query = query.filter(and_(
-                        func.date(Egresos.Fecha_Egreso) >= fecha_inicio, 
-                        func.date(Egresos.Fecha_Egreso) <= fecha_fin))
-                    
+                        func.date(Egresos.Fecha_Egreso) >= fecha_inicio,
+                        func.date(Egresos.Fecha_Egreso) <= fecha_fin
+                    ))
                 elif self.fecha_inicio_caja:
                     fecha_inicio = self.fecha_inicio_caja.toString('yyyy-MM-dd')
                     fecha_fin = None
-                    # Ajustar la fecha de inicio para considerar solo el día, sin hora
                     query = query.filter(func.date(Egresos.Fecha_Egreso) == fecha_inicio)
 
-                egresos = query.all()                    
+                egresos = query.all()
                 datos = [(e.ID_Egreso, e.Tipo_Egreso, e.Monto_Egreso, e.Fecha_Egreso) for e in egresos]
-
                 Ingresos_egresos_reporte.generar_pdf_transacciones(datos, "egresos", fecha_inicio, fecha_fin)
-
             else:
                 print(f"Fecha inicio seleccionada: {self.fecha_inicio_caja}")
                 print(f"Fecha fin seleccionada: {self.fecha_fin_caja}")
                 ingresos = []
-                # Filtramos por las fechas si están definidas
                 if self.fecha_inicio_caja and self.fecha_fin_caja:
                     fecha_inicio = self.fecha_inicio_caja.toString('yyyy-MM-dd')
-                    fecha_fin = self.fecha_fin_caja.toString('yyyy-MM-dd')
-                    # Asegurarse de que la fecha fin tenga la hora hasta el último minuto
-                    fecha_fin += " 23:59:59"  # Añadir las horas al final de la fecha de fin
+                    fecha_fin = self.fecha_fin_caja.toString('yyyy-MM-dd') + " 23:59:59"
                     ingresos = obtener_ingresos_reportes(db=db, FechaInicio=fecha_inicio, FechaFin=fecha_fin)
-                    
                 elif self.fecha_inicio_caja:
                     fecha_inicio = self.fecha_inicio_caja.toString('yyyy-MM-dd')
                     fecha_fin = None
-                    # Ajustar la fecha de inicio para considerar solo el día, sin hora
                     ingresos = obtener_ingresos_reportes(db=db, FechaInicio=fecha_inicio)
 
                 datos = []
@@ -249,30 +183,23 @@ class Reportes_View(QWidget, Ui_Reportes):
                     else:
                         if e.metodo_pago == "Efectivo":
                             efectivo = str(e.monto)
-                            tranferencia = "0.0"
+                            transferencia = "0.0"
                         else:
-                            tranferencia = str(e.monto)
+                            transferencia = str(e.monto)
                             efectivo = "0.0"
-                        datos.append((e.ID_Ingreso, e.tipo_ingreso, efectivo, tranferencia, e.fecha_abono))
+                        datos.append((e.ID_Ingreso, e.tipo_ingreso, efectivo, transferencia, e.fecha_abono))
                 Ingresos_egresos_reporte.generar_pdf_transacciones(datos, "ingresos", fecha_inicio, fecha_fin)
-
         finally:
             db.close()
-    
+
     def mostrar_mensaje(self, titulo, mensaje):
-        """
-        Muestra un mensaje emergente en caso de error o advertencia.
-        """
         msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
+        msg.setIcon(QMessageBox.Icon.Information)
         msg.setWindowTitle(titulo)
         msg.setText(mensaje)
-        msg.exec_()
-    
+        msg.exec()
+
     def obtener_productos(self, tipo):
-        """
-        Obtiene productos según el tipo seleccionado (Bajo Stock o Inactivos).
-        """
         db = SessionLocal()
         try:
             if tipo == "Bajo Stock":
@@ -282,75 +209,54 @@ class Reportes_View(QWidget, Ui_Reportes):
                     .all()
                 )
                 return [(p.ID_Producto, p.Nombre, p.Stock_actual) for p in productos]
-            
             elif tipo == "Más  Vendidos - Menos Vendidos":
                 return []
-
             elif tipo == "Inactivos":
                 productos = (
                     db.query(Productos.ID_Producto, Productos.Nombre, Productos.Estado)
-                    .filter(Productos.Estado.in_(['0', '1']))  # Filtramos por estado
-                    .order_by(Productos.Estado)  # Ordenamos por estado (inactivos primero)
+                    .filter(Productos.Estado.in_(['0', '1']))
+                    .order_by(Productos.Estado)
                     .all()
                 )
-                # Mapear los valores de Estado de 0/1 a Inactivo/Activo
-                # Mapear los valores de Estado de 0/1 a Inactivo/Activo
-                productos_transformados = [
-                    (p.ID_Producto, p.Nombre, "Activo" if p.Estado == 1 else "Inactivo") for p in productos
-                ]
-
-                # Retornar los productos transformados
-                return productos_transformados
-
+                return [(p.ID_Producto, p.Nombre, "Activo" if p.Estado == 1 else "Inactivo") for p in productos]
             else:
-                # Si se selecciona otra opción, podemos incluir lógica adicional si es necesario
                 return []
-
         finally:
             db.close()
 
     def generar_pdf(self):
-        # Obtener el tipo de productos seleccionado en el ComboBox
-        tipo_seleccionado = self.TipoProductosComboBox.currentText()  # Obtener el valor del ComboBox
-        
+        tipo_seleccionado = self.TipoProductosComboBox.currentText()
+
         if tipo_seleccionado == "Más  Vendidos - Menos Vendidos":
             db = SessionLocal()
-            productos =obtener_productos_mas_vendidos(db=db, limite=30)
+            productos = obtener_productos_mas_vendidos(db=db, limite=30)
             generar_pdf_productos_mas_vendidos(productos)
-        
+            db.close()
         else:
-            # Obtener los productos de la base de datos según el tipo seleccionado
-            productos = self.obtener_productos(tipo_seleccionado)  
-
-            # Nombre por defecto para el archivo (BajoStock_fecha)
+            productos = self.obtener_productos(tipo_seleccionado)
             fecha_actual = datetime.now().strftime("%Y-%m-%d")
             nombre_pdf_por_defecto = f"{tipo_seleccionado}_{fecha_actual}.pdf"
-
-            # Usar un diálogo para que el usuario elija dónde guardar el archivo
             ruta_archivo, _ = QFileDialog.getSaveFileName(self, "Guardar PDF", nombre_pdf_por_defecto, "PDF Files (*.pdf)")
 
-            # Verificar si se ha seleccionado una ruta y proceder con la creación del PDF
-            if ruta_archivo:  
+            if ruta_archivo:
                 crear_pdf(ruta_archivo, productos, tipo_seleccionado)
-
-                # Mostrar mensaje de confirmación
-                messagebox.showinfo("PDF Generado", f"El archivo PDF ha sido generado en: {ruta_archivo}")
+                QMessageBox.information(self, "PDF Generado", f"El archivo PDF ha sido generado en: {ruta_archivo}")
             else:
-                # Si no se seleccionó ninguna ruta (es decir, el usuario cerró el cuadro de diálogo sin seleccionar archivo),
-                # se evita proceder a guardar el archivo.
-                messagebox.showinfo("Operación cancelada", "No se ha seleccionado ninguna ruta para guardar el archivo.")
+                QMessageBox.information(self, "Operación cancelada", "No se ha seleccionado ninguna ruta para guardar el archivo.")
 
     def closeEvent(self, event):
-        # Verificar si el cuadro de diálogo de guardado ha sido abierto y no se ha seleccionado un archivo
-        respuesta = messagebox.askyesno("Salir", "¿Estás seguro de que deseas salir sin guardar?")
-
-        if respuesta == "yes":
-            event.accept()  # Cerrar la ventana si el usuario acepta
+        respuesta = QMessageBox.question(
+            self,
+            "Salir",
+            "¿Estás seguro de que deseas salir sin guardar?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if respuesta == QMessageBox.StandardButton.Yes:
+            event.accept()
         else:
-            event.ignore()  # No cerrar la ventana si el usuario cancela
+            event.ignore()
 
     def obtener_fecha(self, calendario, tipo):
-        """Guarda la fecha seleccionada para Caja o Análisis."""
         fecha = calendario.selectedDate()
 
         if tipo == "caja":
@@ -366,7 +272,6 @@ class Reportes_View(QWidget, Ui_Reportes):
                 self.fecha_inicio_caja = fecha
                 self.fecha_fin_caja = None
                 print(f"[Caja] Fecha seleccionada: {self.fecha_inicio_caja.toString('yyyy-MM-dd')}")
-
         elif tipo == "analisis":
             if self.modo_intervalo_analisis:
                 if not self.fecha_inicio_analisis:
@@ -382,7 +287,6 @@ class Reportes_View(QWidget, Ui_Reportes):
                 print(f"[Análisis] Fecha seleccionada: {self.fecha_inicio_analisis.toString('yyyy-MM-dd')}")
 
     def cambiar_estado_calendario(self, tipo):
-        """Habilita/deshabilita el calendario según la opción seleccionada en los ComboBox."""
         if tipo == "caja":
             opcion = self.TiempoCajaComboBox.currentText()
             if opcion == "Diario":
@@ -399,7 +303,6 @@ class Reportes_View(QWidget, Ui_Reportes):
                 print("[Caja] Modo Intervalo: Selecciona dos fechas.")
             else:
                 self.CalendarioCaja.setEnabled(False)
-
         elif tipo == "analisis":
             opcion = self.TiempoAnalisisComboBox.currentText()
             if opcion == "Diario":

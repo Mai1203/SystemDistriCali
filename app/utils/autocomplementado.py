@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QCompleter
-from PyQt5 import QtCore
+from PyQt6.QtWidgets import QCompleter
+from PyQt6 import QtCore
 
 
 def configurar_autocompletado(
@@ -19,8 +19,8 @@ def configurar_autocompletado(
 
     # Configurar el autocompletado
     completer = QCompleter(items)
-    completer.setCaseSensitivity(False)
-    completer.setFilterMode(QtCore.Qt.MatchContains)
+    completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+    completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
     input_widget.setCompleter(completer)
 
     # Conectar el evento de selección al procesar_func si está definido
