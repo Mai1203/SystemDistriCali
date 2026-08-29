@@ -14,173 +14,188 @@ class Ui_ControlCliente(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(1431, 1035)
-        Form.setStyleSheet("background-color: rgb(255, 255, 255);\n"
+        Form.setStyleSheet("background-color: #F5F0F4; /* _BG */\n"
 "")
         self.horizontalLayout = QtWidgets.QHBoxLayout(Form)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.Contenedor = QtWidgets.QWidget(parent=Form)
         self.Contenedor.setStyleSheet("\n"
+"/* ===== Botón primario (_PRIMARY) ===== */\n"
 "QPushButton {\n"
-"    background-color: black; /* Fondo blanco */\n"
-"    border: none; /* Sin borde ni decoración inicial */\n"
-"    color:  white; /* Color del texto */\n"
-"    border-radius: 15px; /* Bordes circulares */\n"
-"    padding: 5px 10px; /* Espaciado interno para mejor apariencia */\n"
-"    height: 40px; /* Altura del botón */\n"
-"    text-align: center; /* Alinea el texto del botón a la izquierda */\n"
-"    font-size: 18px; /* Tamaño de fuente */\n"
-"    margin-top:20px;\n"
+"    background-color: #862D6D; /* _PRIMARY */\n"
+"    border: none;\n"
+"    color: #FFFFFF;\n"
+"    border-radius: 10px;\n"
+"    padding: 8px 16px;\n"
+"    min-height: 44px; /* touch target WCAG */\n"
+"    text-align: center;\n"
+"    font-size: 14px;\n"
+"    font-weight: 600;\n"
+"    letter-spacing: 0.4px;\n"
+"    margin-top: 20px;\n"
 "}\n"
 "\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(106, 106, 106); /* Gris claro al pasar el mouse */\n"
-"    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
+"    background-color: #6E2259; /* _PRIMARY_HOVER */\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #551443; /* _PRIMARY_PRESSED */\n"
+"    padding-top: 10px;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #C4A8BF;\n"
+"    color: #F0E8EF;\n"
 "}\n"
 "\n"
 "QToolButton {\n"
-"    background-color: white; /* Fondo blanco */\n"
-"    border: none; /* Sin borde ni decoración inicial */\n"
-"    color:  rgb(50, 50, 50); /* Color del texto */\n"
-"    border-radius: 15px; /* Bordes circulares */\n"
-"    padding: 5px 10px; /* Espaciado interno para mejor apariencia */\n"
-"    height: 40px; /* Altura del botón */\n"
-"    text-align: left; /* Alinea el texto del botón a la izquierda */\n"
-"    font-size: 18px; /* Tamaño de fuente */\n"
+"    background-color: #FFFFFF;\n"
+"    border: none;\n"
+"    color: #201A24; /* _TEXT */\n"
+"    border-radius: 10px;\n"
+"    padding: 5px 10px;\n"
+"    min-height: 40px;\n"
+"    text-align: left;\n"
+"    font-size: 14px;\n"
 "    cursor: pointer;\n"
 "}\n"
 "\n"
 "QToolButton:hover {\n"
-"    background-color: #f2f2f2; /* Gris claro al pasar el mouse */\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "    cursor: pointer;\n"
 "}\n"
+"\n"
+"/* ===== Inputs (QLineEdit) ===== */\n"
 "QLineEdit {\n"
-"    background-color: rgb(255, 255, 255); /* Fondo blanco */\n"
-"    border: none; /* Sin bordes visibles */\n"
-"    padding: 4px; /* Espaciado interno entre el texto y los bordes */\n"
-"    margin-right: 5px; /* Espaciado externo solo a la derecha */\n"
-"    border-radius: 10px; /* Bordes redondeados */\n"
-"    color: black; /* Texto negro */\n"
-"    text-align: left; /* Texto alineado a la izquierda */\n"
-"    font-size: 18px; /* Tamaño del texto */\n"
+"    background-color: #FFFFFF; /* _CARD_BG */\n"
+"    border: 1.5px solid #D8C8D5; /* _BORDER reposo */\n"
+"    padding: 8px 12px;\n"
+"    margin-right: 5px;\n"
+"    border-radius: 10px;\n"
+"    color: #201A24; /* _TEXT */\n"
+"    text-align: left;\n"
+"    font-size: 14px;\n"
+"}\n"
+"\n"
+"QLineEdit:hover {\n"
+"    border: 1.5px solid #A97099; /* _BORDER hover */\n"
 "}\n"
 "\n"
 "/* Cuando el QLineEdit está enfocado (se está escribiendo) */\n"
 "QLineEdit:focus {\n"
-"    background-color: rgb(230, 230, 250); /* Color de fondo cuando el campo está activo */\n"
-"    border: 1px solid rgb(0, 0, 0); /* Borde negro al estar activo */\n"
+"    background-color: #FFFAFE; /* _FOCUS_BG */\n"
+"    border: 2px solid #862D6D; /* _BORDER focus / _PRIMARY */\n"
 "}\n"
 "\n"
 "QLabel {\n"
-"    font-size: 20px; /* Tamaño de fuente */\n"
-"    color:  black; /* Color del texto */\n"
-"    margin-right: 10px; /* Espaciado a la derecha */\n"
-"    padding: 5px; /* Espaciado interno */\n"
-"    text-align: left; /* Alineación del texto a la izquierda */\n"
+"    font-size: 13px; /* escala de label de input */\n"
+"    font-weight: 600;\n"
+"    color: #201A24; /* _TEXT */\n"
+"    margin-right: 10px;\n"
+"    padding: 5px;\n"
+"    text-align: left;\n"
 "}\n"
+"\n"
+"/* ===== Tabla ===== */\n"
 "QTableWidget {\n"
-"    border: none;\n"
-"    background-color: #ffffff; /* Fondo blanco para la tabla */\n"
-"    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave alrededor de la tabla */\n"
+"    border: 1px solid #EAE0E8; /* borde sutil tipo card */\n"
+"    border-radius: 10px;\n"
+"    background-color: #FFFFFF; /* _CARD_BG */\n"
 "}\n"
 "\n"
 "QTableWidget::item {\n"
-"    background-color: #f2f2f2; \n"
-"    border: none; \n"
-"    transition: background-color 0.3s ease; /* Suavizado de transición de color de fondo */\n"
+"    background-color: #FFFFFF;\n"
+"    color: #201A24; /* _TEXT */\n"
+"    border: none;\n"
 "    pointer-events: none; /* Desactiva la interacción con las celdas (como editar) */\n"
 "}\n"
 "\n"
 "QTableWidget::item:selected {\n"
-"    background-color: #aad4ff; /* Color azul claro para celdas seleccionadas */\n"
-"    color: black; /* Texto negro para celdas seleccionadas */\n"
+"    background-color: #F0E1EC; /* tinte suave de _PRIMARY */\n"
+"    color: #201A24; /* _TEXT */\n"
 "}\n"
 "\n"
 "QTableWidget::item:hover {\n"
-"    background-color: #e6e6e6; /* Color de fondo al pasar el cursor sobre las celdas */\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "}\n"
 "\n"
 "QHeaderView::section {\n"
-"    border: none; \n"
-"    background-color: #f2f2f2; \n"
-"    font-weight: normal; /* No negritas */\n"
-"    text-align: center; /* Centrado del texto en los encabezados */\n"
-"    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave para los encabezados */\n"
+"    border: none;\n"
+"    border-bottom: 2px solid #862D6D; /* _PRIMARY */\n"
+"    background-color: #F5E6F0; /* tinte plum claro */\n"
+"    color: #862D6D; /* _PRIMARY */\n"
+"    font-weight: 600;\n"
+"    text-align: center;\n"
 "}\n"
 "\n"
 "QHeaderView::section:focus {\n"
-"    background-color: #f2f2f2; /* Sin color de fondo cuando está en foco */\n"
-"    border: none; /* Sin borde cuando está en foco */\n"
+"    background-color: #F5E6F0; /* tinte plum claro */\n"
+"    border: none;\n"
 "}\n"
 "\n"
 "QTableWidget::item:focus {\n"
-"    border: none; /* Sin borde cuando las celdas tienen el foco */\n"
-"    background-color: #f2f2f2; /* Mantener el fondo sin color azul */\n"
+"    border: none;\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "}\n"
 "\n"
 "QTableCornerButton::section {\n"
-"    background-color: #f2f2f2; \n"
-"    border: none; \n"
+"    background-color: #F5F0F4; /* _BG */\n"
+"    border: none;\n"
 "}\n"
 "\n"
 "QTableWidget::verticalHeader {\n"
-"    background-color: #f2f2f2;\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "    border: none;\n"
-"    font-weight: normal; /* No negritas */\n"
+"    font-weight: 600;\n"
 "}\n"
 "\n"
-"QTableWidget::item:hover {\n"
-"    background-color: #e6e6e6; /* Color de fondo al pasar el cursor sobre las celdas */\n"
-"}\n"
-"\n"
-"/* Personalización de la barra de desplazamiento */\n"
+"/* ===== Scrollbars ===== */\n"
 "QScrollBar:vertical {\n"
 "    border: none;\n"
-"    background: #f7f7f7; /* Fondo de la barra */\n"
-"    width: 8px; /* Barra más delgada */\n"
-"    border-radius: 4px; /* Bordes más redondeados */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    width: 8px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical {\n"
-"    background: #bbb; /* Fondo del control deslizante */\n"
-"    min-height: 20px; /* Control deslizante más delgado */\n"
-"    border-radius: 4px; /* Bordes redondeados */\n"
-"    transition: background-color 0.3s ease; /* Transición suave para el cambio de color */\n"
+"    background: #D8C8D5; /* _BORDER */\n"
+"    min-height: 20px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical:hover {\n"
-"    background: #888; /* Color más oscuro cuando el control deslizante está siendo desplazado */\n"
+"    background: #A97099; /* _BORDER hover */\n"
 "}\n"
 "\n"
 "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {\n"
 "    border: none;\n"
-"    background: #f2f2f2; /* Fondo para los botones de la barra */\n"
-"    height: 0px; /* Sin altura para los botones */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    height: 0px;\n"
 "}\n"
 "\n"
 "QScrollBar:horizontal {\n"
 "    border: none;\n"
-"    background: #f7f7f7; /* Fondo de la barra */\n"
-"    height: 8px; /* Barra más delgada */\n"
-"    border-radius: 4px; /* Bordes más redondeados */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    height: 8px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:horizontal {\n"
-"    background: #bbb; /* Fondo del control deslizante */\n"
-"    min-width: 20px; /* Control deslizante más delgado */\n"
-"    border-radius: 4px; /* Bordes redondeados */\n"
-"    transition: background-color 0.3s ease; /* Transición suave para el cambio de color */\n"
+"    background: #D8C8D5; /* _BORDER */\n"
+"    min-width: 20px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:horizontal:hover {\n"
-"    background: #888; /* Color más oscuro cuando el control deslizante está siendo desplazado */\n"
+"    background: #A97099; /* _BORDER hover */\n"
 "}\n"
 "\n"
 "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {\n"
 "    border: none;\n"
-"    background: #f2f2f2; /* Fondo para los botones de la barra */\n"
-"    width: 0px; /* Sin ancho para los botones */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    width: 0px;\n"
 "}\n"
-"\n"
 "\n"
 "")
         self.Contenedor.setObjectName("Contenedor")
@@ -188,80 +203,98 @@ class Ui_ControlCliente(object):
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.Contenido = QtWidgets.QStackedWidget(parent=self.Contenedor)
         self.Contenido.setStyleSheet("margin-left:10px;\n"
-"border-radius:15px;\n"
-"background-color: #f2f2f2; \n"
+"border-radius: 10px;\n"
+"background-color: #F5F0F4; /* _BG */\n"
 "")
         self.Contenido.setObjectName("Contenido")
         self.ContenidoPage1 = QtWidgets.QWidget()
         self.ContenidoPage1.setObjectName("ContenidoPage1")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.ContenidoPage1)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.widget_3 = QtWidgets.QWidget(parent=self.ContenidoPage1)
+        self.verticalLayout_2.setContentsMargins(24, 24, 24, 24)
+        self.verticalLayout_2.setSpacing(20)
+        self.cardCliente = QtWidgets.QFrame(parent=self.ContenidoPage1)
+        self.cardCliente.setObjectName("cardCliente")
+        self.cardCliente.setStyleSheet("\n"
+"#cardCliente {\n"
+"    background-color: #FFFFFF; /* _CARD_BG */\n"
+"    border: 1px solid #EAE0E8; /* borde sutil de la tarjeta */\n"
+"    border-radius: 22px;\n"
+"}\n"
+"")
+        cardClienteShadow = QtWidgets.QGraphicsDropShadowEffect(self.cardCliente)
+        cardClienteShadow.setBlurRadius(40)
+        cardClienteShadow.setXOffset(0)
+        cardClienteShadow.setYOffset(12)
+        cardClienteShadow.setColor(QtGui.QColor(100, 30, 80, 45))
+        self.cardCliente.setGraphicsEffect(cardClienteShadow)
+        self.cardClienteLayout = QtWidgets.QVBoxLayout(self.cardCliente)
+        self.cardClienteLayout.setObjectName("cardClienteLayout")
+        self.cardClienteLayout.setContentsMargins(28, 28, 28, 28)
+        self.cardClienteLayout.setSpacing(20)
+        self.widget_3 = QtWidgets.QWidget(parent=self.cardCliente)
         self.widget_3.setStyleSheet("")
         self.widget_3.setObjectName("widget_3")
         self.gridLayout = QtWidgets.QGridLayout(self.widget_3)
         self.gridLayout.setObjectName("gridLayout")
         self.gridLayout_2 = QtWidgets.QGridLayout()
         self.gridLayout_2.setObjectName("gridLayout_2")
+        self.gridLayout_2.setHorizontalSpacing(24)
+        self.gridLayout_2.setVerticalSpacing(12)
+        self.gridLayout_2.setColumnStretch(0, 1)
+        self.gridLayout_2.setColumnStretch(1, 1)
+        self.gridLayout_2.setColumnStretch(2, 1)
+        self.gridLayout_2.setColumnStretch(3, 1)
+        self.gridLayout_2.setColumnStretch(4, 1)
         self.label_4 = QtWidgets.QLabel(parent=self.widget_3)
         self.label_4.setObjectName("label_4")
         self.gridLayout_2.addWidget(self.label_4, 2, 4, 1, 1)
         self.InputDireccion = QtWidgets.QLineEdit(parent=self.widget_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.InputDireccion.sizePolicy().hasHeightForWidth())
         self.InputDireccion.setSizePolicy(sizePolicy)
         self.InputDireccion.setMinimumSize(QtCore.QSize(250, 50))
-        self.InputDireccion.setMaximumSize(QtCore.QSize(250, 50))
-        self.InputDireccion.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.InputDireccion.setObjectName("InputDireccion")
         self.gridLayout_2.addWidget(self.InputDireccion, 3, 4, 1, 1)
         self.InputNombre = QtWidgets.QLineEdit(parent=self.widget_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.InputNombre.sizePolicy().hasHeightForWidth())
         self.InputNombre.setSizePolicy(sizePolicy)
         self.InputNombre.setMinimumSize(QtCore.QSize(250, 50))
-        self.InputNombre.setMaximumSize(QtCore.QSize(250, 50))
-        self.InputNombre.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.InputNombre.setObjectName("InputNombre")
         self.gridLayout_2.addWidget(self.InputNombre, 3, 1, 1, 1)
         self.InputApellido = QtWidgets.QLineEdit(parent=self.widget_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.InputApellido.sizePolicy().hasHeightForWidth())
         self.InputApellido.setSizePolicy(sizePolicy)
         self.InputApellido.setMinimumSize(QtCore.QSize(250, 50))
-        self.InputApellido.setMaximumSize(QtCore.QSize(250, 50))
-        self.InputApellido.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.InputApellido.setObjectName("InputApellido")
         self.gridLayout_2.addWidget(self.InputApellido, 3, 2, 1, 1)
         self.label_3 = QtWidgets.QLabel(parent=self.widget_3)
         self.label_3.setObjectName("label_3")
         self.gridLayout_2.addWidget(self.label_3, 2, 0, 1, 1)
         self.InputTelefono = QtWidgets.QLineEdit(parent=self.widget_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.InputTelefono.sizePolicy().hasHeightForWidth())
         self.InputTelefono.setSizePolicy(sizePolicy)
         self.InputTelefono.setMinimumSize(QtCore.QSize(250, 50))
-        self.InputTelefono.setMaximumSize(QtCore.QSize(250, 50))
-        self.InputTelefono.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.InputTelefono.setObjectName("InputTelefono")
         self.gridLayout_2.addWidget(self.InputTelefono, 3, 3, 1, 1)
         self.InputCedula = QtWidgets.QLineEdit(parent=self.widget_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.InputCedula.sizePolicy().hasHeightForWidth())
         self.InputCedula.setSizePolicy(sizePolicy)
         self.InputCedula.setMinimumSize(QtCore.QSize(250, 50))
-        self.InputCedula.setMaximumSize(QtCore.QSize(250, 50))
-        self.InputCedula.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.InputCedula.setObjectName("InputCedula")
         self.gridLayout_2.addWidget(self.InputCedula, 3, 0, 1, 1)
         self.label_7 = QtWidgets.QLabel(parent=self.widget_3)
@@ -275,8 +308,9 @@ class Ui_ControlCliente(object):
         self.gridLayout_2.addWidget(self.label, 2, 3, 1, 1)
         self.LabelVentasA = QtWidgets.QLabel(parent=self.widget_3)
         self.LabelVentasA.setStyleSheet("#LabelVentasA {\n"
-"    font-weight: bold; /* Negrita */\n"
-"    font-size: 34px; /* Tamaño de fuente */\n"
+"    font-weight: 700;\n"
+"    font-size: 26px;\n"
+"    color: #201A24; /* _TEXT */\n"
 "}\n"
 "")
         self.LabelVentasA.setObjectName("LabelVentasA")
@@ -285,31 +319,36 @@ class Ui_ControlCliente(object):
         self.label_30.setText("")
         self.label_30.setObjectName("label_30")
         self.gridLayout_2.addWidget(self.label_30, 1, 0, 1, 1)
-        self.lineEdit_2 = QtWidgets.QLineEdit(parent=self.widget_3)
-        self.lineEdit_2.setObjectName("lineEdit_2")
-        self.gridLayout_2.addWidget(self.lineEdit_2, 3, 5, 1, 1)
         self.BtnEliminar = QtWidgets.QPushButton(parent=self.widget_3)
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnEliminar.setStyleSheet("\n"
+"/* Botón destructivo (ghost) - variante _DANGER derivada de la paleta */\n"
 "QPushButton {\n"
-"    background-color: red; /* Fondo blanco */\n"
-"    border: none; /* Sin borde ni decoración inicial */\n"
-"    color:  white; /* Color del texto */\n"
-"    border-radius: 15px; /* Bordes circulares */\n"
-"    padding: 5px 10px; /* Espaciado interno para mejor apariencia */\n"
-"    height: 40px; /* Altura del botón */\n"
-"    text-align: center; /* Alinea el texto del botón a la izquierda */\n"
-"    font-size: 18px; /* Tamaño de fuente */\n"
-"    margin-top:20px;\n"
-"    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
+"    background-color: #FFFFFF;\n"
+"    border: 1.5px solid #C23B3B;\n"
+"    color: #C23B3B;\n"
+"    border-radius: 10px;\n"
+"    padding: 8px 16px;\n"
+"    min-height: 44px; /* touch target WCAG */\n"
+"    text-align: center;\n"
+"    font-size: 14px;\n"
+"    font-weight: 600;\n"
+"    margin-top: 20px;\n"
+"    cursor: pointer;\n"
 "}\n"
 "\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(106, 106, 106); /* Gris claro al pasar el mouse */\n"
-"    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
+"    background-color: #FBEAEA;\n"
+"    border: 1.5px solid #A82F2F;\n"
+"    cursor: pointer;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #F5D6D6;\n"
+"    padding-top: 10px;\n"
 "}")
         icon = QtGui.QIcon()
-        icon.addPixmap(qta.icon('fa5s.trash-alt', color='#F44336').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(qta.icon('fa5s.trash-alt', color='#C23B3B').pixmap(20, 20), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.BtnEliminar.setIcon(icon)
         self.BtnEliminar.setIconSize(QtCore.QSize(30, 30))
         self.BtnEliminar.setObjectName("BtnEliminar")
@@ -318,173 +357,186 @@ class Ui_ControlCliente(object):
         self.BtnRegistrar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnRegistrar.setStyleSheet("\n"
 "QPushButton {\n"
-"    background-color: black; /* Fondo blanco */\n"
-"    border: none; /* Sin borde ni decoración inicial */\n"
-"    color:  white; /* Color del texto */\n"
-"    border-radius: 15px; /* Bordes circulares */\n"
-"    padding: 5px 10px; /* Espaciado interno para mejor apariencia */\n"
-"    height: 40px; /* Altura del botón */\n"
-"    text-align: center; /* Alinea el texto del botón a la izquierda */\n"
-"    font-size: 18px; /* Tamaño de fuente */\n"
-"    margin-top:20px;\n"
+"    background-color: #862D6D; /* _PRIMARY */\n"
+"    border: none;\n"
+"    color: #FFFFFF;\n"
+"    border-radius: 10px;\n"
+"    padding: 8px 16px;\n"
+"    min-height: 44px; /* touch target WCAG */\n"
+"    text-align: center;\n"
+"    font-size: 14px;\n"
+"    font-weight: 600;\n"
+"    letter-spacing: 0.4px;\n"
+"    margin-top: 20px;\n"
 "}\n"
 "\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(106, 106, 106); /* Gris claro al pasar el mouse */\n"
-"    cursor: pointer; /* Cursor de mano al pasar sobre el botón */\n"
+"    background-color: #6E2259; /* _PRIMARY_HOVER */\n"
+"    cursor: pointer;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #551443; /* _PRIMARY_PRESSED */\n"
+"    padding-top: 10px;\n"
 "}")
         self.BtnRegistrar.setObjectName("BtnRegistrar")
         self.gridLayout_2.addWidget(self.BtnRegistrar, 4, 3, 1, 1)
         self.gridLayout.addLayout(self.gridLayout_2, 1, 0, 1, 1)
-        self.verticalLayout_2.addWidget(self.widget_3, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        self.widget_2 = QtWidgets.QWidget(parent=self.ContenidoPage1)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred)
+        self.cardClienteLayout.addWidget(self.widget_3)
+        self.widget_2 = QtWidgets.QWidget(parent=self.cardCliente)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.widget_2.sizePolicy().hasHeightForWidth())
         self.widget_2.setSizePolicy(sizePolicy)
         self.widget_2.setMinimumSize(QtCore.QSize(1200, 0))
-        self.widget_2.setStyleSheet("")
+        self.widget_2.setStyleSheet("\n"
+"#widget_2 {\n"
+"    background-color: #FFFAFE; /* _FOCUS_BG */\n"
+"    border: 1.5px solid #862D6D; /* _PRIMARY */\n"
+"    border-radius: 24px;\n"
+"}\n"
+"")
         self.widget_2.setObjectName("widget_2")
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.widget_2)
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.horizontalLayout_3.setContentsMargins(18, 8, 18, 8)
+        self.horizontalLayout_3.setSpacing(10)
+        self.label_2 = QtWidgets.QLabel(parent=self.widget_2)
+        self.label_2.setText("")
+        self.label_2.setPixmap(qta.icon('fa5s.search', color='#862D6D').pixmap(18, 18))
+        self.label_2.setObjectName("label_2")
+        self.horizontalLayout_3.addWidget(self.label_2, 0, QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.lineEditBuscador = QtWidgets.QLineEdit(parent=self.widget_2)
         self.lineEditBuscador.setStyleSheet("QLineEdit {\n"
 "    border: none;\n"
-"    border-bottom: 0.5px solid gray;\n"
-"}\n"
-"\n"
-"QLineEdit:focus {\n"
-"    border: none;\n"
-"    border-bottom: 1.5px solid black; /* Cambia el color y grosor según desees */\n"
+"    border-radius: 0px;\n"
+"    background-color: transparent;\n"
+"    color: #201A24; /* _TEXT */\n"
+"    font-size: 14px;\n"
+"    padding: 6px 2px;\n"
 "}\n"
 "")
         self.lineEditBuscador.setObjectName("lineEditBuscador")
         self.horizontalLayout_3.addWidget(self.lineEditBuscador)
-        self.label_2 = QtWidgets.QLabel(parent=self.widget_2)
-        self.label_2.setText("")
-        self.label_2.setPixmap(qta.icon('fa5s.search', color='#862D6D').pixmap(20, 20))
-        self.label_2.setObjectName("label_2")
-        self.horizontalLayout_3.addWidget(self.label_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        self.verticalLayout_2.addWidget(self.widget_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        self.widget = QtWidgets.QWidget(parent=self.ContenidoPage1)
+        self.cardClienteLayout.addWidget(self.widget_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
+        self.widget = QtWidgets.QWidget(parent=self.cardCliente)
         self.widget.setStyleSheet("")
         self.widget.setObjectName("widget")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.widget)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.TablaClientes = QtWidgets.QTableWidget(parent=self.widget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.TablaClientes.sizePolicy().hasHeightForWidth())
         self.TablaClientes.setSizePolicy(sizePolicy)
         self.TablaClientes.setMinimumSize(QtCore.QSize(650, 500))
         font = QtGui.QFont()
-        font.setFamily("MS Shell Dlg 2")
-        font.setPointSize(11)
-        font.setBold(True)
-        font.setWeight(75)
+        font.setFamily("Segoe UI")
+        font.setPointSize(10)
+        font.setBold(False)
         self.TablaClientes.setFont(font)
         self.TablaClientes.setStyleSheet("\n"
 "QTableWidget {\n"
-"    border: none;\n"
-"    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave alrededor de la tabla */\n"
+"    border: 1px solid #EAE0E8; /* borde sutil tipo card */\n"
+"    border-radius: 10px;\n"
+"    background-color: #FFFFFF; /* _CARD_BG */\n"
 "}\n"
 "\n"
 "QTableWidget::item {\n"
-"    background-color: #f2f2f2; \n"
-"    border: none; \n"
-"    font-size: 18px; /* Tamaño de letra */\n"
-"    transition: background-color 0.3s ease; /* Suavizado de transición de color de fondo */\n"
+"    background-color: #FFFFFF;\n"
+"    border: none;\n"
+"    font-size: 14px;\n"
+"    color: #201A24; /* _TEXT */\n"
 "    pointer-events: none; /* Desactiva la interacción con las celdas (como editar) */\n"
 "}\n"
 "\n"
 "QTableWidget::item:selected {\n"
-"    background-color: #aad4ff; /* Color azul claro para celdas seleccionadas */\n"
-"    color: black; /* Texto negro para celdas seleccionadas */\n"
+"    background-color: #F0E1EC; /* tinte suave de _PRIMARY */\n"
+"    color: #201A24; /* _TEXT */\n"
 "}\n"
 "\n"
 "QTableWidget::item:hover {\n"
-"    background-color: #e6e6e6; /* Color de fondo al pasar el cursor sobre las celdas */\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "}\n"
 "\n"
 "QHeaderView::section {\n"
-"    border: none; \n"
-"    background-color: #f2f2f2; \n"
-"    font-size: 18px; /* Tamaño de letra */\n"
-"    font-weight: normal; /* No negritas */\n"
+"    border: none;\n"
+"    border-bottom: 2px solid #862D6D; /* _PRIMARY */\n"
+"    background-color: #F5E6F0; /* tinte plum claro */\n"
+"    font-size: 13px;\n"
+"    font-weight: 600;\n"
+"    color: #862D6D; /* _PRIMARY */\n"
 "    text-align: center; /* Centrado del texto en los encabezados */\n"
-"    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave para los encabezados */\n"
 "}\n"
 "\n"
 "QHeaderView::section:focus {\n"
-"    background-color: #f2f2f2; /* Sin color de fondo cuando está en foco */\n"
-"    border: none; /* Sin borde cuando está en foco */\n"
+"    background-color: #F5E6F0; /* tinte plum claro */\n"
+"    border: none;\n"
 "}\n"
 "\n"
 "QTableWidget::item:focus {\n"
-"    border: none; /* Sin borde cuando las celdas tienen el foco */\n"
-"    background-color: #f2f2f2; /* Mantener el fondo sin color azul */\n"
+"    border: none;\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "}\n"
 "\n"
 "QTableCornerButton::section {\n"
-"    background-color: #f2f2f2; \n"
-"    border: none; \n"
+"    background-color: #F5F0F4; /* _BG */\n"
+"    border: none;\n"
 "}\n"
 "\n"
 "QTableWidget::verticalHeader {\n"
-"    background-color: #f2f2f2;\n"
-"    font-size: 23px;\n"
+"    background-color: #F5F0F4; /* _BG */\n"
+"    font-size: 13px;\n"
 "    border: none;\n"
-"    font-weight: normal; /* No negritas */\n"
+"    font-weight: 600;\n"
 "}\n"
 "\n"
 "QTableWidget::item:hover {\n"
-"    background-color: #e6e6e6; /* Color de fondo al pasar el cursor sobre las celdas */\n"
+"    background-color: #F5F0F4; /* _BG */\n"
 "}\n"
 "/* Personalización de la barra de desplazamiento */\n"
 "QScrollBar:vertical {\n"
 "    border: none;\n"
-"    background: #f7f7f7; /* Fondo de la barra */\n"
-"    width: 8px; /* Barra más delgada */\n"
-"    border-radius: 4px; /* Bordes más redondeados */\n"
-"    margin: 0px 2px 0px 0px; /* Un pequeño margen para el desplazamiento */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    width: 8px;\n"
+"    border-radius: 4px;\n"
+"    margin: 0px 2px 0px 0px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical {\n"
-"    background: #bbb; /* Fondo del control deslizante */\n"
-"    min-height: 20px; /* Control deslizante más delgado */\n"
-"    border-radius: 4px; /* Bordes redondeados */\n"
-"    transition: background-color 0.3s ease; /* Transición suave para el cambio de color */\n"
+"    background: #D8C8D5; /* _BORDER */\n"
+"    min-height: 20px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical:hover {\n"
-"    background: #888; /* Color más oscuro cuando el control deslizante está siendo desplazado */\n"
+"    background: #A97099; /* _BORDER hover */\n"
 "}\n"
 "\n"
 "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {\n"
 "    border: none;\n"
-"    background: #f2f2f2; /* Fondo para los botones de la barra */\n"
-"    height: 0px; /* Sin altura para los botones */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    height: 0px;\n"
 "}\n"
 "\n"
 "QScrollBar:horizontal {\n"
 "    border: none;\n"
-"    background: #f7f7f7; /* Fondo de la barra */\n"
-"    height: 8px; /* Barra más delgada */\n"
-"    border-radius: 4px; /* Bordes más redondeados */\n"
-"    margin: 0px 0px 2px 0px; /* Un pequeño margen para el desplazamiento */\n"
+"    background: #F5F0F4; /* _BG */\n"
+"    height: 8px;\n"
+"    border-radius: 4px;\n"
+"    margin: 0px 0px 2px 0px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:horizontal {\n"
-"    background: #bbb; /* Fondo del control deslizante */\n"
-"    min-width: 20px; /* Control deslizante más delgado */\n"
-"    border-radius: 4px; /* Bordes redondeados */\n"
-"    transition: background-color 0.3s ease; /* Transición suave para el cambio de color */\n"
+"    background: #D8C8D5; /* _BORDER */\n"
+"    min-width: 20px;\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:horizontal:hover {\n"
-"    background: #888; /* Color más oscuro cuando el control deslizante está siendo desplazado */\n"
+"    background: #A97099; /* _BORDER hover */\n"
 "}\n"
 "")
         self.TablaClientes.setObjectName("TablaClientes")
@@ -540,8 +592,14 @@ class Ui_ControlCliente(object):
         item = QtWidgets.QTableWidgetItem()
         item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.TablaClientes.setHorizontalHeaderItem(4, item)
+        self.TablaClientes.verticalHeader().setVisible(False)
+        self.TablaClientes.horizontalHeader().setStretchLastSection(True)
+        self.TablaClientes.setShowGrid(False)
+        self.TablaClientes.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.TablaClientes.setAlternatingRowColors(False)
         self.verticalLayout_3.addWidget(self.TablaClientes, 0, QtCore.Qt.AlignmentFlag.AlignHCenter|QtCore.Qt.AlignmentFlag.AlignVCenter)
-        self.verticalLayout_2.addWidget(self.widget)
+        self.cardClienteLayout.addWidget(self.widget)
+        self.verticalLayout_2.addWidget(self.cardCliente)
         self.widget_4 = QtWidgets.QWidget(parent=self.ContenidoPage1)
         self.widget_4.setStyleSheet("")
         self.widget_4.setObjectName("widget_4")

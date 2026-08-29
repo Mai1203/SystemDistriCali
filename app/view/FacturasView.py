@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt6 import QtWidgets, QtCore, QtGui
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QTimer
 
 from ..ui import Ui_Facturas
 from ..database.database import SessionLocal
@@ -45,6 +45,19 @@ class Facturas_View(QWidget, Ui_Facturas):
         self.BtnFacturaPagada.clicked.connect(self.factura_pagada)
         self.BtnEditarFactura.clicked.connect(self.editar_factura)
         self.BtnVerCancelarVenta.clicked.connect(self.cancelar_venta)
+
+        # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
+        QTimer.singleShot(50, self._adapt_current)
+
+    # ── Responsividad ──────────────────────────────────────────────
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adapt_current()
+
+    def _adapt_current(self):
+        w, h = self.width(), self.height()
+        if w > 0 and h > 0:
+            self.adapt_to_size(w, h)
 
     def showEvent(self, event):
         super().showEvent(event)

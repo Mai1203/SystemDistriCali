@@ -105,6 +105,8 @@ class Cliente_View(QWidget, Ui_ControlCliente):
             self.registrar_cliente
         )
 
+        
+
     def showEvent(self, event):
         super().showEvent(event)
 

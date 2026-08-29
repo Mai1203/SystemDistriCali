@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QFileDialog, QMessageBox
-from PyQt6.QtCore import QDate  # No se usa, pero se puede eliminar si no es necesario
+from PyQt6.QtCore import QDate, QTimer  # No se usa QDate, pero se puede eliminar si no es necesario
 from ..database.database import SessionLocal
 from ..ui import Ui_Reportes
 from ..controllers.tipo_pago_crud import *
@@ -55,6 +55,19 @@ class Reportes_View(QWidget, Ui_Reportes):
         # Habilitar calendarios (ya están habilitados por defecto, pero por claridad)
         self.CalendarioCaja.setEnabled(True)
         self.CalendarioAnalisis.setEnabled(True)
+
+        # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
+        QTimer.singleShot(50, self._adapt_current)
+
+    # ── Responsividad ──────────────────────────────────────────────
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adapt_current()
+
+    def _adapt_current(self):
+        w, h = self.width(), self.height()
+        if w > 0 and h > 0:
+            self.adapt_to_size(w, h)
 
     def cambiar_estado(self):
         """Cambiar estado de combobox y calendario."""

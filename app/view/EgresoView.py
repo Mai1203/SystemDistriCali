@@ -75,6 +75,19 @@ class Egreso_View(QWidget, Ui_Egreso):
             self.mostrar_datos_egreso
         )
 
+        # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
+        QTimer.singleShot(50, self._adapt_current)
+
+    # ── Responsividad ──────────────────────────────────────────────
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adapt_current()
+
+    def _adapt_current(self):
+        w, h = self.width(), self.height()
+        if w > 0 and h > 0:
+            self.adapt_to_size(w, h)
+
     def showEvent(self, event):
         super().showEvent(event)
         self.limpiar_formulario()

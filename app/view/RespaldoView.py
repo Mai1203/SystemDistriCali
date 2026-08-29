@@ -24,11 +24,25 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         self.BtnRespaldoExportar.clicked.connect(self.exportar_base_datos)
         self.BtnRespaldoImportar.clicked.connect(self.importar_base_datos)
 
+        # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
+        QTimer.singleShot(50, self._adapt_current)
+
         # Configuración del temporizador (verifica cada hora)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.respaldo_automatico)
         self.timer.start(1 * 60 * 1000)  # Verificar cada hora (60 minutos)
 
+    # ── Responsividad ──────────────────────────────────────────────
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adapt_current()
+
+    def _adapt_current(self):
+        w, h = self.width(), self.height()
+        if w > 0 and h > 0:
+            self.adapt_to_size(w, h)
+
+    # ─────────────────────────────────────────────────────────────
     def exportar_base_datos(self):
         if not os.path.exists(DATABASE_PATH):
             QMessageBox.warning(self, "Error", "No se encontró la base de datos.")
