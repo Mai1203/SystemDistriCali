@@ -36,9 +36,6 @@ class Caja_View(QWidget, Ui_Caja):
 
         self.InputMontoCaja.setPlaceholderText("Ej : 45000")
 
-        self.TablaCaja.setColumnWidth(3, 180)
-        self.TablaCaja.setColumnWidth(4, 180)
-
         self.TablaCaja.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
         )
@@ -67,6 +64,16 @@ class Caja_View(QWidget, Ui_Caja):
         self.limpiar_tabla()
         self.mostrar_tabla()
         self.sumar_total()
+        self.seleccionar_caja_abierta()
+
+    def seleccionar_caja_abierta(self):
+        """Selecciona la caja abierta para cargar automáticamente sus movimientos."""
+        for row in range(self.TablaCaja.rowCount()):
+            estado = self.TablaCaja.item(row, 8)
+            if estado and estado.text() == "Abierta":
+                self.TablaCaja.setCurrentCell(row, 0)
+                return True
+        return False
 
     def seleccionar_fila(self):
         selected_row = self.TablaCaja.currentRow()
@@ -94,8 +101,12 @@ class Caja_View(QWidget, Ui_Caja):
         id_caja = self.TablaCaja.item(selected_row, 0).text()
         id_usuario = self.TablaCaja.item(selected_row, 1).text()
         monto_base = self.TablaCaja.item(selected_row, 2).text()
-        fecha_apertura = self.TablaCaja.item(selected_row, 3).text()
-        fecha_cierre = self.TablaCaja.item(selected_row, 4).text()
+        fecha_apertura_item = self.TablaCaja.item(selected_row, 3)
+        fecha_cierre_item = self.TablaCaja.item(selected_row, 4)
+        fecha_apertura = fecha_apertura_item.data(Qt.ItemDataRole.UserRole)
+        fecha_cierre = fecha_cierre_item.data(Qt.ItemDataRole.UserRole)
+        fecha_apertura = fecha_apertura if fecha_apertura is not None else fecha_apertura_item.text()
+        fecha_cierre = fecha_cierre if fecha_cierre is not None else fecha_cierre_item.text()
         monto_efectivo = self.TablaCaja.item(selected_row, 5).text()
         monto_transaccion = self.TablaCaja.item(selected_row, 6).text()
         monto_final = self.TablaCaja.item(selected_row, 7).text()
@@ -217,7 +228,7 @@ class Caja_View(QWidget, Ui_Caja):
             ingresos = obtener_ingresos(db=db, FechaInicio=dt_inicio, FechaFin=dt_fin) or []
             for ing in ingresos:
                 tipo = str(ing.tipo_ingreso)
-                if tipo == "Venta":
+                if tipo.startswith("Venta "):
                     ef = float(ing.monto_efectivo or 0)
                     tr = float(ing.monto_transaccion or 0)
                 else:
@@ -230,22 +241,15 @@ class Caja_View(QWidget, Ui_Caja):
             # ── Egresos ──
             egresos = obtener_egresos_reporte(db=db, fecha_inicio=dt_inicio, fecha_fin=dt_fin) or []
             for eg in egresos:
+                eg_tipo = getattr(eg, 'Tipo_Egreso', 'Egreso')
+                eg_fecha = getattr(eg, 'Fecha_Egreso', dt_inicio)
                 monto = float(getattr(eg, 'Monto_Egreso', 0) or 0)
-                # Determine method from joined query; field name is eg[3] if tuple
-                if hasattr(eg, '_fields'):  # namedtuple from query
-                    eg_id, eg_tipo, eg_fecha, eg_monto = eg
-                    metodo_id = None
-                else:
-                    eg_tipo = getattr(eg, 'Tipo_Egreso', 'Egreso')
-                    eg_fecha = getattr(eg, 'Fecha_Egreso', dt_inicio)
-                    monto = float(getattr(eg, 'Monto_Egreso', 0) or 0)
-                    metodo_id = getattr(eg, 'ID_Metodo_Pago', None)
+                metodo_id = getattr(eg, 'ID_Metodo_Pago', None)
 
-                # Resolve method name
+                # Aplicar el egreso al medio de pago con el que fue registrado.
                 metodo_nombre = "Efectivo"
                 if metodo_id:
-                    from ..controllers.metodo_pago_crud import obtener_metodo_pago_por_id
-                    mp = db.query(MetodoPago).filter(MetodoPago.ID_Metodo_Pago == metodo_id).first()
+                    mp = obtener_metodo_pago_por_id(db, metodo_id)
                     if mp:
                         metodo_nombre = mp.Nombre
 
@@ -328,8 +332,10 @@ class Caja_View(QWidget, Ui_Caja):
                     id_caja = str(caja_item.ID_Caja)
                     usuario = str(caja_item.usuario)
                     monto = str(caja_item.Monto_Base)
-                    fechaA = str(caja_item.Fecha_Apertura)
-                    fechaC = str(caja_item.Fecha_Cierre)
+                    fechaA_raw = caja_item.Fecha_Apertura
+                    fechaC_raw = caja_item.Fecha_Cierre or ""
+                    fechaA = self.formatear_fecha_tabla(fechaA_raw)
+                    fechaC = self.formatear_fecha_tabla(fechaC_raw)
                     efectivo = str(caja_item.Monto_Efectivo)
                     trasferencia = str(caja_item.Monto_Transaccion)
                     total = str(caja_item.Monto_Final_calculado)
@@ -343,20 +349,24 @@ class Caja_View(QWidget, Ui_Caja):
                     self.TablaCaja.insertRow(0)
 
                     items = [
-                        (id_caja, 0),
-                        (usuario, 1),
-                        (monto, 2),
-                        (fechaA, 3),
-                        (fechaC, 4),
-                        (efectivo, 5),
-                        (trasferencia, 6),
-                        (total, 7),
-                        (estado, 8),
+                        (id_caja, 0, None),
+                        (usuario, 1, None),
+                        (monto, 2, None),
+                        (fechaA, 3, fechaA_raw),
+                        (fechaC, 4, fechaC_raw),
+                        (efectivo, 5, None),
+                        (trasferencia, 6, None),
+                        (total, 7, None),
+                        (estado, 8, None),
                     ]
 
-                    for value, col_idx in items:
+                    for value, col_idx, raw_value in items:
 
                         item = QtWidgets.QTableWidgetItem(value)
+
+                        if raw_value is not None:
+                            item.setData(Qt.ItemDataRole.UserRole, raw_value)
+                            item.setToolTip(str(raw_value))
 
                         item.setTextAlignment(
                             Qt.AlignmentFlag.AlignCenter
@@ -370,6 +380,18 @@ class Caja_View(QWidget, Ui_Caja):
 
         except Exception as e:
             print(f"Error en Tabla caja: {e}")
+
+    @staticmethod
+    def formatear_fecha_tabla(fecha):
+        """Devuelve una fecha compacta para que las columnas de caja se mantengan legibles."""
+        if not fecha:
+            return "Abierta"
+        if isinstance(fecha, datetime):
+            return fecha.strftime("%d/%m %H:%M")
+        try:
+            return datetime.fromisoformat(str(fecha)).strftime("%d/%m %H:%M")
+        except ValueError:
+            return str(fecha)
 
     def sumar_total(self):
         """Reset summary; it is now driven by cargar_movimientos_caja."""
