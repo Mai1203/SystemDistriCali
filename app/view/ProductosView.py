@@ -105,14 +105,15 @@ class Productos_View(QWidget, Ui_Productos):
         self.InputCodigo.textChanged.connect(self.verififcarInput)
         self.InputCodigo.returnPressed.connect(self.procesar_codigo)
 
-        # Clic simple → carga datos; doble clic → carga y enfoca Nombre para editar rápido
-        self.TablaProductos.cellClicked.connect(self.cargar_datos_fila)
+        # Un doble clic abre el formulario con los datos del producto seleccionado.
         self.TablaProductos.cellDoubleClicked.connect(self._doble_clic_editar)
 
+        self.BtnRegistrarProducto.clicked.connect(self.abrir_nuevo_producto)
         self.BtnIngresarProducto.clicked.connect(self.ingresar_producto)
         self.BtnActualizar.clicked.connect(self.editar_producto)
         self.BtnEliminar.clicked.connect(self.eliminar_productos)
-        self.BtnLimpiar.clicked.connect(self.limpiar_formulario)
+        self.BtnLimpiar.clicked.connect(self.volver_al_listado)
+        self.BtnVolver.clicked.connect(self.volver_al_listado)
 
         # Estado inicial: modo NUEVO
         self._set_modo_nuevo()
@@ -124,6 +125,7 @@ class Productos_View(QWidget, Ui_Productos):
         self.BtnIngresarProducto.setVisible(True)
         self.BtnActualizar.setVisible(False)
         self.InputCodigo.setReadOnly(False)
+        self.LabelTituloFormulario.setText("Registrar producto")
         self.BadgeModo.setText("● NUEVO PRODUCTO")
         self.BadgeModo.setObjectName("BadgeNuevo")
         # Re-aplicar stylesheet para que el cambio de objectName surta efecto
@@ -135,16 +137,30 @@ class Productos_View(QWidget, Ui_Productos):
         self.BtnIngresarProducto.setVisible(False)
         self.BtnActualizar.setVisible(True)
         self.InputCodigo.setReadOnly(True)   # No permitir cambiar el código al editar
+        self.LabelTituloFormulario.setText("Editar producto")
         self.BadgeModo.setText(f"✎  EDITANDO  #{codigo}")
         self.BadgeModo.setObjectName("BadgeEditando")
         self.BadgeModo.style().unpolish(self.BadgeModo)
         self.BadgeModo.style().polish(self.BadgeModo)
 
     def _doble_clic_editar(self, row, col):
-        """Al hacer doble clic en la tabla, carga la fila y pone foco en Nombre."""
+        """Abre el formulario de edición para la fila seleccionada."""
         self.cargar_datos_fila()
         self.InputNombre.setFocus()
         self.InputNombre.selectAll()
+
+    def abrir_nuevo_producto(self):
+        """Muestra el formulario vacío para registrar un producto."""
+        self.limpiar_formulario()
+        self.Contenido.setCurrentWidget(self.PanelFormulario)
+        self.FormularioScroll.verticalScrollBar().setValue(0)
+        self.InputCodigo.setFocus()
+
+    def volver_al_listado(self):
+        """Descarta el formulario en curso y vuelve al listado de productos."""
+        self.limpiar_formulario()
+        self.Contenido.setCurrentWidget(self.PanelListado)
+        self.InputBuscador.setFocus()
 
     # ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -188,10 +204,12 @@ class Productos_View(QWidget, Ui_Productos):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self.InputCodigo.setFocus()
+        self.Contenido.setCurrentWidget(self.PanelListado)
+        self.InputBuscador.clear()
         self.limpiar_tabla_productos()
         self.mostrar_productos()
         self.limpiar_formulario()
+        self.InputBuscador.setFocus()
 
     def agregar_placeholder(self):
         """Muestra precios sugeridos (50% y 35% de margen) como placeholder."""
@@ -248,6 +266,7 @@ class Productos_View(QWidget, Ui_Productos):
         """Rellena la QTableWidget con la lista de productos."""
         if not productos:
             self.TablaProductos.setRowCount(0)
+            self.LabelTotalCp.setText("$0.00")
             return
 
         COLS = [
@@ -318,6 +337,8 @@ class Productos_View(QWidget, Ui_Productos):
     def cargar_datos_fila(self):
         """Carga los datos de la fila seleccionada en el formulario y activa modo editar."""
         fila = self.TablaProductos.currentRow()
+        if fila < 0:
+            return
         datos = [
             (self.TablaProductos.item(fila, c).text()
              if self.TablaProductos.item(fila, c) else "")
@@ -344,6 +365,8 @@ class Productos_View(QWidget, Ui_Productos):
             self.InputEstado.setCurrentIndex(idx)
         # ✨ Activar modo editar con el código del producto cargado
         self._set_modo_editar(datos[0])
+        self.Contenido.setCurrentWidget(self.PanelFormulario)
+        self.FormularioScroll.verticalScrollBar().setValue(0)
 
     def mostrar_productos(self):
         self.db = SessionLocal()
@@ -469,6 +492,7 @@ class Productos_View(QWidget, Ui_Productos):
                 enviar_notificacion("Error", f"Error: {e}")
 
     def limpiar_formulario(self):
+        codigo_blocker = QtCore.QSignalBlocker(self.InputCodigo)
         for inp in [
             self.InputCodigo, self.InputNombre, self.InputPrecioCompra,
             self.InputCantidad, self.InputCantidadMin,
@@ -479,9 +503,10 @@ class Productos_View(QWidget, Ui_Productos):
             self.InputGanancia3, self.InputGanancia4,
         ]:
             inp.setText("")
+        del codigo_blocker
+        self.InputEstado.setCurrentIndex(0)
         # Volver al modo NUEVO
         self._set_modo_nuevo()
-        self.InputCodigo.setFocus()
     def limpiar_formulario_codigo(self):
         for inp in [
             self.InputNombre, self.InputPrecioCompra,
@@ -521,7 +546,7 @@ class Productos_View(QWidget, Ui_Productos):
                 enviar_notificacion("Error", f"Error al eliminar productos: {e}")
             finally:
                 self.db.close()
-            self.InputCodigo.setFocus()
+            self.InputBuscador.setFocus()
 
     # ─── Interno ─────────────────────────────────────────────────────────────────
 
@@ -530,10 +555,8 @@ class Productos_View(QWidget, Ui_Productos):
         self.limpiar_formulario()
         self.limpiar_tabla_productos()
         self.mostrar_productos()
-        self.InputCantidadMin.setText("3")
-        self.InputMarca.setText("Predeterminado")
-        self.InputCategoria.setText("Predeterminado")
-        self.InputCodigo.setFocus()
+        self.Contenido.setCurrentWidget(self.PanelListado)
+        self.InputBuscador.setFocus()
         self.db = SessionLocal()
         configurar_autocompletado(self.InputMarca, obtener_marcas, "Nombre", self.db)
         configurar_autocompletado(self.InputCategoria, obtener_categorias, "Nombre", self.db)

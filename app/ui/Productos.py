@@ -352,166 +352,50 @@ class Ui_Productos(object):
         Productos.setObjectName("Productos")
         Productos.setStyleSheet(_STYLESHEET)
 
-        # ── Root layout ──────────────────────────────────────────────────────
+        # ── Contenedor de vistas ──────────────────────────────────────────────
         root = QtWidgets.QVBoxLayout(Productos)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        root.setContentsMargins(0, 0, 0, 0)
 
-        # ── Encabezado de página ─────────────────────────────────────────────
+        self.Contenido = QtWidgets.QStackedWidget(parent=Productos)
+        self.Contenido.setObjectName("Contenido")
+        root.addWidget(self.Contenido)
+
+        # ═══════════════════════ Listado de productos ═══════════════════════
+        self.PanelListado = QtWidgets.QWidget(parent=self.Contenido)
+        listado = QtWidgets.QVBoxLayout(self.PanelListado)
+        listado.setContentsMargins(24, 20, 24, 20)
+        listado.setSpacing(16)
+
         header_row = QtWidgets.QHBoxLayout()
         header_row.setSpacing(10)
 
         title_col = QtWidgets.QVBoxLayout()
         title_col.setSpacing(2)
-        self.LabelVentasA = _make_label(Productos, "Productos", "PageTitle")
-        subtitle = _make_label(Productos, "Gestión de inventario · Lady Nail Shop", "PageSubtitle")
+        self.LabelVentasA = _make_label(self.PanelListado, "Productos", "PageTitle")
+        subtitle = _make_label(self.PanelListado, "Gestión de inventario · Lady Nail Shop", "PageSubtitle")
         title_col.addWidget(self.LabelVentasA)
         title_col.addWidget(subtitle)
 
         header_row.addLayout(title_col)
-
-        # Badge de modo: indica si el formulario está en modo Nuevo o Editando
-        self.BadgeModo = _make_label(Productos, "● NUEVO PRODUCTO", "BadgeNuevo")
-        self.BadgeModo.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        header_row.addWidget(self.BadgeModo)
-
         header_row.addStretch()
 
-        self.BtnEliminar = QtWidgets.QPushButton("  Eliminar seleccionados", parent=Productos)
+        self.BtnRegistrarProducto = QtWidgets.QPushButton("  Registrar producto", parent=self.PanelListado)
+        self.BtnRegistrarProducto.setObjectName("BtnPrimary")
+        self.BtnRegistrarProducto.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnRegistrarProducto.setIcon(qta.icon("fa5s.plus", color="#FFFFFF"))
+        header_row.addWidget(self.BtnRegistrarProducto)
+
+        self.BtnEliminar = QtWidgets.QPushButton("  Eliminar seleccionados", parent=self.PanelListado)
         self.BtnEliminar.setObjectName("BtnDanger")
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         trash_icon = qta.icon("fa5s.trash-alt", color="#FFFFFF")
         self.BtnEliminar.setIcon(trash_icon)
         header_row.addWidget(self.BtnEliminar)
 
-        root.addLayout(header_row)
-
-        # ── Card formulario ──────────────────────────────────────────────────
-        self.Card = QtWidgets.QFrame(parent=Productos)
-        self.Card.setObjectName("Card")
-        card_layout = QtWidgets.QVBoxLayout(self.Card)
-        card_layout.setContentsMargins(24, 20, 24, 20)
-        card_layout.setSpacing(8)
-
-        # ·· Sección 1: Información Básica ····································
-        card_layout.addWidget(_section_header(self.Card, "Información Básica"))
-        grid1 = QtWidgets.QGridLayout()
-        grid1.setSpacing(10)
-        grid1.setColumnStretch(0, 1)
-        grid1.setColumnStretch(1, 2)
-        grid1.setColumnStretch(2, 1)
-        grid1.setColumnStretch(3, 1)
-
-        self.InputCodigo   = _make_input(self.Card, "InputCodigo",   "Ej: 1000")
-        self.InputNombre   = _make_input(self.Card, "InputNombre",   "Ej: Esmalte Rosa Pastel")
-        self.InputMarca    = _make_input(self.Card, "InputMarca",    "Ej: Predeterminado")
-        self.InputCategoria= _make_input(self.Card, "InputCategoria","Ej: Predeterminado")
-
-        for col, (lbl, w) in enumerate([
-            ("Código",    self.InputCodigo),
-            ("Nombre",    self.InputNombre),
-            ("Marca",     self.InputMarca),
-            ("Categoría", self.InputCategoria),
-        ]):
-            grid1.addWidget(_make_label(self.Card, lbl), 0, col)
-            grid1.addWidget(w, 1, col)
-        card_layout.addLayout(grid1)
-
-        # ·· Sección 2: Stock ·················································
-        card_layout.addWidget(_section_header(self.Card, "Stock"))
-        grid2 = QtWidgets.QGridLayout()
-        grid2.setSpacing(10)
-
-        self.InputCantidad    = _make_input(self.Card, "InputCantidad",    "Ej: 10")
-        self.InputCantidadMin = _make_input(self.Card, "InputCantidadMin", "Ej: 3")
-        self.InputPrecioCompra= _make_input(self.Card, "InputPrecioCompra","Ej: 2500")
-
-        # Estado como ComboBox
-        self.InputEstado = QtWidgets.QComboBox(parent=self.Card)
-        self.InputEstado.setObjectName("InputEstado")
-        self.InputEstado.addItems(["Activo", "Inactivo"])
-
-        for col, (lbl, w) in enumerate([
-            ("Stock Actual",  self.InputCantidad),
-            ("Stock Mínimo",  self.InputCantidadMin),
-            ("Precio Costo",  self.InputPrecioCompra),
-            ("Estado",        self.InputEstado),
-        ]):
-            grid2.addWidget(_make_label(self.Card, lbl), 0, col)
-            grid2.addWidget(w, 1, col)
-        card_layout.addLayout(grid2)
-
-        # ·· Sección 3: Precios de Venta ······································
-        card_layout.addWidget(_section_header(self.Card, "Precios de Venta"))
-        grid3 = QtWidgets.QGridLayout()
-        grid3.setSpacing(10)
-
-        self.InputPrecioVenta1 = _make_input(self.Card, "InputPrecioVenta1", "PV-1 (50% margen)")
-        self.InputPrecioVenta2 = _make_input(self.Card, "InputPrecioVenta2", "PV-2 (35% margen)")
-        self.InputPrecioVenta3 = _make_input(self.Card, "InputPrecioVenta3", "PV-3 opcional")
-        self.InputPrecioVenta4 = _make_input(self.Card, "InputPrecioVenta4", "PV-4 opcional")
-
-        for col, (lbl, w) in enumerate([
-            ("Precio Venta 1", self.InputPrecioVenta1),
-            ("Precio Venta 2", self.InputPrecioVenta2),
-            ("Precio Venta 3", self.InputPrecioVenta3),
-            ("Precio Venta 4", self.InputPrecioVenta4),
-        ]):
-            grid3.addWidget(_make_label(self.Card, lbl), 0, col)
-            grid3.addWidget(w, 1, col)
-        card_layout.addLayout(grid3)
-
-        # ·· Sección 4: Ganancias (read-only) ··································
-        card_layout.addWidget(_section_header(self.Card, "Ganancias Calculadas"))
-        grid4 = QtWidgets.QGridLayout()
-        grid4.setSpacing(10)
-
-        self.InputGanancia1 = _make_input(self.Card, "InputGanancia1", "Auto", read_only=True)
-        self.InputGanancia2 = _make_input(self.Card, "InputGanancia2", "Auto", read_only=True)
-        self.InputGanancia3 = _make_input(self.Card, "InputGanancia3", "Auto", read_only=True)
-        self.InputGanancia4 = _make_input(self.Card, "InputGanancia4", "Auto", read_only=True)
-
-        for col, (lbl, w) in enumerate([
-            ("Ganancia PV-1", self.InputGanancia1),
-            ("Ganancia PV-2", self.InputGanancia2),
-            ("Ganancia PV-3", self.InputGanancia3),
-            ("Ganancia PV-4", self.InputGanancia4),
-        ]):
-            grid4.addWidget(_make_label(self.Card, lbl), 0, col)
-            grid4.addWidget(w, 1, col)
-        card_layout.addLayout(grid4)
-
-        # ·· Botones de acción ·················································
-        card_layout.addSpacing(8)
-        btn_row = QtWidgets.QHBoxLayout()
-        btn_row.setSpacing(10)
-        btn_row.addStretch()
-
-        self.BtnLimpiar = QtWidgets.QPushButton("  Cancelar", parent=self.Card)
-        self.BtnLimpiar.setObjectName("BtnSecondary")
-        self.BtnLimpiar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.BtnLimpiar.setIcon(qta.icon("fa5s.times", color=_PRIMARY))
-
-        self.BtnActualizar = QtWidgets.QPushButton("  Actualizar Producto", parent=self.Card)
-        self.BtnActualizar.setObjectName("BtnActualizar")
-        self.BtnActualizar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.BtnActualizar.setIcon(qta.icon("fa5s.sync-alt", color="#FFFFFF"))
-        self.BtnActualizar.setVisible(False)  # Oculto por defecto — solo aparece al editar
-
-        self.BtnIngresarProducto = QtWidgets.QPushButton("  Guardar Producto", parent=self.Card)
-        self.BtnIngresarProducto.setObjectName("BtnPrimary")
-        self.BtnIngresarProducto.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.BtnIngresarProducto.setIcon(qta.icon("fa5s.plus", color="#FFFFFF"))
-
-        btn_row.addWidget(self.BtnLimpiar)
-        btn_row.addWidget(self.BtnActualizar)
-        btn_row.addWidget(self.BtnIngresarProducto)
-        card_layout.addLayout(btn_row)
-
-        root.addWidget(self.Card)
+        listado.addLayout(header_row)
 
         # ── Barra de búsqueda ────────────────────────────────────────────────
-        search_container = QtWidgets.QWidget(parent=Productos)
+        search_container = QtWidgets.QWidget(parent=self.PanelListado)
         search_container.setStyleSheet("background: transparent;")
         search_row = QtWidgets.QHBoxLayout(search_container)
         search_row.setContentsMargins(0, 0, 0, 0)
@@ -562,10 +446,10 @@ class Ui_Productos(object):
         search_row.addWidget(search_frame, stretch=3)
         search_row.addStretch()
         search_row.addWidget(total_frame)
-        root.addWidget(search_container)
+        listado.addWidget(search_container)
 
         # ── Tabla de productos ───────────────────────────────────────────────
-        self.TablaProductos = QtWidgets.QTableWidget(parent=Productos)
+        self.TablaProductos = QtWidgets.QTableWidget(parent=self.PanelListado)
         self.TablaProductos.setObjectName("TablaProductos")
         self.TablaProductos.verticalHeader().setVisible(False)
         self.TablaProductos.setShowGrid(True)
@@ -588,6 +472,180 @@ class Ui_Productos(object):
         self.TablaProductos.horizontalHeader().setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Stretch
         )
-        root.addWidget(self.TablaProductos)
+        listado.addWidget(self.TablaProductos, stretch=1)
+        self.Contenido.addWidget(self.PanelListado)
+
+        # ══════════════════════ Formulario de producto ══════════════════════
+        self.PanelFormulario = QtWidgets.QWidget(parent=self.Contenido)
+        formulario = QtWidgets.QVBoxLayout(self.PanelFormulario)
+        formulario.setContentsMargins(24, 20, 24, 20)
+        formulario.setSpacing(16)
+
+        form_header = QtWidgets.QHBoxLayout()
+        form_header.setSpacing(10)
+
+        self.BtnVolver = QtWidgets.QPushButton("  Volver", parent=self.PanelFormulario)
+        self.BtnVolver.setObjectName("BtnSecondary")
+        self.BtnVolver.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnVolver.setIcon(qta.icon("fa5s.arrow-left", color=_PRIMARY))
+        form_header.addWidget(self.BtnVolver)
+
+        form_title_col = QtWidgets.QVBoxLayout()
+        form_title_col.setSpacing(2)
+        self.LabelTituloFormulario = _make_label(self.PanelFormulario, "Registrar producto", "PageTitle")
+        form_subtitle = _make_label(
+            self.PanelFormulario,
+            "Completa la información del producto para guardarlo en el inventario.",
+            "PageSubtitle",
+        )
+        form_title_col.addWidget(self.LabelTituloFormulario)
+        form_title_col.addWidget(form_subtitle)
+        form_header.addLayout(form_title_col)
+        form_header.addStretch()
+
+        self.BadgeModo = _make_label(self.PanelFormulario, "● NUEVO PRODUCTO", "BadgeNuevo")
+        self.BadgeModo.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        form_header.addWidget(self.BadgeModo)
+        formulario.addLayout(form_header)
+
+        self.FormularioScroll = QtWidgets.QScrollArea(parent=self.PanelFormulario)
+        self.FormularioScroll.setObjectName("FormularioScroll")
+        self.FormularioScroll.setWidgetResizable(True)
+        self.FormularioScroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.FormularioScroll.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        form_content = QtWidgets.QWidget(parent=self.FormularioScroll)
+        form_content.setObjectName("FormularioContenido")
+        content_layout = QtWidgets.QVBoxLayout(form_content)
+        content_layout.setContentsMargins(0, 0, 8, 0)
+        content_layout.setSpacing(0)
+
+        self.Card = QtWidgets.QFrame(parent=form_content)
+        self.Card.setObjectName("Card")
+        card_layout = QtWidgets.QVBoxLayout(self.Card)
+        card_layout.setContentsMargins(24, 20, 24, 20)
+        card_layout.setSpacing(8)
+
+        # ·· Sección 1: Información Básica ····································
+        card_layout.addWidget(_section_header(self.Card, "Información Básica"))
+        grid1 = QtWidgets.QGridLayout()
+        grid1.setSpacing(10)
+        grid1.setColumnStretch(0, 1)
+        grid1.setColumnStretch(1, 2)
+        grid1.setColumnStretch(2, 1)
+        grid1.setColumnStretch(3, 1)
+
+        self.InputCodigo = _make_input(self.Card, "InputCodigo", "Ej: 1000")
+        self.InputNombre = _make_input(self.Card, "InputNombre", "Ej: Esmalte Rosa Pastel")
+        self.InputMarca = _make_input(self.Card, "InputMarca", "Ej: Predeterminado")
+        self.InputCategoria = _make_input(self.Card, "InputCategoria", "Ej: Predeterminado")
+
+        for col, (lbl, w) in enumerate([
+            ("Código", self.InputCodigo),
+            ("Nombre", self.InputNombre),
+            ("Marca", self.InputMarca),
+            ("Categoría", self.InputCategoria),
+        ]):
+            grid1.addWidget(_make_label(self.Card, lbl), 0, col)
+            grid1.addWidget(w, 1, col)
+        card_layout.addLayout(grid1)
+
+        # ·· Sección 2: Stock ·················································
+        card_layout.addWidget(_section_header(self.Card, "Stock"))
+        grid2 = QtWidgets.QGridLayout()
+        grid2.setSpacing(10)
+
+        self.InputCantidad = _make_input(self.Card, "InputCantidad", "Ej: 10")
+        self.InputCantidadMin = _make_input(self.Card, "InputCantidadMin", "Ej: 3")
+        self.InputPrecioCompra = _make_input(self.Card, "InputPrecioCompra", "Ej: 2500")
+
+        self.InputEstado = QtWidgets.QComboBox(parent=self.Card)
+        self.InputEstado.setObjectName("InputEstado")
+        self.InputEstado.addItems(["Activo", "Inactivo"])
+
+        for col, (lbl, w) in enumerate([
+            ("Stock Actual", self.InputCantidad),
+            ("Stock Mínimo", self.InputCantidadMin),
+            ("Precio Costo", self.InputPrecioCompra),
+            ("Estado", self.InputEstado),
+        ]):
+            grid2.addWidget(_make_label(self.Card, lbl), 0, col)
+            grid2.addWidget(w, 1, col)
+        card_layout.addLayout(grid2)
+
+        # ·· Sección 3: Precios de Venta ······································
+        card_layout.addWidget(_section_header(self.Card, "Precios de Venta"))
+        grid3 = QtWidgets.QGridLayout()
+        grid3.setSpacing(10)
+
+        self.InputPrecioVenta1 = _make_input(self.Card, "InputPrecioVenta1", "PV-1 (50% margen)")
+        self.InputPrecioVenta2 = _make_input(self.Card, "InputPrecioVenta2", "PV-2 (35% margen)")
+        self.InputPrecioVenta3 = _make_input(self.Card, "InputPrecioVenta3", "PV-3 opcional")
+        self.InputPrecioVenta4 = _make_input(self.Card, "InputPrecioVenta4", "PV-4 opcional")
+
+        for col, (lbl, w) in enumerate([
+            ("Precio Venta 1", self.InputPrecioVenta1),
+            ("Precio Venta 2", self.InputPrecioVenta2),
+            ("Precio Venta 3", self.InputPrecioVenta3),
+            ("Precio Venta 4", self.InputPrecioVenta4),
+        ]):
+            grid3.addWidget(_make_label(self.Card, lbl), 0, col)
+            grid3.addWidget(w, 1, col)
+        card_layout.addLayout(grid3)
+
+        # ·· Sección 4: Ganancias (read-only) ··································
+        card_layout.addWidget(_section_header(self.Card, "Ganancias Calculadas"))
+        grid4 = QtWidgets.QGridLayout()
+        grid4.setSpacing(10)
+
+        self.InputGanancia1 = _make_input(self.Card, "InputGanancia1", "Auto", read_only=True)
+        self.InputGanancia2 = _make_input(self.Card, "InputGanancia2", "Auto", read_only=True)
+        self.InputGanancia3 = _make_input(self.Card, "InputGanancia3", "Auto", read_only=True)
+        self.InputGanancia4 = _make_input(self.Card, "InputGanancia4", "Auto", read_only=True)
+
+        for col, (lbl, w) in enumerate([
+            ("Ganancia PV-1", self.InputGanancia1),
+            ("Ganancia PV-2", self.InputGanancia2),
+            ("Ganancia PV-3", self.InputGanancia3),
+            ("Ganancia PV-4", self.InputGanancia4),
+        ]):
+            grid4.addWidget(_make_label(self.Card, lbl), 0, col)
+            grid4.addWidget(w, 1, col)
+        card_layout.addLayout(grid4)
+
+        card_layout.addSpacing(8)
+        btn_row = QtWidgets.QHBoxLayout()
+        btn_row.setSpacing(10)
+        btn_row.addStretch()
+
+        self.BtnLimpiar = QtWidgets.QPushButton("  Cancelar", parent=self.Card)
+        self.BtnLimpiar.setObjectName("BtnSecondary")
+        self.BtnLimpiar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnLimpiar.setIcon(qta.icon("fa5s.times", color=_PRIMARY))
+
+        self.BtnActualizar = QtWidgets.QPushButton("  Actualizar Producto", parent=self.Card)
+        self.BtnActualizar.setObjectName("BtnActualizar")
+        self.BtnActualizar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnActualizar.setIcon(qta.icon("fa5s.sync-alt", color="#FFFFFF"))
+        self.BtnActualizar.setVisible(False)
+
+        self.BtnIngresarProducto = QtWidgets.QPushButton("  Guardar Producto", parent=self.Card)
+        self.BtnIngresarProducto.setObjectName("BtnPrimary")
+        self.BtnIngresarProducto.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnIngresarProducto.setIcon(qta.icon("fa5s.plus", color="#FFFFFF"))
+
+        btn_row.addWidget(self.BtnLimpiar)
+        btn_row.addWidget(self.BtnActualizar)
+        btn_row.addWidget(self.BtnIngresarProducto)
+        card_layout.addLayout(btn_row)
+
+        content_layout.addWidget(self.Card)
+        content_layout.addStretch()
+        self.FormularioScroll.setWidget(form_content)
+        formulario.addWidget(self.FormularioScroll, stretch=1)
+        self.Contenido.addWidget(self.PanelFormulario)
+        self.Contenido.setCurrentWidget(self.PanelListado)
 
         QtCore.QMetaObject.connectSlotsByName(Productos)
