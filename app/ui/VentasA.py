@@ -323,6 +323,8 @@ class Ui_VentasA(object):
         self.resumenCard.setStyleSheet(f"QWidget#resumenCard {{ background-color: {_PINK_BG}; border-radius: 12px; border: 1px solid {_DIVIDER}; }}")
         self.resumenCard.setObjectName("resumenCard")
         resumenLayout = QtWidgets.QVBoxLayout(self.resumenCard)
+        resumenLayout.setContentsMargins(16, 16, 16, 16)
+        resumenLayout.setSpacing(10)
         
         titleResumenLayout = QtWidgets.QHBoxLayout()
         lblIconResumen = QtWidgets.QLabel()
@@ -334,31 +336,70 @@ class Ui_VentasA(object):
         titleResumenLayout.addStretch()
         resumenLayout.addLayout(titleResumenLayout)
         
-        resumenLayout.addSpacing(16)
+        # ── Caja destacada: Subtotal Ítems (Protagonista) ──
+        self.subtotalBox = QtWidgets.QFrame(self.resumenCard)
+        self.subtotalBox.setStyleSheet(f"""
+            QFrame {{
+                background-color: {_CARD_BG};
+                border: 1.5px solid {_PRIMARY};
+                border-radius: 8px;
+                padding: 6px 10px;
+            }}
+        """)
+        subtotalBoxLayout = QtWidgets.QHBoxLayout(self.subtotalBox)
+        subtotalBoxLayout.setContentsMargins(4, 4, 4, 4)
         
-        # We will need standard labels for the view to update if necessary, or just rely on the view logic updating specific labels.
-        # Let's define the labels the view might look for, or just general ones.
+        lblSubtotalTitleLayout = QtWidgets.QVBoxLayout()
+        lblSubtotalTitleLayout.setSpacing(2)
+        lblSubtotalHeader = QtWidgets.QLabel("Subtotal Ítems")
+        lblSubtotalHeader.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {_TEXT};")
+        lblSubtotalSub = QtWidgets.QLabel("(Valor productos)")
+        lblSubtotalSub.setStyleSheet(f"font-size: 10px; color: {_MUTED};")
+        lblSubtotalTitleLayout.addWidget(lblSubtotalHeader)
+        lblSubtotalTitleLayout.addWidget(lblSubtotalSub)
+        subtotalBoxLayout.addLayout(lblSubtotalTitleLayout)
+        
+        subtotalBoxLayout.addStretch()
         self.LabelSubtotal = QtWidgets.QLabel("$ 0")
-        self.LabelSubtotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self._add_row(resumenLayout, "Subtotal Ítems", self.LabelSubtotal)
+        self.LabelSubtotal.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_PRIMARY};")
+        self.LabelSubtotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        subtotalBoxLayout.addWidget(self.LabelSubtotal)
+        resumenLayout.addWidget(self.subtotalBox)
         
+        # ── Desglose ──
         self.lblResumenDescuento = QtWidgets.QLabel("- $ 0")
         self.lblResumenDescuento.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self.lblResumenDescuento.setStyleSheet("color: red;")
+        self.lblResumenDescuento.setStyleSheet("color: #C0392B; font-weight: 600;")
         self._add_row(resumenLayout, "Descuento Global", self.lblResumenDescuento)
         
-        self._add_row(resumenLayout, "Subtotal", QtWidgets.QLabel("$ 0", alignment=QtCore.Qt.AlignmentFlag.AlignRight))
+        self.lblResumenDomicilio = QtWidgets.QLabel("+ $ 0")
+        self.lblResumenDomicilio.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.lblResumenDomicilio.setStyleSheet(f"color: {_MUTED}; font-size: 13px;")
+        self._add_row(resumenLayout, "Valor Domicilio", self.lblResumenDomicilio)
         
+        # ── Total General ──
         self.lblTotalTitle = QtWidgets.QLabel("Total")
-        self.lblTotalTitle.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {_TEXT};")
+        self.lblTotalTitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_TEXT};")
         self.LabelTotal = QtWidgets.QLabel("$ 0")
-        self.LabelTotal.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {_PRIMARY};")
+        self.LabelTotal.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {_TEXT};")
         self.LabelTotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         
         totLayout = QtWidgets.QHBoxLayout()
         totLayout.addWidget(self.lblTotalTitle)
         totLayout.addWidget(self.LabelTotal)
         resumenLayout.addLayout(totLayout)
+        
+        # ── Nota informativa sobre el pago ──
+        self.lblNotaPago = QtWidgets.QLabel(
+            "ℹ️ El valor a cobrar corresponde al Subtotal de Ítems.\n(El domicilio no se registra en la base de datos).",
+            self.resumenCard
+        )
+        self.lblNotaPago.setWordWrap(True)
+        self.lblNotaPago.setStyleSheet(
+            f"background-color: #FFFFFF; color: {_MUTED}; font-size: 10px; font-style: italic; "
+            f"border: 1px dashed {_DIVIDER}; border-radius: 6px; padding: 6px 8px;"
+        )
+        resumenLayout.addWidget(self.lblNotaPago)
         
         resumenLayout.addStretch()
 

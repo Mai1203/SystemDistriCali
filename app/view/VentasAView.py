@@ -89,6 +89,8 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputCedula.textChanged.connect(self.validar_campos)
         self.InputCedula.returnPressed.connect(self.completar_campos)
         self.InputDescuento.textChanged.connect(self.aplicar_descuento)
+        self.InputPago.returnPressed.connect(self.generar_venta)
+        self.InputPagoTransferencia.returnPressed.connect(self.generar_venta)
         self.MetodoPagoBox.currentIndexChanged.connect(self.configuracion_pago)
         configurar_autocompletado(self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo)
         configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
@@ -209,7 +211,64 @@ class VentasA_View(QWidget, Ui_VentasA):
 
     def configurar_tipo_venta(self, indice):
         self.tipo_venta = indice
-        self.LabelVentasA.setText(f"Ventas {chr(65 + indice)}")
+        self.actualizar_precios_segun_tipo_venta()
+
+    def actualizar_precios_segun_tipo_venta(self):
+        """Actualiza los precios unitarios y subtotales de los productos en la tabla según el tipo de factura seleccionado."""
+        codigo_input = self.InputCodigo.text().strip()
+        if codigo_input and codigo_input.isdigit():
+            db_temp = SessionLocal()
+            try:
+                prod = obtener_producto_por_id(db_temp, int(codigo_input))
+                if prod:
+                    nuevo_p = obtener_precio_producto(prod[0], self.tipo_venta)
+                    self.InputPrecioUnitario.setText(str(nuevo_p))
+            except Exception:
+                pass
+            finally:
+                db_temp.close()
+
+        if self.tableWidget.rowCount() == 0:
+            return
+
+        db = SessionLocal()
+        try:
+            for row in range(self.tableWidget.rowCount()):
+                item_cod = self.tableWidget.item(row, 0)
+                item_cant = self.tableWidget.item(row, 4)
+                if not item_cod or not item_cant:
+                    continue
+                try:
+                    codigo = int(item_cod.text().strip())
+                    cantidad = int(item_cant.text().strip())
+                except ValueError:
+                    continue
+
+                productos = obtener_producto_por_id(db, codigo)
+                if productos:
+                    producto = productos[0]
+                    nuevo_precio = float(obtener_precio_producto(producto, self.tipo_venta))
+                    nuevo_total = cantidad * nuevo_precio
+                    nuevo_total_redondeado = round(nuevo_total / 100) * 100
+
+                    item_precio = QTableWidgetItem(str(nuevo_precio))
+                    item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.tableWidget.setItem(row, 5, item_precio)
+
+                    item_total = QTableWidgetItem(str(nuevo_total_redondeado))
+                    item_total.setFlags(item_total.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    item_total.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.tableWidget.setItem(row, 6, item_total)
+
+            self.actualizar_total()
+            self.InputPago.clear()
+            if hasattr(self, 'InputPagoTransferencia'):
+                self.InputPagoTransferencia.clear()
+        except Exception as e:
+            print(f"Error al actualizar precios de la tabla según tipo de venta: {e}")
+        finally:
+            db.close()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -267,7 +326,9 @@ class VentasA_View(QWidget, Ui_VentasA):
                     subtotal_items += float(self.tableWidget.item(row, 6).text().replace(",", ""))
                 except (AttributeError, ValueError):
                     pass
-            domicilio_val = float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
+            # Subtotal de los ítems con descuento aplicado (base para cobrar/base de datos)
+            monto_items = subtotal_items - descuento
+            # Total general que incluye domicilio (si aplica)
             total_venta = subtotal_items + domicilio_val - descuento
 
             # ── VALIDACIÓN DE PAGO ──
@@ -282,15 +343,17 @@ class VentasA_View(QWidget, Ui_VentasA):
                     QMessageBox.critical(self, "Pago inválido", "Ingresa un monto en efectivo válido.")
                     self.InputPago.setFocus()
                     return
-                if monto < total_venta:
+                monto_minimo = monto_items if domicilio_val > 0 else total_venta
+                if monto < monto_minimo:
                     QMessageBox.critical(
                         self, "❌ Pago insuficiente",
-                        f"El efectivo recibido (${monto:,.2f}) es menor al total de la venta (${total_venta:,.2f}).\n"
-                        f"Diferencia: ${total_venta - monto:,.2f}"
+                        f"El efectivo recibido (${monto:,.2f}) es menor al total a cobrar (${monto_minimo:,.2f}).\n"
+                        f"Diferencia: ${monto_minimo - monto:,.2f}"
                     )
                     self.InputPago.setFocus()
                     return
-                vuelto = monto - total_venta
+                cobro_base = total_venta if (monto >= total_venta and domicilio_val > 0) else monto_items
+                vuelto = monto - cobro_base
                 if vuelto > 0:
                     QMessageBox.information(
                         self, "💰 Vuelto",
@@ -305,10 +368,10 @@ class VentasA_View(QWidget, Ui_VentasA):
                     QMessageBox.critical(self, "Pago inválido", "Ingresa un monto de transferencia válido.")
                     self.InputPago.setFocus()
                     return
-                if abs(monto - total_venta) > 0.01:
+                if abs(monto - monto_items) > 0.01 and abs(monto - total_venta) > 0.01:
                     QMessageBox.critical(
                         self, "❌ Monto incorrecto",
-                        f"La transferencia (${monto:,.2f}) debe ser EXACTAMENTE igual al total (${total_venta:,.2f})."
+                        f"La transferencia (${monto:,.2f}) debe ser igual al subtotal de los ítems (${monto_items:,.2f})."
                     )
                     self.InputPago.setFocus()
                     return
@@ -325,11 +388,11 @@ class VentasA_View(QWidget, Ui_VentasA):
                     QMessageBox.critical(self, "❌ Campos vacíos", "En pago Mixto ambos montos deben ser mayores a $0.")
                     return
                 suma = m_ef + m_tr
-                if abs(suma - total_venta) > 0.01:
+                if abs(suma - monto_items) > 0.01 and abs(suma - total_venta) > 0.01:
                     QMessageBox.critical(
                         self, "❌ Monto incorrecto",
-                        f"La suma de los pagos (${suma:,.2f}) debe ser EXACTAMENTE igual al total de la venta (${total_venta:,.2f}).\n"
-                        f"Diferencia: ${total_venta - suma:,.2f}"
+                        f"La suma de los pagos (${suma:,.2f}) debe ser igual al subtotal de los productos (${monto_items:,.2f}).\n"
+                        f"Diferencia: ${monto_items - suma:,.2f}"
                     )
                     return
                 monto_pago = f"{m_ef}/{m_tr}"
@@ -951,15 +1014,25 @@ class VentasA_View(QWidget, Ui_VentasA):
     def actualizar_total(self):
         subtotal = self.calcular_subtotal()
         domicilio = self.obtener_valor_domicilio()
-        total = subtotal + domicilio
-        self.LabelSubtotal.setText(formatear_numero(subtotal))
-        self.LabelTotal.setText(formatear_numero(total))
+        descuento_str = self.InputDescuento.text().strip() if hasattr(self, 'InputDescuento') else ""
+        try:
+            descuento = float(descuento_str) if descuento_str else 0.0
+        except ValueError:
+            descuento = 0.0
+        
+        total = subtotal + domicilio - descuento
+        self.LabelSubtotal.setText(f"$ {formatear_numero(subtotal)}")
+        if hasattr(self, 'lblResumenDescuento'):
+            self.lblResumenDescuento.setText(f"- $ {formatear_numero(descuento)}")
+        if hasattr(self, 'lblResumenDomicilio'):
+            self.lblResumenDomicilio.setText(f"+ $ {formatear_numero(domicilio)}")
+        self.LabelTotal.setText(f"$ {formatear_numero(total)}")
 
     def aplicar_descuento(self):
         try:
             descuento_str = self.InputDescuento.text().strip()
             if descuento_str == "":
-                descuento = 0
+                descuento = 0.0
             else:
                 descuento = float(descuento_str)
                 if descuento < 0:
@@ -975,22 +1048,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             self.InputDescuento.clear()
             return
 
-        nuevo_subtotal = subtotal_antes_descuento - descuento
-        domicilio = self.obtener_valor_domicilio()
-        total = nuevo_subtotal + domicilio
-
-        if nuevo_subtotal.is_integer():
-            subtotal_formateado = f"{nuevo_subtotal:,.0f}"
-        else:
-            subtotal_formateado = f"{nuevo_subtotal:,.2f}"
-
-        if total.is_integer():
-            total_formateado = f"{total:,.0f}"
-        else:
-            total_formateado = f"{total:,.2f}"
-
-        self.LabelSubtotal.setText(f"{subtotal_formateado}")
-        self.LabelTotal.setText(f"{total_formateado}")
+        self.actualizar_total()
 
     def cargar_datos(self, row, column):
         try:
@@ -1248,8 +1306,12 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputTelefonoCli.clear()
         self.InputDireccion.clear()
         self.InputDescuento.clear()
-        self.LabelTotal.setText("$")
-        self.LabelSubtotal.setText("$")
+        self.LabelTotal.setText("$ 0")
+        self.LabelSubtotal.setText("$ 0")
+        if hasattr(self, 'lblResumenDescuento'):
+            self.lblResumenDescuento.setText("- $ 0")
+        if hasattr(self, 'lblResumenDomicilio'):
+            self.lblResumenDomicilio.setText("+ $ 0")
 
     def insertar_cliente(self):
         nombreCompleto = self.InputNombreCli.text().strip()

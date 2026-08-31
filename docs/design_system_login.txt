@@ -83,6 +83,8 @@
  3. ESPACIADO Y DIMENSIONES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+ 3.1 MÓDULO LOGIN
+ ─────────────────────────────────────────────────────────────────────────────
  Grid base: 4 px  (todos los espaciados son múltiplos de 4)
 
  Ventana
@@ -128,6 +130,88 @@
  Link → Botón:                 20 px
  Botón → Divisor:              16 px
  Divisor → Footer:             10 px
+
+
+ 3.2 MÓDULO VENTAS (VentasA / Ventas de Contado)
+ ─────────────────────────────────────────────────────────────────────────────
+ Control / Elemento                Altura Mín / Dimensiones          Estilos / Padding
+ ─────────────────────────────────────────────────────────────────────────────
+ Inputs formulario de producto     setMinimumHeight(40) px           padding: 6px 12px, border-radius: 8px
+ (Código, Nombre, Marca,                                             border: 1px solid #E2DAE1, font: 13px
+  Cantidad, Precio Unitario,                                         focus: border 1.5px solid #862D6D
+  Valor Domicilio)
+ Inputs datos de cliente           setMinimumHeight(40) px           padding: 6px 12px, border-radius: 8px
+ (Cédula, NombreCli, Teléfono,                                       border: 1px solid #E2DAE1, font: 13px
+  Dirección, Descuento Global)
+ Inputs sección de pago            setMinimumHeight(44) px           padding: 6px 12px, border-radius: 8px
+ (InputPago, InputPagoTransferencia)                                 border: 1px solid #E2DAE1, font: 13px
+ Botón "Agregar Producto"          setMinimumHeight(40) px           padding: 0 16px, border-radius: 8px
+ (self.BtnAgregar)                                                   bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.plus (blanco), font-weight: 600
+ Botón "Eliminar Seleccionado"     setMinimumHeight(40) px           padding: 0 16px, border-radius: 8px
+ (self.BtnEliminar)                                                  bg: #F44336 (_DANGER), color: #FFFFFF
+                                                                     icono: fa5s.trash-alt (blanco), font-weight: 600
+                                                                     alineación: AlignRight (fila 3, col 5)
+ Botón "Registrar Cliente"         setMinimumHeight(40) px           padding: 0 16px, border-radius: 8px
+ (self.BtnCrearCliente)                                              bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.user-plus (blanco), font-weight: 600
+ Botón "Generar Venta"             setMinimumHeight(48) px           border-radius: 8px, font-size: 16px
+ (self.BtnGenerarVenta)                                              bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.file-invoice-dollar (18×18 px)
+                                                                     font-weight: 600
+
+
+ 3.3 MÓDULO VENTAS A CRÉDITO (VentasCredito)
+ ─────────────────────────────────────────────────────────────────────────────
+ Control / Elemento                Altura Mín / Dimensiones          Estilos / Padding
+ ─────────────────────────────────────────────────────────────────────────────
+ Inputs producto y cliente         setMinimumHeight(40) px           padding: 6px 12px, border-radius: 8px
+ (Código, Nombre, Marca, Cantidad,                                   border: 1px solid #E2DAE1, font: 13px
+  Precio, Cédula, Nombres,                                           focus: border 1.5px solid #862D6D
+  Apellidos, Teléfono, Dirección)
+ ComboBoxes (Precio, Límite Pago)  setMinimumHeight(40) px           drop-down: width 24px, item min-h: 28px
+                                                                     padding: 6px 12px, border-radius: 8px
+ Botón "Agregar Producto"          setMinimumHeight(40) px           padding: 0 16px, border-radius: 8px
+ (self.BtnAgregar)                                                   bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.plus (blanco), font-weight: 600
+ Botón "Eliminar Seleccionado"     setMinimumHeight(40) px           padding: 0 16px, border-radius: 8px
+ (self.BtnEliminar)                                                  bg: #F44336 (_DANGER), color: #FFFFFF
+                                                                     icono: fa5s.trash-alt (blanco), font-weight: 600
+                                                                     alineación: AlignRight (fila 2, col 6)
+ Botón "Generar Venta a Crédito"   setMinimumHeight(48) px           border-radius: 8px, font-size: 16px
+ (self.BtnGenerarVentaCredito)                                       bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.file-invoice-dollar (18×18 px)
+                                                                     font-weight: 600
+
+
+ 3.4 MÓDULO FACTURAS Y FACTURAS CRÉDITO (Facturas / FacturasCredito)
+ ─────────────────────────────────────────────────────────────────────────────
+ Control / Elemento                Altura Base / Dinámica            Estilos / Padding
+ ─────────────────────────────────────────────────────────────────────────────
+ Input Buscador                    Base: _CTRL_MIN_H = 44 px         padding: 0px 12px 0px 38px (ícono 20/24px)
+ (self.InputBuscador)              Dinámica: max(42, min(52, h×0.058)) border-radius: 10px, border: 1.5px
+                                                                     focus: 2px solid #862D6D, bg: #FFFAFE
+ Botón "Eliminar Factura"          Base: _BTN_MIN_H = 46 px          padding: 10px 16px, border-radius: 10px
+ (self.BtnEliminarFactura)         Dinámica: max(44, min(54, h×0.062)) bg: #C0392B (_DANGER), color: #FFFFFF
+                                                                     icono: fa5s.trash-alt (20×20 px), font: 14px
+ Botones de Acción                 Base: _BTN_MIN_H = 46 px          padding: 10px 16px, border-radius: 10px
+ (Factura Pagada, Editar Factura,  Dinámica: max(44, min(54, h×0.062)) font-size: 14px, font-weight: 600
+  Generar Ticket, Cancelar Venta)                                    iconos: 20×20 px, letter-spacing: 0.4px
+
+
+ 3.5 MÓDULO PRODUCTOS (Productos)
+ ─────────────────────────────────────────────────────────────────────────────
+ Control / Elemento                Altura Mín / Dimensiones          Estilos / Padding
+ ─────────────────────────────────────────────────────────────────────────────
+ Inputs y ComboBoxes               min-height: 36 px                 padding: 8px 12px, border-radius: 8px
+                                                                     border: 1.5px solid #D8C8D5, font: 13px
+ Botón "Registrar producto"        min-height: 40 px                 padding: 10px 20px, border-radius: 8px
+ (BtnRegistrarProducto / BtnPrimary)                                 bg: #862D6D (_PRIMARY), color: #FFFFFF
+                                                                     icono: fa5s.plus (blanco), font: 13px (600)
+ Botón "Eliminar seleccionados"    min-height: 40 px                 padding: 10px 20px, border-radius: 8px
+ (BtnEliminar / BtnDanger)                                           bg: #C0392B (_DANGER), color: #FFFFFF
+                                                                     icono: fa5s.trash-alt (blanco), font: 13px
+
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -319,6 +403,16 @@
 
  app/ui/Login.py            Estructura visual: Ui_Login + _HeroPanel (vectorial)
  app/view/LoginView.py      Lógica de interacción: Login_View (resizeEvent, signals)
+ app/ui/VentasA.py          Estructura visual: Ui_VentasA (Ventas Contado)
+ app/view/VentasAView.py    Lógica: VentasA_View
+ app/ui/VentasCredito.py    Estructura visual: Ui_VentasCredito (Ventas a Crédito)
+ app/view/VentasCreditoView.py Lógica: VentasCredito_View
+ app/ui/Facturas.py         Estructura visual: Ui_Facturas (Historial Facturas)
+ app/view/FacturasView.py   Lógica: Facturas_View
+ app/ui/FacturasCredito.py  Estructura visual: Ui_FacturasCredito (Facturas a Crédito)
+ app/view/CrediFacturaView.py Lógica: CrediFactura_View
+ app/ui/Productos.py        Estructura visual: Ui_Productos (Gestión de Productos)
+ app/view/ProductosView.py  Lógica: Productos_View
  main.py                    Ventana principal: inicia con showMaximized()
  assets/login_logo.png      Logo Lady Nail Shop (PNG, escalado por código)
  assets/iconos/*.svg        Íconos vectoriales (user, lock, eye_open, eye_closed,
