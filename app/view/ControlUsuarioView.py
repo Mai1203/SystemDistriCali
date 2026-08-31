@@ -4,11 +4,12 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QLabel,
 )
+from PyQt6.QtGui import QStandardItem, QStandardItemModel, QIcon
 from ..utils.enviar_notifi import Mensajes as QMessageBox
 
 from PyQt6 import QtWidgets, QtGui, QtCore
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QStandardItem, QStandardItemModel
+import qtawesome as qta
 
 from ..ui import Ui_ControlUsuario
 from ..configuracion import PERMISOS_VISTAS
@@ -39,11 +40,13 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
 
         self.comboPermisos.setEditable(True)
         self.comboPermisos.lineEdit().setReadOnly(True)
-        self.comboPermisos.setMinimumSize(250, 50)
+        self.comboPermisos.setMinimumSize(220, 44)
         self.comboPermisos.setPlaceholderText("Seleccionar permisos")
         self.comboPermisos.setObjectName("comboPermisos")
 
         self.modelo_permisos = QStandardItemModel(self.comboPermisos)
+        self.icon_check = qta.icon('fa5s.check-circle', color='#862D6D')
+        self.icon_uncheck = QtGui.QIcon()
 
         for nombre in self.permisos_vistas:
             item = QStandardItem(nombre)
@@ -55,15 +58,16 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
 
             item.setData(
                 Qt.CheckState.Unchecked,
-                Qt.ItemDataRole.CheckStateRole
+                Qt.CheckStateRole
             )
+            item.setIcon(self.icon_uncheck)
 
             self.modelo_permisos.appendRow(item)
 
         self.comboPermisos.setModel(self.modelo_permisos)
 
         self.modelo_permisos.itemChanged.connect(
-            self.actualizar_texto_permisos
+            self._on_permiso_changed
         )
 
         self.gridLayout_2.addWidget(
@@ -369,7 +373,20 @@ class ControlUsuario_View(QWidget, Ui_ControlUsuario):
 
         self.modelo_permisos.blockSignals(False)
 
+        for indice in range(len(self.permisos_vistas)):
+            self._actualizar_icono_check(self.modelo_permisos.item(indice))
+
         self.actualizar_texto_permisos()
+
+    def _on_permiso_changed(self, item):
+        self._actualizar_icono_check(item)
+        self.actualizar_texto_permisos()
+
+    def _actualizar_icono_check(self, item):
+        self.modelo_permisos.blockSignals(True)
+        icon = self.icon_check if item.checkState() == Qt.CheckState.Checked else self.icon_uncheck
+        item.setIcon(icon)
+        self.modelo_permisos.blockSignals(False)
 
     def actualizar_texto_permisos(self):
 
