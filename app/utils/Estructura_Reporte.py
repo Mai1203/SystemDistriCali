@@ -20,8 +20,8 @@ import os
 import tempfile
 
 
-def generar_pdf_caja_ingresos(caja, ingresos):
-    """Genera un PDF estilizado con la información de la caja y los ingresos registrados."""
+def generar_pdf_caja_ingresos(caja, ingresos, egresos=None):
+    """Genera un PDF estilizado con la información de la caja, los ingresos y los egresos registrados."""
     try:
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
         nombre_archivo = f"Caja_Ingresos_{fecha_actual}.pdf"
@@ -122,6 +122,40 @@ def generar_pdf_caja_ingresos(caja, ingresos):
         ]))
         elementos.append(tabla_ingresos)
         elementos.append(Spacer(1, 0.5 * inch))
+
+        if egresos:
+            elementos.append(Paragraph("<b>📉 Egresos Registrados:</b>", estilo_negrita))
+
+            datos_egresos = [["ID", "Tipo", "Monto"]]
+            for eg in egresos:
+                monto = eg.Monto_Egreso or 0
+                datos_egresos.append([
+                    str(getattr(eg, 'ID_Egreso', '')),
+                    getattr(eg, 'Tipo_Egreso', 'Egreso'),
+                    f"${monto:,.2f}"
+                ])
+
+            total_egresos = sum(eg.Monto_Egreso or 0 for eg in egresos)
+            datos_egresos.append([
+                "", "TOTAL", f"${total_egresos:,.2f}"
+            ])
+
+            tabla_egresos = Table(datos_egresos, colWidths=[100, 200, 150])
+            tabla_egresos.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 12),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("TEXTCOLOR", (0, -1), (-1, -1), colors.black),
+            ]))
+            elementos.append(tabla_egresos)
+            elementos.append(Spacer(1, 0.5 * inch))
 
         # Gráfico de pastel
         porcentaje_efectivo = (total_efectivo / total_general) * 100 if total_general > 0 else 0

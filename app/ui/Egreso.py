@@ -1,17 +1,8 @@
-# UI de Egresos — Escrita a mano siguiendo el Sistema de Diseño Lady Nail
-# (paleta plum/berry, tarjetas con sombra, inputs focus/hover, SVG, responsiva)
 #
-# Reglas aplicadas del design_system_login.txt:
-#  · Colores semánticos con prefijo _ (nunca hex inline)
-#  · Sin setFixedSize en controles de formulario (solo minHeight + Expanding)
-#  · Tarjetas flotantes: border-radius + QGraphicsDropShadowEffect
-#  · Inputs/ComboBox con borde 1.5px, focus 2px _PRIMARY, fondo _FOCUS_BG
-#  · Botón primario _PRIMARY → hover _PRIMARY_H → pressed _PRIMARY_P
-#  · Botón de eliminar en estilo "danger" coherente (mismo radio/tactil)
-#  · Tabla con header plum, selección tinte berry, hover suave
-#  · resizeEvent → adapt_to_size recalcula márgenes, fuentes y alturas
-#  · PointingHandCursor en controles interactivos
-#  · Iconos SVG monocromáticos (input_user, input_lock, badge_shield_user)
+# NOTA: todos los nombres de atributos (self.InputTipoGasto, self.BtnEliminar,
+# self.TablaEgreso, etc.) se mantienen EXACTAMENTE igual que en el archivo
+# original para no romper el código que ya los conecta (señales/slots,
+# controlador de la app, etc.). Solo cambió cómo se organizan visualmente.
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 import qtawesome as qta
@@ -39,8 +30,13 @@ _DANGER_P    = "#7B241C"
 
 _FONT = "'Segoe UI', Arial, sans-serif"
 
-_INPUT_MIN_H = 44
-_BTN_MIN_H   = 44
+_INPUT_MIN_H = 40
+_BTN_MIN_H   = 40
+
+# Ancho máximo de los campos "cortos" (fecha, monto, tipo, método de pago).
+# Este es el valor clave para que los inputs dejen de verse "largos":
+# quedan compactos y alineados a la izquierda dentro de su columna.
+_FIELD_MAX_W = 320
 
 
 def _sp_expand(w: QtWidgets.QWidget):
@@ -94,7 +90,7 @@ _COMBO_QSS = f"""
         background-color: {_CARD_BG};
         border: 1.5px solid {_BORDER};
         border-radius: 10px;
-        padding: 0px 12px 0px 38px;
+        padding: 0px 12px 0px 14px;
         font-size: 13px;
         color: {_TEXT};
         font-family: {_FONT};
@@ -120,7 +116,7 @@ _COMBO_QSS = f"""
 
 _LABEL_QSS = f"""
     QLabel {{
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         color: {_MUTED};
         font-family: {_FONT};
@@ -133,20 +129,14 @@ _PRIMARY_BTN_QSS = f"""
         background-color: {_PRIMARY};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
+        border-radius: 8px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
+        padding: 0 16px;
+        text-align: center;
     }}
     QPushButton:hover {{
         background-color: {_PRIMARY_H};
-    }}
-    QPushButton:pressed {{
-        background-color: {_PRIMARY_P};
-        padding-top: 12px;
     }}
     QPushButton:disabled {{
         background-color: #C4A8BF;
@@ -159,20 +149,14 @@ _DANGER_BTN_QSS = f"""
         background-color: {_DANGER};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
+        border-radius: 8px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
+        padding: 0 16px;
+        text-align: center;
     }}
     QPushButton:hover {{
         background-color: {_DANGER_H};
-    }}
-    QPushButton:pressed {{
-        background-color: {_DANGER_P};
-        padding-top: 12px;
     }}
     QPushButton:disabled {{
         background-color: #D9B8B2;
@@ -242,7 +226,7 @@ class Ui_Egreso(object):
 
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.setMinimumSize(QtCore.QSize(720, 600))
+        Form.setMinimumSize(QtCore.QSize(720, 560))
         Form.setStyleSheet(f"background-color: {_BG};")
 
         self.horizontalLayout = QtWidgets.QHBoxLayout(Form)
@@ -315,8 +299,10 @@ class Ui_Egreso(object):
         self.gridLayout.setObjectName("gridLayout")
 
         self.gridLayout_2 = QtWidgets.QGridLayout()
-        self.gridLayout_2.setHorizontalSpacing(16)
-        self.gridLayout_2.setVerticalSpacing(14)
+        self.gridLayout_2.setHorizontalSpacing(20)
+        self.gridLayout_2.setVerticalSpacing(18)
+        self.gridLayout_2.setColumnStretch(0, 1)
+        self.gridLayout_2.setColumnStretch(1, 1)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.gridLayout.addLayout(self.gridLayout_2, 0, 0, 1, 1)
 
@@ -344,7 +330,7 @@ class Ui_Egreso(object):
         self.LabelVentasA = QtWidgets.QLabel(parent=header)
         self.LabelVentasA.setObjectName("LabelVentasA")
         self.LabelVentasA.setStyleSheet(
-            f"font-size: 28px; font-weight: 700; color: {_PRIMARY};"
+            f"font-size: 24px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
         titleCol.addWidget(self.LabelVentasA)
@@ -352,7 +338,7 @@ class Ui_Egreso(object):
         self.lblSubtitle = QtWidgets.QLabel(parent=header)
         self.lblSubtitle.setObjectName("lblSubtitle")
         self.lblSubtitle.setStyleSheet(
-            f"font-size: 12px; color: {_MUTED}; font-family: {_FONT};"
+            f"font-size: 13px; color: {_MUTED}; font-family: {_FONT};"
             f" background: transparent;"
         )
         titleCol.addWidget(self.lblSubtitle)
@@ -361,17 +347,37 @@ class Ui_Egreso(object):
 
         self.gridLayout_2.addWidget(header, 0, 0, 1, 2)
 
-        # Filas de campos (etiqueta | control)
-        self._add_field_row(1, "label_3", "Tipo de Gasto",
-                            self._make_tipo_gasto(), "assets/iconos/input_user.svg")
-        self._add_field_row(2, "label_5", "Descripcion",
-                            self._make_descripcion(), "assets/iconos/input_user.svg")
-        self._add_field_row(3, "label", "Fecha",
-                            self._make_fecha(), None)
-        self._add_field_row(4, "label_7", "Pago",
-                            self._make_pago(), "assets/iconos/input_lock.svg")
-        self._add_field_row(5, "label_6", "Metodo de Pago",
-                            self._make_metodo(), None)
+        # ── Campos, agrupados en un grid de 2 columnas ─────────────
+        # Fila 1: Tipo de Gasto | Método de Pago
+        self._add_field_block(
+            1, 0, 1, "label_3", "Tipo de Gasto",
+            self._make_tipo_gasto(), "assets/iconos/input_user.svg",
+            max_width=_FIELD_MAX_W,
+        )
+        self._add_field_block(
+            1, 1, 1, "label_6", "Metodo de Pago",
+            self._make_metodo(), None,
+            max_width=_FIELD_MAX_W,
+        )
+
+        # Fila 2: Fecha | Pago (monto)
+        self._add_field_block(
+            2, 0, 1, "label", "Fecha",
+            self._make_fecha(), qta.icon("fa5s.calendar-alt", color=_MUTED),
+            max_width=_FIELD_MAX_W,
+        )
+        self._add_field_block(
+            2, 1, 1, "label_7", "Pago",
+            self._make_pago(), "assets/iconos/input_lock.svg",
+            max_width=_FIELD_MAX_W,
+        )
+
+        # Fila 3: Descripción — único campo a ancho completo
+        self._add_field_block(
+            3, 0, 2, "label_5", "Descripcion",
+            self._make_descripcion(), "assets/iconos/input_user.svg",
+            max_width=None,
+        )
 
         # Botones
         btnRow = QtWidgets.QHBoxLayout()
@@ -383,12 +389,14 @@ class Ui_Egreso(object):
         self.BtnRegistrarEgreso.setCursor(
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
-        _sp_hfix(self.BtnRegistrarEgreso)
+        self.BtnRegistrarEgreso.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.BtnRegistrarEgreso.setMinimumHeight(_BTN_MIN_H)
         self.BtnRegistrarEgreso.setStyleSheet(_PRIMARY_BTN_QSS)
         icon = QtGui.QIcon("assets/iconos/lock_white.svg")
         self.BtnRegistrarEgreso.setIcon(icon)
-        self.BtnRegistrarEgreso.setIconSize(QtCore.QSize(16, 16))
         btnRow.addWidget(self.BtnRegistrarEgreso)
 
         self.BtnEliminar = QtWidgets.QPushButton(parent=self.widget_3)
@@ -396,36 +404,68 @@ class Ui_Egreso(object):
         self.BtnEliminar.setCursor(
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
-        _sp_hfix(self.BtnEliminar)
+        self.BtnEliminar.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.BtnEliminar.setMinimumHeight(_BTN_MIN_H)
         self.BtnEliminar.setStyleSheet(_DANGER_BTN_QSS)
-        trash = qta.icon("fa5s.trash-alt", color="#FFFFFF").pixmap(18, 18)
-        self.BtnEliminar.setIcon(QtGui.QIcon(trash))
-        self.BtnEliminar.setIconSize(QtCore.QSize(18, 18))
+        trash = qta.icon("fa5s.trash-alt", color="#FFFFFF")
+        self.BtnEliminar.setIcon(trash)
         btnRow.addWidget(self.BtnEliminar)
 
-        self.gridLayout_2.addLayout(btnRow, 6, 0, 1, 2)
+        self.gridLayout_2.addLayout(btnRow, 4, 0, 1, 2)
 
         self.verticalLayout_2.addWidget(self.widget_3, 0)
 
-    def _add_field_row(self, row, label_name, label_text, control, icon_path):
-        label = QtWidgets.QLabel(parent=self.widget_3)
+    def _add_field_block(self, row, col, colspan, label_name, label_text,
+                          control, icon_path, max_width=None):
+        """Etiqueta arriba + control abajo, agrupados en un bloque compacto.
+
+        El bloque (label + control) siempre ocupa el ancho completo de su
+        celda del grid — así dos campos en la misma fila quedan del MISMO
+        ancho entre sí. Es el control interno el que, gracias a max_width,
+        deja de crecer más allá de ese límite y queda alineado a la
+        izquierda con espacio vacío a la derecha, en vez de estirarse.
+
+        icon_path acepta una ruta de archivo SVG (str) o un QIcon ya
+        construido (por ejemplo uno de qtawesome, para campos sin asset
+        propio como la fecha).
+        """
+        block = QtWidgets.QWidget(parent=self.widget_3)
+        block.setStyleSheet("background: transparent;")
+        _sp_hfix(block)
+        block_layout = QtWidgets.QVBoxLayout(block)
+        block_layout.setContentsMargins(0, 0, 0, 0)
+        block_layout.setSpacing(6)
+
+        label = QtWidgets.QLabel(parent=block)
         label.setObjectName(label_name)
         setattr(self, label_name, label)
         label.setText(label_text)
         label.setStyleSheet(_LABEL_QSS)
-        label.setMinimumHeight(_INPUT_MIN_H)
-        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft)
-        self.gridLayout_2.addWidget(label, row, 0)
+        label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        block_layout.addWidget(label)
 
         if icon_path:
-            control.addAction(
-                QtGui.QIcon(icon_path),
-                QtWidgets.QLineEdit.ActionPosition.LeadingPosition
-                if isinstance(control, QtWidgets.QLineEdit)
-                else QtWidgets.QComboBox.ActionPosition.LeadingPosition,
+            icon = (
+                icon_path if isinstance(icon_path, QtGui.QIcon)
+                else QtGui.QIcon(icon_path)
             )
-        self.gridLayout_2.addWidget(control, row, 1)
+            # QComboBox no soporta un ícono "leading" nativo como QLineEdit
+            # (no tiene ActionPosition); por eso el ícono solo se agrega en
+            # inputs de texto, para no dejar un ícono roto o mal alineado.
+            if isinstance(control, QtWidgets.QLineEdit):
+                control.addAction(
+                    icon, QtWidgets.QLineEdit.ActionPosition.LeadingPosition
+                )
+        if max_width:
+            control.setMaximumWidth(max_width)
+        block_layout.addWidget(control)
+
+        self.gridLayout_2.addWidget(block, row, col, 1, colspan)
 
     # ── Constructores de controles ────────────────────────────────
     def _make_tipo_gasto(self):
@@ -452,6 +492,8 @@ class Ui_Egreso(object):
         _sp_hfix(w)
         w.setMinimumHeight(_INPUT_MIN_H)
         w.setStyleSheet(_INPUT_QSS)
+        # Antes se veía como una caja vacía sin pista de qué escribir.
+        w.setPlaceholderText("dd/mm/aaaa")
         self.InputFechaEgreso = w
         return w
 
@@ -461,6 +503,14 @@ class Ui_Egreso(object):
         _sp_hfix(w)
         w.setMinimumHeight(_INPUT_MIN_H)
         w.setStyleSheet(_INPUT_QSS)
+        # Es un campo de dinero: solo números (con opcional 2 decimales) y
+        # alineado a la derecha, como se acostumbra en montos.
+        validator = QtGui.QDoubleValidator(0.0, 999999999.0, 2, w)
+        validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
+        w.setValidator(validator)
+        w.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         self.InputPagoEgreso = w
         return w
 
@@ -555,17 +605,17 @@ class Ui_Egreso(object):
         card_v = max(22, min(40, int(height * 0.038)))
         self.gridLayout.setContentsMargins(card_h, card_v, card_h, card_v)
 
-        min_input = max(42, min(52, int(height * 0.058)))
+        min_input = max(40, min(48, int(height * 0.052)))
         for w in (self.InputTipoGasto, self.InputDescripcionEgreso,
                   self.InputFechaEgreso, self.InputPagoEgreso,
                   self.MetodoPagoBox):
             w.setMinimumHeight(min_input)
 
         self.BtnRegistrarEgreso.setMinimumHeight(
-            max(44, min(54, int(height * 0.062)))
+            max(40, min(48, int(height * 0.055)))
         )
         self.BtnEliminar.setMinimumHeight(
-            max(44, min(54, int(height * 0.062)))
+            max(40, min(48, int(height * 0.055)))
         )
 
     # ─────────────────────────────────────────────────────────────

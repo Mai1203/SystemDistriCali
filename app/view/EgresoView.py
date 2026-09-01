@@ -473,10 +473,8 @@ class Egreso_View(QWidget, Ui_Egreso):
             metodo_pago_id
         )
 
-        # Agregar la fila a la tabla
-        row_position = (
-            self.TablaEgreso.rowCount()
-        )
+        # Agregar la fila a la tabla en la parte superior
+        row_position = 0
 
         self.TablaEgreso.insertRow(
             row_position
