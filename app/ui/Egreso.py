@@ -39,8 +39,8 @@ _DANGER_P    = "#7B241C"
 
 _FONT = "'Segoe UI', Arial, sans-serif"
 
-_INPUT_MIN_H = 44
-_BTN_MIN_H   = 44
+_INPUT_MIN_H = 40
+_BTN_MIN_H   = 40
 
 
 def _sp_expand(w: QtWidgets.QWidget):
@@ -120,7 +120,7 @@ _COMBO_QSS = f"""
 
 _LABEL_QSS = f"""
     QLabel {{
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         color: {_MUTED};
         font-family: {_FONT};
@@ -133,20 +133,14 @@ _PRIMARY_BTN_QSS = f"""
         background-color: {_PRIMARY};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
+        border-radius: 8px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
+        padding: 0 16px;
+        text-align: center;
     }}
     QPushButton:hover {{
         background-color: {_PRIMARY_H};
-    }}
-    QPushButton:pressed {{
-        background-color: {_PRIMARY_P};
-        padding-top: 12px;
     }}
     QPushButton:disabled {{
         background-color: #C4A8BF;
@@ -159,20 +153,14 @@ _DANGER_BTN_QSS = f"""
         background-color: {_DANGER};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
+        border-radius: 8px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
+        padding: 0 16px;
+        text-align: center;
     }}
     QPushButton:hover {{
         background-color: {_DANGER_H};
-    }}
-    QPushButton:pressed {{
-        background-color: {_DANGER_P};
-        padding-top: 12px;
     }}
     QPushButton:disabled {{
         background-color: #D9B8B2;
@@ -344,7 +332,7 @@ class Ui_Egreso(object):
         self.LabelVentasA = QtWidgets.QLabel(parent=header)
         self.LabelVentasA.setObjectName("LabelVentasA")
         self.LabelVentasA.setStyleSheet(
-            f"font-size: 28px; font-weight: 700; color: {_PRIMARY};"
+            f"font-size: 24px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
         titleCol.addWidget(self.LabelVentasA)
@@ -352,7 +340,7 @@ class Ui_Egreso(object):
         self.lblSubtitle = QtWidgets.QLabel(parent=header)
         self.lblSubtitle.setObjectName("lblSubtitle")
         self.lblSubtitle.setStyleSheet(
-            f"font-size: 12px; color: {_MUTED}; font-family: {_FONT};"
+            f"font-size: 13px; color: {_MUTED}; font-family: {_FONT};"
             f" background: transparent;"
         )
         titleCol.addWidget(self.lblSubtitle)
@@ -383,12 +371,14 @@ class Ui_Egreso(object):
         self.BtnRegistrarEgreso.setCursor(
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
-        _sp_hfix(self.BtnRegistrarEgreso)
+        self.BtnRegistrarEgreso.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.BtnRegistrarEgreso.setMinimumHeight(_BTN_MIN_H)
-        self.BtnRegistrarEgreso.setStyleSheet(_PRIMARY_BTN_QSS)
+        self.BtnRegistrarEgreso.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
         icon = QtGui.QIcon("assets/iconos/lock_white.svg")
         self.BtnRegistrarEgreso.setIcon(icon)
-        self.BtnRegistrarEgreso.setIconSize(QtCore.QSize(16, 16))
         btnRow.addWidget(self.BtnRegistrarEgreso)
 
         self.BtnEliminar = QtWidgets.QPushButton(parent=self.widget_3)
@@ -396,12 +386,14 @@ class Ui_Egreso(object):
         self.BtnEliminar.setCursor(
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
-        _sp_hfix(self.BtnEliminar)
+        self.BtnEliminar.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.BtnEliminar.setMinimumHeight(_BTN_MIN_H)
-        self.BtnEliminar.setStyleSheet(_DANGER_BTN_QSS)
-        trash = qta.icon("fa5s.trash-alt", color="#FFFFFF").pixmap(18, 18)
-        self.BtnEliminar.setIcon(QtGui.QIcon(trash))
-        self.BtnEliminar.setIconSize(QtCore.QSize(18, 18))
+        self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
+        trash = qta.icon("fa5s.trash-alt", color="#FFFFFF")
+        self.BtnEliminar.setIcon(trash)
         btnRow.addWidget(self.BtnEliminar)
 
         self.gridLayout_2.addLayout(btnRow, 6, 0, 1, 2)
@@ -555,17 +547,17 @@ class Ui_Egreso(object):
         card_v = max(22, min(40, int(height * 0.038)))
         self.gridLayout.setContentsMargins(card_h, card_v, card_h, card_v)
 
-        min_input = max(42, min(52, int(height * 0.058)))
+        min_input = max(40, min(48, int(height * 0.052)))
         for w in (self.InputTipoGasto, self.InputDescripcionEgreso,
                   self.InputFechaEgreso, self.InputPagoEgreso,
                   self.MetodoPagoBox):
             w.setMinimumHeight(min_input)
 
         self.BtnRegistrarEgreso.setMinimumHeight(
-            max(44, min(54, int(height * 0.062)))
+            max(40, min(48, int(height * 0.055)))
         )
         self.BtnEliminar.setMinimumHeight(
-            max(44, min(54, int(height * 0.062)))
+            max(40, min(48, int(height * 0.055)))
         )
 
     # ─────────────────────────────────────────────────────────────

@@ -85,7 +85,7 @@ class Ui_Caja(object):
         # Apertura
         self.BtnCajaApertura = QtWidgets.QPushButton("  Abrir Caja", parent=self.header_card)
         self.BtnCajaApertura.setObjectName("BtnCajaApertura")
-        self.BtnCajaApertura.setMinimumHeight(45)
+        self.BtnCajaApertura.setMinimumHeight(40)
         self.BtnCajaApertura.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnCajaApertura.setIcon(qta.icon('fa5s.unlock', color='#FFFFFF'))
         self.BtnCajaApertura.setIconSize(QtCore.QSize(20, 20))
@@ -108,7 +108,7 @@ class Ui_Caja(object):
         # Cierre
         self.BtnCajaCierre = QtWidgets.QPushButton("  Cerrar Caja", parent=self.header_card)
         self.BtnCajaCierre.setObjectName("BtnCajaCierre")
-        self.BtnCajaCierre.setMinimumHeight(45)
+        self.BtnCajaCierre.setMinimumHeight(40)
         self.BtnCajaCierre.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnCajaCierre.setIcon(qta.icon('fa5s.lock', color='#FFFFFF'))
         self.BtnCajaCierre.setIconSize(QtCore.QSize(20, 20))
@@ -326,7 +326,7 @@ class Ui_Caja(object):
 
         self.BtnCajaImprimir = QtWidgets.QPushButton("  Imprimir", parent=self.summary_card)
         self.BtnCajaImprimir.setObjectName("BtnCajaImprimir")
-        self.BtnCajaImprimir.setMinimumHeight(45)
+        self.BtnCajaImprimir.setMinimumHeight(40)
         self.BtnCajaImprimir.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnCajaImprimir.setIcon(qta.icon('fa5s.print', color='#FFFFFF'))
         self.BtnCajaImprimir.setIconSize(QtCore.QSize(20, 20))

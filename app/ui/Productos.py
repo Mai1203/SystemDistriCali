@@ -107,35 +107,30 @@ QComboBox::down-arrow {{
 /* ── Botón primario ── */
 QPushButton#BtnPrimary {{
     font-family: 'Segoe UI';
-    font-size: 13px;
     font-weight: 600;
     color: #FFFFFF;
     background-color: {_PRIMARY};
     border: none;
     border-radius: 8px;
-    padding: 10px 20px;
+    padding: 0 16px;
     min-height: 40px;
-    letter-spacing: 0.3px;
+    text-align: center;
 }}
 QPushButton#BtnPrimary:hover {{
     background-color: {_PRIMARY_HOVER};
-}}
-QPushButton#BtnPrimary:pressed {{
-    background-color: {_PRIMARY_PRESSED};
-    padding-top: 12px;
 }}
 
 /* ── Botón peligro ── */
 QPushButton#BtnDanger {{
     font-family: 'Segoe UI';
-    font-size: 13px;
     font-weight: 600;
     color: #FFFFFF;
     background-color: {_DANGER};
     border: none;
     border-radius: 8px;
-    padding: 10px 20px;
+    padding: 0 16px;
     min-height: 40px;
+    text-align: center;
 }}
 QPushButton#BtnDanger:hover {{
     background-color: {_DANGER_HOVER};
@@ -144,14 +139,14 @@ QPushButton#BtnDanger:hover {{
 /* ── Botón secundario (outline) ── */
 QPushButton#BtnSecondary {{
     font-family: 'Segoe UI';
-    font-size: 13px;
     font-weight: 600;
     color: {_PRIMARY};
     background-color: transparent;
     border: 1.5px solid {_PRIMARY};
     border-radius: 8px;
-    padding: 10px 20px;
+    padding: 0 16px;
     min-height: 40px;
+    text-align: center;
 }}
 QPushButton#BtnSecondary:hover {{
     background-color: rgba(134,45,109,0.06);
@@ -289,22 +284,17 @@ QLabel#BadgeEditando {{
 /* ── Botón actualizar ── */
 QPushButton#BtnActualizar {{
     font-family: 'Segoe UI';
-    font-size: 13px;
     font-weight: 600;
     color: #FFFFFF;
     background-color: #2980B9;
     border: none;
     border-radius: 8px;
-    padding: 10px 20px;
+    padding: 0 16px;
     min-height: 40px;
-    letter-spacing: 0.3px;
+    text-align: center;
 }}
 QPushButton#BtnActualizar:hover {{
     background-color: #1F6391;
-}}
-QPushButton#BtnActualizar:pressed {{
-    background-color: #154360;
-    padding-top: 12px;
 }}
 """
 
