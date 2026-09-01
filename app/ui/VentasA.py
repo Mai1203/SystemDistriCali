@@ -174,13 +174,15 @@ class Ui_VentasA(object):
         titleCliLayout = QtWidgets.QHBoxLayout()
         titleCliLayout.setContentsMargins(0, 0, 0, 0)
         titleCliLayout.setSpacing(8)
+        titleCliLayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
         
         lblIconCli = QtWidgets.QLabel()
-        lblIconCli.setPixmap(qta.icon('fa5s.user', color=_PRIMARY).pixmap(16, 16))
-        lblIconCli.setFixedSize(16, 16)
+        lblIconCli.setPixmap(qta.icon('fa5s.user', color=_PRIMARY).pixmap(18, 18))
+        lblIconCli.setFixedSize(18, 18)
+        lblIconCli.setStyleSheet("background: transparent; border: none;")
         
         lblTitleCli = QtWidgets.QLabel("Cliente")
-        lblTitleCli.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY};")
+        lblTitleCli.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY}; border: none;")
         
         titleCliLayout.addWidget(lblIconCli)
         titleCliLayout.addWidget(lblTitleCli)
@@ -327,10 +329,18 @@ class Ui_VentasA(object):
         resumenLayout.setSpacing(10)
         
         titleResumenLayout = QtWidgets.QHBoxLayout()
+        titleResumenLayout.setContentsMargins(0, 0, 0, 0)
+        titleResumenLayout.setSpacing(8)
+        titleResumenLayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
+        
         lblIconResumen = QtWidgets.QLabel()
-        lblIconResumen.setPixmap(qta.icon('fa5s.chart-bar', color=_PRIMARY).pixmap(16, 16))
+        lblIconResumen.setPixmap(qta.icon('fa5s.chart-bar', color=_PRIMARY).pixmap(18, 18))
+        lblIconResumen.setFixedSize(18, 18)
+        lblIconResumen.setStyleSheet("background: transparent; border: none;")
+        
         lblTitleResumen = QtWidgets.QLabel("Resumen de Venta")
-        lblTitleResumen.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY};")
+        lblTitleResumen.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY}; border: none;")
+        
         titleResumenLayout.addWidget(lblIconResumen)
         titleResumenLayout.addWidget(lblTitleResumen)
         titleResumenLayout.addStretch()

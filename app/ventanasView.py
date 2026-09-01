@@ -158,8 +158,11 @@ class MainApp(QWidget):
             print(f"Error al cargar datos VentasCredito: {e}")
 
     def cambiar_a_pagoCredito(self, id_ventaCredito):
+        print(f"[DEBUG] cambiar_a_pagoCredito llamado con id={id_ventaCredito}")
         try:
             self.stacked_widget.setCurrentWidget(self.pagoCredito)
-            self.pagoCredito.cargar_información(id_ventaCredito)
+            print(f"[DEBUG] cambiado a pagoCredito, llamando cargar_informacion")
+            self.pagoCredito.cargar_informacion(id_ventaCredito)
         except Exception as e:
-            print(f"Error al cargar datos PagoCredito: {e}")
+            print(f"[DEBUG] Error al cargar datos PagoCredito: {e}")
+

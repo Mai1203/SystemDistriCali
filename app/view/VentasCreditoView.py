@@ -5,6 +5,7 @@ from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtMultimedia import QMediaPlayer
 from decimal import Decimal
 from datetime import datetime, timedelta
+import re
 
 # Relative imports
 from ..database.database import SessionLocal
@@ -21,6 +22,7 @@ from ..controllers.historial_modificacion_crud import *
 from ..controllers.caja_crud import obtener_cajas
 from ..ui import Ui_VentasCredito
 from ..utils.autocomplementado import configurar_autocompletado
+from ..utils.formateador import formatear_numero
 from ..utils.restructura_ticket import *
 
 # Standard library imports
@@ -49,7 +51,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         
         QTimer.singleShot(0, self.InputCodigo.setFocus)
         self.id_categoria = None
-        self.valor_domicilio = 0.0
         self.cantidades = []
         self.invoice_number = None
         self.id_venta_credito = None
@@ -76,11 +77,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         # Conexiones de señales
         self.db = SessionLocal()
-        self.InputCodigo.returnPressed.connect(self.procesar_codigo)
+        self.InputCodigo.returnPressed.connect(self._on_codigo_return)
         self.InputCodigo.textChanged.connect(self.iniciar_timer)
         self.InputCantidad.returnPressed.connect(self.actualizar_datos)
         self.InputPrecioUnitario.returnPressed.connect(self.actualizar_datos)
-        self.InputCedula.returnPressed.connect(self.completar_campos)
+        self.InputCedula.returnPressed.connect(self._on_cedula_return)
         self.InputCedula.textChanged.connect(self.validar_campos)
         self.comboBoxPrecio.currentIndexChanged.connect(self.cambiar_precio)
         configurar_autocompletado(
@@ -246,7 +247,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     db.query(Productos)
                     .filter(Productos.ID_Producto == id_producto)
                     .first()
-                    .Precio_venta_normal
+                    .Precio_venta_1
                 )
                 subtotal = nueva_cantidad * precio_unitario
 
@@ -295,6 +296,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputCodigo.setFocus()
         self.limpiar_tabla()
         self.limpiar_campos()
+        self.limpiar_datos_cliente()
         self.invoice_number = None
         configurar_autocompletado(
             self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
@@ -343,9 +345,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
             client_name = f"{client_name} {client_apellido}"
 
-            if limite_pago == "7 días":
-                limite_pago = self.calcular_fecha_futura(7)
-            elif limite_pago == "15 días":
+            match = re.search(r'(\d+)', limite_pago)
+            if match:
+                dias = int(match.group(1))
+                limite_pago = self.calcular_fecha_futura(dias)
+            else:
                 limite_pago = self.calcular_fecha_futura(15)
 
             if not client_name or not client_apellido or not client_address or not client_phone or not client_id:
@@ -400,13 +404,12 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
             subtotal = sum(item[3] for item in items)
             total = subtotal
+            delivery_fee = 0.0
             
             if total <= 0:
                 QMessageBox.critical(self, "Error", "No se pueden generar ventas por un total de $0 pesos.")
                 db.close()
                 return
-
-            domicilio = False
 
             if self.invoice_number and self.invoice_number != "":
                 self.actualizar_factura(
@@ -436,7 +439,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.usuario_actual_id,
                     subtotal,
                     limite_pago,
-                    domicilio,
                 )
                 self.invoice_number = f"0000{id_factura}"
                 mensaje = "Factura generada exitosamente."
@@ -448,6 +450,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             empresa_direccion = "Pasto, Colombia"
             empresa_telefono = "+57 316-144-44-74"
             fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            limite_pago_formateado = limite_pago.strftime("%d/%m/%Y") if hasattr(limite_pago, 'strftime') else str(limite_pago)
             subtotal_formateado = f"${subtotal:,.2f}"
             total_formateado = f"${total:,.2f}"
             delivery_fee = float(delivery_fee)
@@ -536,7 +539,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             -----------------------------------------------------------------------------------------------------
             Deuda Total: {subtotal_formateado}
             Envío: {delivery_fee_formateado}
-            Fecha Limite: {limite_pago}
+            Fecha Limite: {limite_pago_formateado}
             -----------------------------------------------------------------------------------------------------
 
             ¡Gracias por tu compra!
@@ -560,7 +563,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         self.limpiar_tabla()
         self.limpiar_campos()
-        self.InputDomicilio.clear()
         self.limpiar_datos_cliente()
         self.invoice_number = None
 
@@ -575,7 +577,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         id_usuario,
         deuda,
         limite_pago,
-        domicilio,
     ):
         try:
             id_metodo_pago = obtener_metodo_pago_por_nombre(db, payment_method)
@@ -603,7 +604,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 id_tipo_factura=5,
                 id_cliente=client_id,
                 id_usuario=id_usuario,
-                domicilio=domicilio,
+                domicilio=False,
             )
 
             id_factura = factura.ID_Factura
@@ -649,8 +650,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputApellidoCli.setText("")
         self.InputTelefonoCli.setText("")
         self.InputDireccion.setText("")
-        self.LabelSubtotal.setText("$0")
-        self.LabelTotal.setText("$0")
+        self.LimitePagoBox.setCurrentIndex(0)
+        self.LabelSubtotal.setText("$ 0")
+        self.LabelTotal.setText("$ 0")
 
     def mostrar_mensaje_temporal(self, titulo, mensaje, duracion=2200):
         msg_box = QMessageBox(self)
@@ -661,10 +663,13 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         msg_box.exec()
 
     def reproducir_sonido(self):
-        sonido_path = "./assets/sound_scanner.wav"
+        sonido_path = os.path.abspath("./assets/Sonido.mp3")
         if os.path.exists(sonido_path):
-            self.player.setSource(QUrl.fromLocalFile(os.path.abspath(sonido_path)))
-            self.player.play()
+            try:
+                self.player.setSource(QUrl.fromLocalFile(sonido_path))
+                self.player.play()
+            except Exception as e:
+                print(f"Error al reproducir sonido: {e}")
         else:
             print("No se encontró el archivo de sonido")
 
@@ -713,20 +718,27 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         except locale.Error:
             print("No se pudo configurar la localización de Colombia.")
 
+    def _leer_precio(self, producto, campo_precio):
+        valor = getattr(producto, campo_precio, None)
+        if valor is None:
+            valor = getattr(producto, "Precio_venta_1", 0.0)
+        try:
+            return float(valor)
+        except (TypeError, ValueError):
+            return 0.0
+
     def procesar_codigo(self):
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
         tipo_precio = self.comboBoxPrecio.currentText().strip()
 
         precios_map = {
-            "PV-01": "Precio_venta_normal",
-            "PV-02": "Precio_venta_mayor",
-            "PV-03": "Precio_venta_1",
-            "PV-04": "Precio_venta_2",
-            "PV-05": "Precio_venta_3",
-            "PV-06": "Precio_venta_4"
+            "PV-01": "Precio_venta_1",
+            "PV-02": "Precio_venta_2",
+            "PV-03": "Precio_venta_3",
+            "PV-04": "Precio_venta_4",
         }
-        campo_precio = precios_map.get(tipo_precio, "Precio_venta_normal")
+        campo_precio = precios_map.get(tipo_precio, "Precio_venta_1")
 
         db = SessionLocal()
         try:
@@ -749,7 +761,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()
                     
-                    precio_val = float(getattr(producto, campo_precio, producto.Precio_venta_normal))
+                    precio_val = self._leer_precio(producto, campo_precio)
                     self.InputPrecioUnitario.setText(str(precio_val))
                     self.InputPrecioUnitario.setEnabled(False)
                 else:
@@ -771,7 +783,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.id_categoria = producto.categorias
                     self.InputCantidad.clear()
                     
-                    precio_val = float(getattr(producto, campo_precio, producto.Precio_venta_normal))
+                    precio_val = self._leer_precio(producto, campo_precio)
                     self.InputPrecioUnitario.setText(str(precio_val))
                     self.InputPrecioUnitario.setEnabled(False)
                 else:
@@ -795,6 +807,12 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             )
         finally:
             db.close()
+
+    def _on_codigo_return(self):
+        self.procesar_codigo()
+
+    def _on_cedula_return(self):
+        self.completar_campos()
 
     def limpiar_tabla(self):
         self.TablaVentasCredito.setRowCount(0)
@@ -905,8 +923,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             item_total_redondeado.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.TablaVentasCredito.setItem(rowPosition, 6, item_total_redondeado)
 
-            # self.reproducir_sonido()
+            self.reproducir_sonido()
             self.limpiar_campos()
+            self.actualizar_total()
 
         except Exception as e:
             QMessageBox.critical(
@@ -921,6 +940,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputMarca.clear()
         self.InputCantidad.clear()
         self.InputPrecioUnitario.clear()
+        self.comboBoxPrecio.setCurrentIndex(0)
+        self.InputCodigo.setFocus()
 
     def eliminar_fila(self):
         fila_seleccionada = self.TablaVentasCredito.currentRow()
@@ -955,19 +976,19 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
     def actualizar_total(self):
         subtotal = self.calcular_subtotal()
         if subtotal.is_integer():
-            subtotal_formateado = f"{subtotal:,.0f}"
+            subtotal_formateado = f"$ {formatear_numero(int(subtotal))}"
         else:
-            subtotal_formateado = f"{subtotal:,.2f}"
+            subtotal_formateado = f"$ {formatear_numero(subtotal)}"
 
-        self.LabelSubtotal.setText(f"{subtotal_formateado}")
+        self.LabelSubtotal.setText(subtotal_formateado)
 
         total = subtotal
         if total.is_integer():
-            total_formateado = f"{total:,.0f}"
+            total_formateado = f"$ {formatear_numero(int(total))}"
         else:
-            total_formateado = f"{total:,.2f}"
+            total_formateado = f"$ {formatear_numero(total)}"
 
-        self.LabelTotal.setText(f"{total_formateado}")
+        self.LabelTotal.setText(total_formateado)
         return subtotal
 
     def cargar_datos(self, row, column):
@@ -1011,7 +1032,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             else:
                 QMessageBox.warning(self, "Error", "Fila seleccionada fuera de rango.")
                 self.fila_seleccionada = None
-                self.InputDomicilio.clear()
         except AttributeError:
             QMessageBox.warning(
                 self, "Error", "Algunas celdas de la fila seleccionada están vacías."
@@ -1112,7 +1132,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     Qt.AlignmentFlag.AlignCenter
                 )
                 total = cantidad * precio_unitario
-                self.TablaVentasCredito.setItem(row, 6, QTableWidgetItem(str(total)))
+                total_redondeado = round(total / 100) * 100
+                self.TablaVentasCredito.setItem(row, 6, QTableWidgetItem(str(total_redondeado)))
                 self.TablaVentasCredito.item(row, 6).setTextAlignment(
                     Qt.AlignmentFlag.AlignCenter
                 )
@@ -1221,28 +1242,45 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         metodo_seleccionado = self.comboBoxPrecio.currentText().strip()
 
         precios_map = {
-            "PV-01": "Precio_venta_normal",
-            "PV-02": "Precio_venta_mayor",
-            "PV-03": "Precio_venta_1",
-            "PV-04": "Precio_venta_2",
-            "PV-05": "Precio_venta_3",
-            "PV-06": "Precio_venta_4"
+            "PV-01": "Precio_venta_1",
+            "PV-02": "Precio_venta_2",
+            "PV-03": "Precio_venta_3",
+            "PV-04": "Precio_venta_4",
         }
         
-        campo_precio = precios_map.get(metodo_seleccionado, "Precio_venta_normal")
+        campo_precio = precios_map.get(metodo_seleccionado, "Precio_venta_1")
 
-        for row in range(self.TablaVentasCredito.rowCount()):
-            codigo = self.TablaVentasCredito.item(row, 0).text()
-            cantidad = int(self.TablaVentasCredito.item(row, 4).text())
-            producto = obtener_producto_por_id(self.db, int(codigo))
-            if producto:
-                producto = producto[0]
-                precio = float(getattr(producto, campo_precio, producto.Precio_venta_normal))
-                self.TablaVentasCredito.item(row, 5).setText(str(precio))
-                total = cantidad * precio
-                self.TablaVentasCredito.item(row, 6).setText(str(total))
+        # Actualizar InputPrecioUnitario si hay un producto cargado
+        codigo_input = self.InputCodigo.text().strip()
+        if codigo_input and codigo_input.isdigit():
+            db_temp = SessionLocal()
+            try:
+                prod = obtener_producto_por_id(db_temp, int(codigo_input))
+                if prod:
+                    precio_val = self._leer_precio(prod[0], campo_precio)
+                    self.InputPrecioUnitario.setText(str(precio_val))
+            except Exception:
+                pass
+            finally:
+                db_temp.close()
 
-        self.actualizar_total()
+        db = SessionLocal()
+        try:
+            for row in range(self.TablaVentasCredito.rowCount()):
+                codigo = self.TablaVentasCredito.item(row, 0).text()
+                cantidad = int(self.TablaVentasCredito.item(row, 4).text())
+                producto = obtener_producto_por_id(db, int(codigo))
+                if producto:
+                    producto = producto[0]
+                    precio = self._leer_precio(producto, campo_precio)
+                    self.TablaVentasCredito.item(row, 5).setText(str(precio))
+                    total = cantidad * precio
+                    total_redondeado = round(total / 100) * 100
+                    self.TablaVentasCredito.item(row, 6).setText(str(total_redondeado))
+
+            self.actualizar_total()
+        finally:
+            db.close()
 
     def insertar_cliente(self):
         nombreCompleto = self.InputNombreCli.text().strip()

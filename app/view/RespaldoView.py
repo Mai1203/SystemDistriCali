@@ -48,12 +48,22 @@ class Respaldo_View(QWidget, Ui_Respaldo):
             QMessageBox.warning(self, "Error", "No se encontró la base de datos.")
             return
 
-        opciones = ["Exportar tabla específica", "Exportar toda la base de datos"]
-        opcion, ok = QInputDialog.getItem(
-            self, "Seleccionar tipo de exportación", "Opciones:", opciones, 0, False
-        )
-
-        if not ok:
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Exportar base de datos")
+        msg.setText("Selecciona el tipo de exportación:")
+        msg.setIcon(QMessageBox.Icon.Question)
+        
+        btn_todo = msg.addButton("Exportar toda la base de datos", QMessageBox.ButtonRole.ActionRole)
+        btn_tabla = msg.addButton("Exportar tabla específica", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+        
+        msg.exec()
+        
+        if msg.clickedButton() == btn_todo:
+            opcion = "Exportar toda la base de datos"
+        elif msg.clickedButton() == btn_tabla:
+            opcion = "Exportar tabla específica"
+        else:
             return
 
         if opcion == "Exportar tabla específica":

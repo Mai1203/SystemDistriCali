@@ -1,16 +1,5 @@
-# UI de Facturas — Escrita a mano siguiendo el Sistema de Diseño Lady Nail
-# (paleta plum/berry, tarjetas con sombra, inputs focus, tabla plum, botones SVG, responsiva)
-#
-# Reglas aplicadas del design_system_login.txt:
-#  · Colores semánticos con prefijo _
-#  · Tarjetas flotantes (border-radius + QGraphicsDropShadowEffect)
-#  · Input búsqueda con borde 1.5px, foco 2px _PRIMARY, ícono search
-#  · Tabla con header plum, selección tinte berry, hover suave
-#  · Botones: primario plum (Pagada/Ticket), secundario outline (Editar),
-#    cancelar (outline rojo), danger (Eliminar)
-#  · Íconos SVG (qtawesome) creados en tiempo de ejecución
-#  · resizeEvent → adapt_to_size recalcula márgenes y alturas
-#  · PointingHandCursor en controles interactivos
+# UI de Facturas — Diseño basado en FacturasCredito
+# (paleta plum/berry, tarjetas compactas, inputs focus, tabla plum, botones SVG, responsiva)
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 import qtawesome as qta
@@ -38,8 +27,8 @@ _DANGER_P    = "#7B241C"
 
 _FONT = "'Segoe UI', Arial, sans-serif"
 
-_CTRL_MIN_H = 44
-_BTN_MIN_H  = 46
+_CTRL_MIN_H = 34
+_BTN_MIN_H  = 34
 
 
 def _sp_expand(w: QtWidgets.QWidget):
@@ -64,15 +53,15 @@ def _sp_hfix(w: QtWidgets.QWidget):
 _INPUT_QSS = f"""
     QLineEdit {{
         background-color: {_CARD_BG};
-        border: 1.5px solid {_BORDER};
-        border-radius: 10px;
-        padding: 0px 12px 0px 38px;
+        border: 1px solid {_BORDER};
+        border-radius: 8px;
+        padding: 0px 12px 0px 36px;
         font-size: 13px;
         color: {_TEXT};
         font-family: {_FONT};
     }}
     QLineEdit:focus {{
-        border: 2px solid {_PRIMARY};
+        border: 1.5px solid {_PRIMARY};
         background-color: {_FOCUS_BG};
     }}
     QLineEdit:hover {{
@@ -85,12 +74,12 @@ _PRIMARY_BTN_QSS = f"""
         background-color: {_PRIMARY};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
+        padding: 4px 8px;
+        letter-spacing: 0.2px;
         min-height: {_BTN_MIN_H}px;
     }}
     QToolButton:hover {{
@@ -98,7 +87,7 @@ _PRIMARY_BTN_QSS = f"""
     }}
     QToolButton:pressed {{
         background-color: {_PRIMARY_P};
-        padding-top: 12px;
+        padding-top: 6px;
     }}
     QToolButton:disabled {{
         background-color: #C4A8BF;
@@ -110,18 +99,19 @@ _SECONDARY_BTN_QSS = f"""
     QToolButton {{
         background-color: {_CARD_BG};
         color: {_PRIMARY};
-        border: 1.5px solid {_PRIMARY};
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
+        border: 1px solid {_PRIMARY};
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
+        padding: 4px 8px;
+        letter-spacing: 0.2px;
         min-height: {_BTN_MIN_H}px;
+        cursor: pointer;
     }}
     QToolButton:hover {{
         background-color: #FBEFF7;
-        border: 2px solid {_PRIMARY};
+        border: 1.5px solid {_PRIMARY};
     }}
     QToolButton:pressed {{
         background-color: #F3E6EF;
@@ -132,43 +122,22 @@ _CANCEL_BTN_QSS = f"""
     QToolButton {{
         background-color: {_CARD_BG};
         color: {_DANGER};
-        border: 1.5px solid {_DANGER};
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
+        border: 1px solid {_DANGER};
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
+        padding: 4px 8px;
+        letter-spacing: 0.2px;
         min-height: {_BTN_MIN_H}px;
+        cursor: pointer;
     }}
     QToolButton:hover {{
         background-color: #FDEDEC;
-        border: 2px solid {_DANGER};
+        border: 1.5px solid {_DANGER};
     }}
     QToolButton:pressed {{
         background-color: #FADBD8;
-    }}
-"""
-
-_DANGER_BTN_QSS = f"""
-    QToolButton {{
-        background-color: {_DANGER};
-        color: #FFFFFF;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
-    }}
-    QToolButton:hover {{
-        background-color: {_DANGER_H};
-    }}
-    QToolButton:pressed {{
-        background-color: {_DANGER_P};
-        padding-top: 12px;
     }}
 """
 
@@ -176,9 +145,9 @@ _TABLE_QSS = f"""
     QTableWidget {{
         background-color: {_CARD_BG};
         border: 1px solid {_DIVIDER};
-        border-radius: 14px;
+        border-radius: 10px;
         gridline-color: {_DIVIDER};
-        font-size: 13px;
+        font-size: 12px;
         color: {_TEXT};
         font-family: {_FONT};
         selection-background-color: #F3E6EF;
@@ -186,7 +155,7 @@ _TABLE_QSS = f"""
     QTableWidget::item {{
         background-color: {_CARD_BG};
         border: none;
-        padding: 8px 10px;
+        padding: 6px 8px;
     }}
     QTableWidget::item:selected {{
         background-color: #F3E6EF;
@@ -199,10 +168,10 @@ _TABLE_QSS = f"""
         background-color: #FBEFF7;
         color: {_PRIMARY};
         border: none;
-        border-bottom: 2px solid {_PRIMARY};
+        border-bottom: 1px solid {_PRIMARY};
         font-weight: 600;
-        font-size: 13px;
-        padding: 10px;
+        font-size: 12px;
+        padding: 8px;
         font-family: {_FONT};
     }}
     QHeaderView::section:horizontal {{
@@ -237,13 +206,11 @@ class Ui_Facturas(object):
         Form.setMinimumSize(QtCore.QSize(900, 600))
         Form.setStyleSheet(f"background-color: {_BG};")
 
-        # Íconos creados en tiempo de ejecución (requieren QApplication activa)
-        icon_search = qta.icon("fa5s.search", color=_PRIMARY).pixmap(20, 20)
-        icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(20, 20)
-        icon_trash = qta.icon("fa5s.trash-alt", color="#FFFFFF").pixmap(20, 20)
-        icon_check = qta.icon("fa5s.check-circle", color="#FFFFFF").pixmap(20, 20)
-        icon_cancel = qta.icon("fa5s.times-circle", color=_DANGER).pixmap(20, 20)
-        icon_pdf = qta.icon("fa5s.file-pdf", color="#FFFFFF").pixmap(20, 20)
+        # Íconos
+        icon_search = qta.icon("fa5s.search", color=_PRIMARY).pixmap(16, 16)
+        icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(16, 16)
+        icon_check = qta.icon("fa5s.check-circle", color="#FFFFFF").pixmap(16, 16)
+        icon_cancel = qta.icon("fa5s.times-circle", color=_DANGER).pixmap(16, 16)
 
         self.gridLayout_2 = QtWidgets.QGridLayout(Form)
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
@@ -256,8 +223,8 @@ class Ui_Facturas(object):
         self.gridLayout_2.addWidget(self.Contenedor, 0, 0, 1, 1)
 
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.Contenedor)
-        self.horizontalLayout_2.setContentsMargins(24, 24, 24, 24)
-        self.horizontalLayout_2.setSpacing(24)
+        self.horizontalLayout_2.setContentsMargins(16, 16, 16, 16)
+        self.horizontalLayout_2.setSpacing(16)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
 
         self.Contenido = QtWidgets.QStackedWidget(parent=self.Contenedor)
@@ -272,7 +239,7 @@ class Ui_Facturas(object):
 
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.ContenidoPage1)
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setSpacing(24)
+        self.verticalLayout_2.setSpacing(16)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
 
         self.widget = QtWidgets.QWidget(parent=self.ContenidoPage1)
@@ -281,58 +248,60 @@ class Ui_Facturas(object):
         _sp_expand(self.widget)
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.widget)
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_3.setSpacing(24)
+        self.verticalLayout_3.setSpacing(16)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
 
         # ── Encabezado: título + buscador ─────────────────────────
-        self.frame_2 = QtWidgets.QFrame(parent=self.widget)
-        self.frame_2.setObjectName("frame_2")
-        self.frame_2.setStyleSheet(f"""
-            QFrame#frame_2 {{
+        self.frame_header = QtWidgets.QFrame(parent=self.widget)
+        self.frame_header.setObjectName("frame_header")
+        self.frame_header.setStyleSheet(f"""
+            QFrame#frame_header {{
                 background-color: {_CARD_BG};
                 border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
+                border-radius: 12px;
             }}
         """)
-        self.frame_2.setSizePolicy(
+        self.frame_header.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
-        _card_shadow(self.frame_2)
-        self.gridLayout_3 = QtWidgets.QGridLayout(self.frame_2)
-        self.gridLayout_3.setContentsMargins(28, 22, 28, 22)
-        self.gridLayout_3.setHorizontalSpacing(12)
-        self.gridLayout_3.setVerticalSpacing(14)
-        self.gridLayout_3.setObjectName("gridLayout_3")
+        _card_shadow(self.frame_header)
+        
+        header_layout = QtWidgets.QGridLayout(self.frame_header)
+        header_layout.setContentsMargins(16, 12, 16, 12)
+        header_layout.setHorizontalSpacing(12)
+        header_layout.setVerticalSpacing(8)
+        header_layout.setObjectName("header_layout")
 
-        self.LabelProductos = QtWidgets.QLabel(parent=self.frame_2)
+        self.LabelProductos = QtWidgets.QLabel(parent=self.frame_header)
         self.LabelProductos.setObjectName("LabelProductos")
         self.LabelProductos.setStyleSheet(
-            f"font-size: 28px; font-weight: 700; color: {_PRIMARY};"
+            f"font-size: 20px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
-        self.gridLayout_3.addWidget(self.LabelProductos, 0, 0, 1, 1)
+        header_layout.addWidget(self.LabelProductos, 0, 0, 1, 1)
 
         searchRow = QtWidgets.QHBoxLayout()
-        searchRow.setSpacing(10)
-        self.label_11 = QtWidgets.QLabel(parent=self.frame_2)
-        self.label_11.setObjectName("label_11")
-        self.label_11.setFixedSize(24, 24)
-        self.label_11.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.label_11.setPixmap(icon_search)
-        self.label_11.setScaledContents(True)
-        searchRow.addWidget(self.label_11)
+        searchRow.setSpacing(8)
+        self.label_search = QtWidgets.QLabel(parent=self.frame_header)
+        self.label_search.setObjectName("label_search")
+        self.label_search.setFixedSize(20, 20)
+        self.label_search.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.label_search.setPixmap(icon_search)
+        self.label_search.setScaledContents(True)
+        searchRow.addWidget(self.label_search)
 
-        self.InputBuscador = QtWidgets.QLineEdit(parent=self.frame_2)
+        self.InputBuscador = QtWidgets.QLineEdit(parent=self.frame_header)
         self.InputBuscador.setObjectName("InputBuscador")
         _sp_hfix(self.InputBuscador)
         self.InputBuscador.setMinimumHeight(_CTRL_MIN_H)
         self.InputBuscador.setStyleSheet(_INPUT_QSS)
         self.InputBuscador.setClearButtonEnabled(True)
         searchRow.addWidget(self.InputBuscador, 1)
-        self.gridLayout_3.addLayout(searchRow, 1, 0, 1, 1)
 
-        self.verticalLayout_3.addWidget(self.frame_2, 0)
+        header_layout.addLayout(searchRow, 1, 0, 1, 1)
+
+        self.verticalLayout_3.addWidget(self.frame_header, 0)
 
         # ── Tabla ─────────────────────────────────────────────────
         self.TablaFacturas = QtWidgets.QTableWidget(parent=self.widget)
@@ -359,36 +328,43 @@ class Ui_Facturas(object):
         _card_shadow(self.TablaFacturas)
         self.verticalLayout_3.addWidget(self.TablaFacturas, 1)
 
-        # ── Barra de botones ──────────────────────────────────────
-        self.gridLayout_5 = QtWidgets.QGridLayout()
-        self.gridLayout_5.setHorizontalSpacing(12)
-        self.gridLayout_5.setVerticalSpacing(12)
-        self.gridLayout_5.setObjectName("gridLayout_5")
-        for col in range(5):
-            self.gridLayout_5.setColumnStretch(col, 1)
-
+        # ── Barra de acciones inferior ────────────────────────────
+        self.frame_actions = QtWidgets.QFrame(parent=self.widget)
+        self.frame_actions.setObjectName("frame_actions")
+        self.frame_actions.setStyleSheet(f"""
+            QFrame#frame_actions {{
+                background-color: {_CARD_BG};
+                border: 1px solid {_CARD_BORDER};
+                border-radius: 10px;
+            }}
+        """)
+        self.frame_actions.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        _card_shadow(self.frame_actions)
+        
+        actions_layout = QtWidgets.QHBoxLayout(self.frame_actions)
+        actions_layout.setContentsMargins(12, 10, 12, 10)
+        actions_layout.setSpacing(10)
+        
         self.BtnFacturaPagada = self._make_btn(
-            "BtnFacturaPagada", "   Factura Pagada", _PRIMARY_BTN_QSS, icon_check
+            "BtnFacturaPagada", "Factura Pagada", _PRIMARY_BTN_QSS, icon_check
         )
         self.BtnEditarFactura = self._make_btn(
-            "BtnEditarFactura", "   Editar Factura", _SECONDARY_BTN_QSS, icon_edit
-        )
-        self.BtnGenerarTicket = self._make_btn(
-            "BtnGenerarTicket", "   Generar Ticket", _PRIMARY_BTN_QSS, icon_pdf
+            "BtnEditarFactura", "Editar Factura", _SECONDARY_BTN_QSS, icon_edit
         )
         self.BtnVerCancelarVenta = self._make_btn(
-            "BtnVerCancelarVenta", "   Cancelar Venta", _CANCEL_BTN_QSS, icon_cancel
+            "BtnVerCancelarVenta", "Cancelar Venta", _CANCEL_BTN_QSS, icon_cancel
         )
-        self.BtnEliminarFactura = self._make_btn(
-            "BtnEliminarFactura", "   Eliminar Factura", _DANGER_BTN_QSS, icon_trash
-        )
-        self.gridLayout_5.addWidget(self.BtnFacturaPagada, 0, 0, 1, 1)
-        self.gridLayout_5.addWidget(self.BtnEditarFactura, 0, 1, 1, 1)
-        self.gridLayout_5.addWidget(self.BtnGenerarTicket, 0, 2, 1, 1)
-        self.gridLayout_5.addWidget(self.BtnVerCancelarVenta, 0, 3, 1, 1)
-        self.gridLayout_5.addWidget(self.BtnEliminarFactura, 0, 4, 1, 1)
-
-        self.verticalLayout_3.addLayout(self.gridLayout_5, 0)
+        
+        actions_layout.addStretch()
+        actions_layout.addWidget(self.BtnFacturaPagada)
+        actions_layout.addWidget(self.BtnEditarFactura)
+        actions_layout.addWidget(self.BtnVerCancelarVenta)
+        actions_layout.addStretch()
+        
+        self.verticalLayout_3.addWidget(self.frame_actions, 0)
         self.verticalLayout_2.addWidget(self.widget, 1)
 
         self.Contenido.addWidget(self.ContenidoPage1)
@@ -399,14 +375,13 @@ class Ui_Facturas(object):
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def _make_btn(self, name, text, style, icon_pix):
-        btn = QtWidgets.QToolButton(parent=self.widget)
+        btn = QtWidgets.QToolButton(parent=self.frame_actions)
         btn.setObjectName(name)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        _sp_hfix(btn)
         btn.setMinimumHeight(_BTN_MIN_H)
         btn.setStyleSheet(style)
         btn.setIcon(QtGui.QIcon(icon_pix))
-        btn.setIconSize(QtCore.QSize(20, 20))
+        btn.setIconSize(QtCore.QSize(14, 14))
         btn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         btn.setText(text)
         return btn
@@ -415,19 +390,17 @@ class Ui_Facturas(object):
     #  Responsividad dinámica
     # ─────────────────────────────────────────────────────────────
     def adapt_to_size(self, width: int, height: int):
-        h_margin = max(16, min(60, int(width * 0.05)))
-        v_margin = max(16, min(48, int(height * 0.04)))
+        h_margin = max(12, min(48, int(width * 0.04)))
+        v_margin = max(12, min(40, int(height * 0.035)))
         self.horizontalLayout_2.setContentsMargins(
             h_margin, v_margin, h_margin, v_margin
         )
 
-        ctrl_h = max(42, min(52, int(height * 0.058)))
+        ctrl_h = max(36, min(44, int(height * 0.048)))
         self.InputBuscador.setMinimumHeight(ctrl_h)
 
-        btn_h = max(44, min(54, int(height * 0.062)))
-        for btn in (self.BtnFacturaPagada, self.BtnEditarFactura,
-                    self.BtnGenerarTicket, self.BtnVerCancelarVenta,
-                    self.BtnEliminarFactura):
+        btn_h = max(30, min(38, int(height * 0.042)))
+        for btn in (self.BtnFacturaPagada, self.BtnEditarFactura, self.BtnVerCancelarVenta):
             btn.setMinimumHeight(btn_h)
 
     # ─────────────────────────────────────────────────────────────
@@ -443,8 +416,6 @@ class Ui_Facturas(object):
             item = QtWidgets.QTableWidgetItem(_translate("Form", text))
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.TablaFacturas.setHorizontalHeaderItem(col, item)
-        self.BtnEditarFactura.setText(_translate("Form", "   Editar Factura"))
-        self.BtnFacturaPagada.setText(_translate("Form", "   Factura Pagada"))
-        self.BtnEliminarFactura.setText(_translate("Form", "   Eliminar Factura"))
-        self.BtnVerCancelarVenta.setText(_translate("Form", "   Cancelar Venta"))
-        self.BtnGenerarTicket.setText(_translate("Form", "   Generar Ticket"))
+        self.BtnFacturaPagada.setText(_translate("Form", "Factura Pagada"))
+        self.BtnEditarFactura.setText(_translate("Form", "Editar Factura"))
+        self.BtnVerCancelarVenta.setText(_translate("Form", "Cancelar Venta"))

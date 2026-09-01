@@ -1,37 +1,24 @@
-# UI de Respaldo — Escrita a mano siguiendo el Sistema de Diseño Lady Nail
-# (paleta plum/berry, tarjeta centrada con sombra, botones primarios, SVG, responsiva)
-#
-# Reglas aplicadas del design_system_login.txt:
-#  · Colores semánticos con prefijo _
-#  · Tarjeta flotante (border-radius + QGraphicsDropShadowEffect)
-#  · Botones primarios _PRIMARY (hover/pressed/disabled) con íconos SVG
-#  · Ícono de base de datos (fa5s.database) en badge plum
-#  · resizeEvent → adapt_to_size recalcula márgenes y alturas
-#  · PointingHandCursor en controles interactivos
+# UI de Respaldo — Diseño Minimalista Profesional
+# Limpio, espacial, tipografía elegante, sin elementos decorativos innecesarios
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 import qtawesome as qta
 
 
 # ─────────────────────────────────────────────────────────────────
-#  Paleta semántica (Sistema de Diseño Lady Nail)
+#  Paleta minimalista
 # ─────────────────────────────────────────────────────────────────
 _PRIMARY     = "#862D6D"
 _PRIMARY_H   = "#6E2259"
 _PRIMARY_P   = "#551443"
-_BG          = "#F5F0F4"
-_CARD_BG     = "#FFFFFF"
-_BORDER      = "#D8C8D5"
-_BORDER_H    = "#A97099"
-_TEXT        = "#201A24"
-_MUTED       = "#7B737F"
-_FOCUS_BG    = "#FFFAFE"
-_DIVIDER     = "#E2DAE1"
-_CARD_BORDER = "#EAE0E8"
+_BG          = "#FAFAFA"
+_TEXT        = "#1A1A1A"
+_MUTED       = "#6B7280"
+_LIGHT_MUTED = "#9CA3AF"
+_DIVIDER     = "#E5E7EB"
+_CARD_BORDER = "#E5E7EB"
 
 _FONT = "'Segoe UI', Arial, sans-serif"
-
-_BTN_MIN_H = 54
 
 
 def _sp_expand(w: QtWidgets.QWidget):
@@ -42,83 +29,11 @@ def _sp_expand(w: QtWidgets.QWidget):
     return w
 
 
-def _sp_hfix(w: QtWidgets.QWidget):
-    w.setSizePolicy(
-        QtWidgets.QSizePolicy.Policy.Expanding,
-        QtWidgets.QSizePolicy.Policy.Fixed,
-    )
-    return w
-
-
-_PRIMARY_BTN_QSS = f"""
-    QPushButton {{
-        background-color: {_PRIMARY};
-        color: #FFFFFF;
-        border: none;
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: 600;
-        font-family: {_FONT};
-        padding: 12px 18px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
-    }}
-    QPushButton:hover {{
-        background-color: {_PRIMARY_H};
-    }}
-    QPushButton:pressed {{
-        background-color: {_PRIMARY_P};
-        padding-top: 14px;
-    }}
-    QPushButton:disabled {{
-        background-color: #C4A8BF;
-        color: #F0E8EF;
-    }}
-"""
-
-_TITLE_QSS = f"""
-    QLabel {{
-        font-size: 30px;
-        font-weight: 700;
-        color: {_PRIMARY};
-        font-family: {_FONT};
-        background: transparent;
-    }}
-"""
-
-_SUBTITLE_QSS = f"""
-    QLabel {{
-        font-size: 13px;
-        color: {_MUTED};
-        font-family: {_FONT};
-        background: transparent;
-    }}
-"""
-
-_NOTE_QSS = f"""
-    QLabel {{
-        font-size: 11px;
-        color: {_MUTED};
-        font-family: {_FONT};
-        background: transparent;
-    }}
-"""
-
-
-def _card_shadow(widget: QtWidgets.QWidget):
-    shadow = QtWidgets.QGraphicsDropShadowEffect(widget)
-    shadow.setBlurRadius(40)
-    shadow.setXOffset(0)
-    shadow.setYOffset(12)
-    shadow.setColor(QtGui.QColor(100, 30, 80, 45))
-    widget.setGraphicsEffect(shadow)
-
-
 class Ui_Respaldo(object):
 
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.setMinimumSize(QtCore.QSize(720, 560))
+        Form.setMinimumSize(QtCore.QSize(680, 480))
         Form.setStyleSheet(f"background-color: {_BG};")
 
         self.horizontalLayout = QtWidgets.QHBoxLayout(Form)
@@ -132,8 +47,8 @@ class Ui_Respaldo(object):
         self.horizontalLayout.addWidget(self.Contenedor)
 
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.Contenedor)
-        self.horizontalLayout_2.setContentsMargins(24, 24, 24, 24)
-        self.horizontalLayout_2.setSpacing(24)
+        self.horizontalLayout_2.setContentsMargins(48, 40, 48, 40)
+        self.horizontalLayout_2.setSpacing(32)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
 
         self.Contenido = QtWidgets.QStackedWidget(parent=self.Contenedor)
@@ -151,180 +66,194 @@ class Ui_Respaldo(object):
         self.verticalLayout_2.setSpacing(0)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
 
-        # Centrado horizontal de la tarjeta
-        hCenter = QtWidgets.QHBoxLayout()
-        hCenter.setContentsMargins(0, 0, 0, 0)
-        hCenter.setSpacing(0)
-        hCenter.addStretch(1)
-        hCenter.addWidget(self._build_card())
-        hCenter.addStretch(1)
-        self.verticalLayout_2.addLayout(hCenter)
+        # Centrado del contenido principal
+        self.verticalLayout_2.addStretch(1)
+        self.verticalLayout_2.addLayout(self._build_header())
+        self.verticalLayout_2.addSpacing(40)
+        self.verticalLayout_2.addLayout(self._build_actions())
+        self.verticalLayout_2.addStretch(1)
+        self.verticalLayout_2.addWidget(self._build_footer())
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     # ─────────────────────────────────────────────────────────────
-    #  Tarjeta principal
+    #  Header minimalista
     # ─────────────────────────────────────────────────────────────
-    def _build_card(self):
-        # Íconos creados en tiempo de ejecución (requieren QApplication activa)
-        icon_download = qta.icon("fa5s.download", color="#FFFFFF").pixmap(22, 22)
-        icon_upload = qta.icon("fa5s.upload", color="#FFFFFF").pixmap(22, 22)
-        icon_db = qta.icon("fa5s.database", color=_PRIMARY).pixmap(64, 64)
+    def _build_header(self):
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        self.widget_2 = QtWidgets.QWidget(parent=self.ContenidoPage1)
-        self.widget_2.setObjectName("widget_2")
-        self.widget_2.setStyleSheet(f"""
-            QWidget#widget_2 {{
-                background-color: {_CARD_BG};
-                border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
-            }}
-        """)
-        self.widget_2.setMinimumWidth(360)
-        self.widget_2.setMaximumWidth(560)
-        self.widget_2.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Preferred,
-        )
-        _card_shadow(self.widget_2)
+        # Icono pequeño y elegante
+        icon_db = qta.icon("fa5s.database", color=_PRIMARY).pixmap(32, 32)
+        self.labelIcon = QtWidgets.QLabel(parent=self.ContenidoPage1)
+        self.labelIcon.setObjectName("labelIcon")
+        self.labelIcon.setPixmap(icon_db)
+        self.labelIcon.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.labelIcon.setStyleSheet("background: transparent;")
+        layout.addWidget(self.labelIcon, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.widget_2)
-        self.verticalLayout_4.setContentsMargins(36, 36, 36, 36)
-        self.verticalLayout_4.setSpacing(18)
-        self.verticalLayout_4.setObjectName("verticalLayout_4")
-
-        # Cabecera: badge de base de datos + título + subtítulo
-        self.widget_3 = QtWidgets.QWidget(parent=self.widget_2)
-        self.widget_3.setObjectName("widget_3")
-        self.widget_3.setStyleSheet("background: transparent;")
-        header = QtWidgets.QHBoxLayout(self.widget_3)
-        header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(16)
-        header.setObjectName("verticalLayout_5")
-
-        # Badge con ícono de base de datos
-        self.widget = QtWidgets.QWidget(parent=self.widget_3)
-        self.widget.setObjectName("widget")
-        self.widget.setStyleSheet(f"""
-            QWidget#widget {{
-                background-color: #FBEFF7;
-                border: 1px solid {_DIVIDER};
-                border-radius: 16px;
-            }}
-        """)
-        self.widget.setFixedSize(84, 84)
-        self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.widget)
-        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
-
-        self.label = QtWidgets.QLabel(parent=self.widget)
-        self.label.setObjectName("label")
-        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.label.setPixmap(icon_db)
-        self.label.setScaledContents(False)
-        self.verticalLayout_3.addWidget(self.label)
-        header.addWidget(self.widget)
-
-        titleCol = QtWidgets.QVBoxLayout()
-        titleCol.setSpacing(4)
-        self.LabelRespaldo = QtWidgets.QLabel(parent=self.widget_3)
+        # Título limpio
+        self.LabelRespaldo = QtWidgets.QLabel(parent=self.ContenidoPage1)
         self.LabelRespaldo.setObjectName("LabelRespaldo")
-        self.LabelRespaldo.setStyleSheet(_TITLE_QSS)
-        titleCol.addWidget(self.LabelRespaldo)
+        self.LabelRespaldo.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.LabelRespaldo.setStyleSheet(f"""
+            QLabel {{
+                font-size: 28px;
+                font-weight: 600;
+                color: {_TEXT};
+                font-family: {_FONT};
+                background: transparent;
+                letter-spacing: -0.5px;
+            }}
+        """)
+        layout.addWidget(self.LabelRespaldo)
 
-        self.lblSubtitle = QtWidgets.QLabel(parent=self.widget_3)
+        # Subtitulo sutil
+        self.lblSubtitle = QtWidgets.QLabel(parent=self.ContenidoPage1)
         self.lblSubtitle.setObjectName("lblSubtitle")
-        self.lblSubtitle.setStyleSheet(_SUBTITLE_QSS)
-        self.lblSubtitle.setWordWrap(True)
-        titleCol.addWidget(self.lblSubtitle)
-        header.addLayout(titleCol)
-
-        self.verticalLayout_4.addWidget(self.widget_3)
-
-        # Separador
-        line = QtWidgets.QFrame(parent=self.widget_2)
-        line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        line.setStyleSheet(
-            f"color: {_DIVIDER}; background-color: {_DIVIDER}; max-height: 1px;"
+        self.lblSubtitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.lblSubtitle.setWordWrap(False)
+        self.lblSubtitle.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Preferred
         )
-        self.verticalLayout_4.addWidget(line)
+        self.lblSubtitle.setStyleSheet(f"""
+            QLabel {{
+                font-size: 14px;
+                color: {_MUTED};
+                font-family: {_FONT};
+                background: transparent;
+                line-height: 1.5;
+            }}
+        """)
+        layout.addWidget(self.lblSubtitle, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        # Botones
-        self.widget_4 = QtWidgets.QWidget(parent=self.widget_2)
-        self.widget_4.setObjectName("widget_4")
-        self.widget_4.setStyleSheet("background: transparent;")
-        self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.widget_4)
-        self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_3.setSpacing(16)
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        return layout
+
+    # ─────────────────────────────────────────────────────────────
+    #  Botones de acción - minimalistas
+    # ─────────────────────────────────────────────────────────────
+    def _build_actions(self):
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.BtnRespaldoExportar = self._make_button(
-            "BtnRespaldoExportar", "Respaldar Todos Los Datos", icon_download
+            "BtnRespaldoExportar", "Exportar", "fa5s.download"
         )
         self.BtnRespaldoImportar = self._make_button(
-            "BtnRespaldoImportar", "Cargar Todos los datos", icon_upload
+            "BtnRespaldoImportar", "Importar", "fa5s.upload"
         )
-        self.horizontalLayout_3.addWidget(self.BtnRespaldoExportar)
-        self.horizontalLayout_3.addWidget(self.BtnRespaldoImportar)
-        self.verticalLayout_4.addWidget(self.widget_4)
 
-        # Nota de respaldo automático
-        self.lblNote = QtWidgets.QLabel(parent=self.widget_2)
-        self.lblNote.setObjectName("lblNote")
-        self.lblNote.setStyleSheet(_NOTE_QSS)
-        self.lblNote.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.lblNote.setWordWrap(True)
-        self.verticalLayout_4.addWidget(self.lblNote)
+        layout.addWidget(self.BtnRespaldoExportar)
+        layout.addWidget(self.BtnRespaldoImportar)
 
-        return self.widget_2
+        return layout
 
-    def _make_button(self, name, text, icon_pix):
-        btn = QtWidgets.QPushButton(parent=self.widget_2)
+    def _make_button(self, name, text, icon_name):
+        icon = qta.icon(icon_name, color="#FFFFFF").pixmap(16, 16)
+        btn = QtWidgets.QPushButton(parent=self.ContenidoPage1)
         btn.setObjectName(name)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        btn.setMinimumHeight(_BTN_MIN_H)
-        btn.setStyleSheet(_PRIMARY_BTN_QSS)
-        btn.setIcon(QtGui.QIcon(icon_pix))
-        btn.setIconSize(QtCore.QSize(22, 22))
+        btn.setMinimumHeight(44)
+        btn.setMinimumWidth(160)
+        btn.setIcon(QtGui.QIcon(icon))
+        btn.setIconSize(QtCore.QSize(16, 16))
         btn.setText(text)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {_PRIMARY};
+                color: #FFFFFF;
+                border: none;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+                font-family: {_FONT};
+                padding: 8px 24px;
+                letter-spacing: 0.3px;
+            }}
+            QPushButton:hover {{
+                background-color: {_PRIMARY_H};
+            }}
+            QPushButton:pressed {{
+                background-color: {_PRIMARY_P};
+            }}
+            QPushButton:disabled {{
+                background-color: #D1D5DB;
+                color: #9CA3AF;
+            }}
+        """)
         return btn
+
+    # ─────────────────────────────────────────────────────────────
+    #  Footer con nota
+    # ─────────────────────────────────────────────────────────────
+    def _build_footer(self):
+        widget = QtWidgets.QWidget(parent=self.ContenidoPage1)
+        widget.setObjectName("footerWidget")
+        widget.setStyleSheet("background: transparent;")
+
+        layout = QtWidgets.QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Icono de info sutil
+        icon_info = qta.icon("fa5s.info-circle", color=_LIGHT_MUTED).pixmap(14, 14)
+        lbl_icon = QtWidgets.QLabel(parent=widget)
+        lbl_icon.setObjectName("lblInfoIcon")
+        lbl_icon.setPixmap(icon_info)
+        lbl_icon.setStyleSheet("background: transparent;")
+        layout.addWidget(lbl_icon)
+
+        self.lblNote = QtWidgets.QLabel(parent=widget)
+        self.lblNote.setObjectName("lblNote")
+        self.lblNote.setStyleSheet(f"""
+            QLabel {{
+                font-size: 12px;
+                color: {_LIGHT_MUTED};
+                font-family: {_FONT};
+                background: transparent;
+            }}
+        """)
+        layout.addWidget(self.lblNote)
+
+        return widget
 
     # ─────────────────────────────────────────────────────────────
     #  Responsividad dinámica
     # ─────────────────────────────────────────────────────────────
     def adapt_to_size(self, width: int, height: int):
-        h_margin = max(16, min(60, int(width * 0.05)))
-        v_margin = max(16, min(48, int(height * 0.04)))
+        h_margin = max(32, min(80, int(width * 0.06)))
+        v_margin = max(24, min(56, int(height * 0.06)))
         self.horizontalLayout_2.setContentsMargins(
             h_margin, v_margin, h_margin, v_margin
         )
 
-        card_pad = max(24, min(40, int(min(width, height) * 0.04)))
-        self.verticalLayout_4.setContentsMargins(
-            card_pad, card_pad, card_pad, card_pad
-        )
-
-        btn_h = max(48, min(58, int(height * 0.062)))
+        btn_h = max(40, min(48, int(height * 0.055)))
         for btn in (self.BtnRespaldoExportar, self.BtnRespaldoImportar):
             btn.setMinimumHeight(btn_h)
 
     # ─────────────────────────────────────────────────────────────
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Respaldo · Lady Nail"))
+        Form.setWindowTitle(_translate("Form", "Respaldo"))
         self.LabelRespaldo.setText(_translate("Form", "Respaldo"))
         self.lblSubtitle.setText(
             _translate("Form",
-                       "Copia de seguridad y restauración de la base de datos")
+                       "Protege la información de tu negocio con copias de seguridad")
         )
         self.BtnRespaldoExportar.setText(
-            _translate("Form", "Respaldar Todos Los Datos")
+            _translate("Form", "Exportar")
         )
         self.BtnRespaldoImportar.setText(
-            _translate("Form", "Cargar Todos los datos")
+            _translate("Form", "Importar")
         )
         self.lblNote.setText(
             _translate("Form",
-                       "El sistema genera respaldos automáticos en el escritorio.")
+                       "Respaldos automáticos activados")
         )

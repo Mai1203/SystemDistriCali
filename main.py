@@ -61,17 +61,22 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.stacked_widget)
 
         self.Login = Login_View()
-        self.MainApp = MainApp()
+        self.MainApp = None
 
         self.stacked_widget.addWidget(self.Login)
-        self.stacked_widget.addWidget(self.MainApp)
-
-        self.MainApp.navbar.BtnCerrarSesion.clicked.connect(self.cerrar_sesion)
 
         self.Login.BtnLogin.clicked.connect(self.iniciar_sesion)
         self.Login.InputPassword.returnPressed.connect(self.iniciar_sesion)
 
         self.db = conectar_base()
+
+    def crear_mainapp(self):
+        if self.MainApp is not None:
+            return
+
+        self.MainApp = MainApp()
+        self.stacked_widget.addWidget(self.MainApp)
+        self.MainApp.navbar.BtnCerrarSesion.clicked.connect(self.cerrar_sesion)
 
     def inicializar_db(self):
         app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriCali"
@@ -138,6 +143,7 @@ class MainWindow(QMainWindow):
         rol = usuario_data.rol if (usuario_data and usuario_data.rol) else "ASESOR"
 
         self.usuario_actual_id = usuario_autenticado.ID_Usuario
+        self.crear_mainapp()
         self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
         self.MainApp.pagoCredito.usuario_actual_id = usuario_autenticado.ID_Usuario

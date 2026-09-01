@@ -144,7 +144,7 @@ class Ui_VentasCredito(object):
         self.comboBoxPrecio.setObjectName("comboBoxPrecio")
         self.comboBoxPrecio.setMinimumHeight(40)
         self.comboBoxPrecio.setStyleSheet(_INPUT_QSS)
-        self.comboBoxPrecio.addItems(["PV-01", "PV-02", "PV-03", "PV-04", "PV-05", "PV-06"])
+        self.comboBoxPrecio.addItems(["PV-01", "PV-02", "PV-03", "PV-04"])
         inputLayout.addWidget(self.comboBoxPrecio, 1, 5)
 
         self.BtnAgregar = QtWidgets.QPushButton(" Agregar Producto", self.inputCard)
@@ -200,13 +200,15 @@ class Ui_VentasCredito(object):
         titleCliLayout = QtWidgets.QHBoxLayout()
         titleCliLayout.setContentsMargins(0, 0, 0, 0)
         titleCliLayout.setSpacing(8)
+        titleCliLayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
         
         lblIconCli = QtWidgets.QLabel()
-        lblIconCli.setPixmap(qta.icon('fa5s.user', color=_PRIMARY).pixmap(16, 16))
-        lblIconCli.setFixedSize(16, 16)
+        lblIconCli.setPixmap(qta.icon('fa5s.user', color=_PRIMARY).pixmap(18, 18))
+        lblIconCli.setFixedSize(18, 18)
+        lblIconCli.setStyleSheet("background: transparent; border: none;")
         
         lblTitleCli = QtWidgets.QLabel("Datos del Cliente")
-        lblTitleCli.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY};")
+        lblTitleCli.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY}; border: none;")
         
         titleCliLayout.addWidget(lblIconCli)
         titleCliLayout.addWidget(lblTitleCli)
@@ -271,10 +273,18 @@ class Ui_VentasCredito(object):
         resumenLayout = QtWidgets.QVBoxLayout(self.resumenCard)
         
         titleResumenLayout = QtWidgets.QHBoxLayout()
+        titleResumenLayout.setContentsMargins(0, 0, 0, 0)
+        titleResumenLayout.setSpacing(8)
+        titleResumenLayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
+        
         lblIconResumen = QtWidgets.QLabel()
-        lblIconResumen.setPixmap(qta.icon('fa5s.chart-bar', color=_PRIMARY).pixmap(16, 16))
+        lblIconResumen.setPixmap(qta.icon('fa5s.chart-bar', color=_PRIMARY).pixmap(18, 18))
+        lblIconResumen.setFixedSize(18, 18)
+        lblIconResumen.setStyleSheet("background: transparent; border: none;")
+        
         lblTitleResumen = QtWidgets.QLabel("Resumen de Venta")
-        lblTitleResumen.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY};")
+        lblTitleResumen.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_PRIMARY}; border: none;")
+        
         titleResumenLayout.addWidget(lblIconResumen)
         titleResumenLayout.addWidget(lblTitleResumen)
         titleResumenLayout.addStretch()
@@ -282,22 +292,61 @@ class Ui_VentasCredito(object):
         
         resumenLayout.addSpacing(16)
         
+        # ── Caja destacada: Subtotal Ítems (Protagonista) ──
+        self.subtotalBox = QtWidgets.QFrame(self.resumenCard)
+        self.subtotalBox.setStyleSheet(f"""
+            QFrame {{
+                background-color: {_CARD_BG};
+                border: 1.5px solid {_PRIMARY};
+                border-radius: 8px;
+                padding: 6px 10px;
+            }}
+        """)
+        subtotalBoxLayout = QtWidgets.QHBoxLayout(self.subtotalBox)
+        subtotalBoxLayout.setContentsMargins(4, 4, 4, 4)
+        
+        lblSubtotalTitleLayout = QtWidgets.QVBoxLayout()
+        lblSubtotalTitleLayout.setSpacing(2)
+        lblSubtotalHeader = QtWidgets.QLabel("Subtotal Ítems")
+        lblSubtotalHeader.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {_TEXT};")
+        lblSubtotalSub = QtWidgets.QLabel("(Valor productos)")
+        lblSubtotalSub.setStyleSheet(f"font-size: 10px; color: {_MUTED};")
+        lblSubtotalTitleLayout.addWidget(lblSubtotalHeader)
+        lblSubtotalTitleLayout.addWidget(lblSubtotalSub)
+        subtotalBoxLayout.addLayout(lblSubtotalTitleLayout)
+        
+        subtotalBoxLayout.addStretch()
         self.LabelSubtotal = QtWidgets.QLabel("$ 0")
         self.LabelSubtotal.setObjectName("LabelSubtotal")
-        self.LabelSubtotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self._add_row(resumenLayout, "Subtotal", self.LabelSubtotal)
+        self.LabelSubtotal.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_PRIMARY};")
+        self.LabelSubtotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        subtotalBoxLayout.addWidget(self.LabelSubtotal)
+        resumenLayout.addWidget(self.subtotalBox)
         
+        # ── Total General ──
         self.lblTotalTitle = QtWidgets.QLabel("Total")
-        self.lblTotalTitle.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {_TEXT};")
+        self.lblTotalTitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {_TEXT};")
         self.LabelTotal = QtWidgets.QLabel("$ 0")
         self.LabelTotal.setObjectName("LabelTotal")
-        self.LabelTotal.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {_PRIMARY};")
+        self.LabelTotal.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {_TEXT};")
         self.LabelTotal.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         
         totLayout = QtWidgets.QHBoxLayout()
         totLayout.addWidget(self.lblTotalTitle)
         totLayout.addWidget(self.LabelTotal)
         resumenLayout.addLayout(totLayout)
+        
+        # ── Nota informativa sobre el pago ──
+        self.lblNotaPago = QtWidgets.QLabel(
+            "ℹ️ El valor a cobrar corresponde al Subtotal de Ítems.\n(El domicilio no se registra en la base de datos).",
+            self.resumenCard
+        )
+        self.lblNotaPago.setWordWrap(True)
+        self.lblNotaPago.setStyleSheet(
+            f"background-color: #FFFFFF; color: {_MUTED}; font-size: 10px; font-style: italic; "
+            f"border: 1px dashed {_DIVIDER}; border-radius: 6px; padding: 6px 8px;"
+        )
+        resumenLayout.addWidget(self.lblNotaPago)
         
         resumenLayout.addStretch()
 
