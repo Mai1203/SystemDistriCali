@@ -152,14 +152,20 @@ class Caja_View(QWidget, Ui_Caja):
             fecha_inicio = self.fecha_inicio
             fecha_fin = self.fecha_fin
 
-            # Consultar ingresos en el rango de fechas
+            # Consultar ingresos y egresos en el rango de fechas
             ingresos = obtener_ingresos(
                 db,
                 fecha_inicio,
                 fecha_fin
             )
 
-            if ingresos:
+            egresos = obtener_egresos_reporte(
+                db,
+                fecha_inicio,
+                fecha_fin
+            ) or []
+
+            if ingresos or egresos:
 
                 # Crear objeto caja con los datos de la fila seleccionada
                 caja = Caja(
@@ -176,14 +182,15 @@ class Caja_View(QWidget, Ui_Caja):
                 # Generar PDF
                 generar_pdf_caja_ingresos(
                     caja,
-                    ingresos
+                    ingresos,
+                    egresos
                 )
 
             else:
                 QMessageBox.information(
                     self,
                     "Sin resultados",
-                    "No se encontraron ingresos en el rango de fechas seleccionado."
+                    "No se encontraron movimientos en el rango de fechas seleccionado."
                 )
 
         except Exception as e:
