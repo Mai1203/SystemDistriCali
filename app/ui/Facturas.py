@@ -208,6 +208,7 @@ class Ui_Facturas(object):
 
         # Íconos
         icon_search = qta.icon("fa5s.search", color=_PRIMARY).pixmap(16, 16)
+        icon_view = qta.icon("fa5s.eye", color=_PRIMARY).pixmap(16, 16)
         icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(16, 16)
         icon_check = qta.icon("fa5s.check-circle", color="#FFFFFF").pixmap(16, 16)
         icon_cancel = qta.icon("fa5s.times-circle", color=_DANGER).pixmap(16, 16)
@@ -351,6 +352,9 @@ class Ui_Facturas(object):
         self.BtnFacturaPagada = self._make_btn(
             "BtnFacturaPagada", "Factura Pagada", _PRIMARY_BTN_QSS, icon_check
         )
+        self.BtnVerFactura = self._make_btn(
+            "BtnVerFactura", "Ver Factura", _SECONDARY_BTN_QSS, icon_view
+        )
         self.BtnEditarFactura = self._make_btn(
             "BtnEditarFactura", "Editar Factura", _SECONDARY_BTN_QSS, icon_edit
         )
@@ -360,6 +364,7 @@ class Ui_Facturas(object):
         
         actions_layout.addStretch()
         actions_layout.addWidget(self.BtnFacturaPagada)
+        actions_layout.addWidget(self.BtnVerFactura)
         actions_layout.addWidget(self.BtnEditarFactura)
         actions_layout.addWidget(self.BtnVerCancelarVenta)
         actions_layout.addStretch()
@@ -400,7 +405,7 @@ class Ui_Facturas(object):
         self.InputBuscador.setMinimumHeight(ctrl_h)
 
         btn_h = max(30, min(38, int(height * 0.042)))
-        for btn in (self.BtnFacturaPagada, self.BtnEditarFactura, self.BtnVerCancelarVenta):
+        for btn in (self.BtnFacturaPagada, self.BtnVerFactura, self.BtnEditarFactura, self.BtnVerCancelarVenta):
             btn.setMinimumHeight(btn_h)
 
     # ─────────────────────────────────────────────────────────────
@@ -417,5 +422,6 @@ class Ui_Facturas(object):
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.TablaFacturas.setHorizontalHeaderItem(col, item)
         self.BtnFacturaPagada.setText(_translate("Form", "Factura Pagada"))
+        self.BtnVerFactura.setText(_translate("Form", "Ver Factura"))
         self.BtnEditarFactura.setText(_translate("Form", "Editar Factura"))
         self.BtnVerCancelarVenta.setText(_translate("Form", "Cancelar Venta"))

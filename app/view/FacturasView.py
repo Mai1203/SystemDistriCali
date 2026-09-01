@@ -9,10 +9,13 @@ from PyQt6.QtCore import pyqtSignal, QTimer
 from ..ui import Ui_Facturas
 from ..database.database import SessionLocal
 from ..controllers.facturas_crud import *
+from ..controllers.venta_credito_crud import obtener_ventas_credito
+from ..controllers.pago_credito_crud import obtener_pagos_credito
 from ..controllers.producto_crud import *
 from ..controllers.tipo_ingreso_crud import *
 from ..controllers.ingresos_crud import *
 from ..utils.enviar_notifi import enviar_notificacion
+from ..utils.formateador import formatear_factura_completa
 
 
 class Facturas_View(QWidget, Ui_Facturas):
@@ -40,6 +43,7 @@ class Facturas_View(QWidget, Ui_Facturas):
 
 
         self.BtnFacturaPagada.clicked.connect(self.factura_pagada)
+        self.BtnVerFactura.clicked.connect(self.ver_factura)
         self.BtnEditarFactura.clicked.connect(self.editar_factura)
         self.BtnVerCancelarVenta.clicked.connect(self.cancelar_venta)
 
@@ -273,6 +277,32 @@ class Facturas_View(QWidget, Ui_Facturas):
                 )
                 return
 
+            factura = factura_completa["Factura"]
+            if factura["Estado"]:
+                QMessageBox.warning(
+                    self,
+                    "Factura bloqueada",
+                    "La factura ya está pagada y no puede editarse.",
+                )
+                return
+
+            venta_credito = next(
+                (
+                    venta for venta in obtener_ventas_credito(self.db)
+                    if venta.ID_Factura == ids[0]
+                ),
+                None,
+            )
+            if venta_credito and obtener_pagos_credito(
+                self.db, venta_credito.ID_Venta_Credito
+            ):
+                QMessageBox.warning(
+                    self,
+                    "Factura bloqueada",
+                    "La factura de crédito ya tiene abonos y no puede editarse.",
+                )
+                return
+
             # Editar desde el formulario de ventas para conservar su gestión de productos.
             parent_window = self.parent()
             while parent_window and not hasattr(parent_window, 'cambiar_a_ventasA'):
@@ -286,3 +316,25 @@ class Facturas_View(QWidget, Ui_Facturas):
         except Exception as e:
             print(f"Error al abrir ventana de edición: {e}")
             enviar_notificacion("Error", f"Error al editar factura: {e}")
+
+    def ver_factura(self):
+        ids = self.obtener_ids_seleccionados()
+        if not ids:
+            enviar_notificacion(
+                "Advertencia", "No se seleccionó ninguna factura para consultar."
+            )
+            return
+
+        db = SessionLocal()
+        try:
+            factura_completa = obtener_factura_completa(db, ids[0])
+            if not factura_completa:
+                QMessageBox.warning(self, "Factura", "No se encontró la factura seleccionada.")
+                return
+
+            texto = formatear_factura_completa(factura_completa)
+            QMessageBox.information(self, "Ver factura", texto)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo consultar la factura: {e}")
+        finally:
+            db.close()

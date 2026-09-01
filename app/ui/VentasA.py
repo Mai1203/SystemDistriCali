@@ -414,8 +414,6 @@ class Ui_VentasA(object):
         resumenLayout.addStretch()
 
         self.BtnGenerarVenta = QtWidgets.QPushButton(" Generar Venta", self.resumenCard)
-        self.BtnGenerarVenta.setIcon(qta.icon('fa5s.file-invoice-dollar', color='white'))
-        self.BtnGenerarVenta.setIconSize(QtCore.QSize(18, 18))
         self.BtnGenerarVenta.setMinimumHeight(48)
         self.BtnGenerarVenta.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnGenerarVenta.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center;")
@@ -429,8 +427,6 @@ class Ui_VentasA(object):
         bottomLayout.setStretch(2, 3)
 
         self.rootLayout.addLayout(bottomLayout)
-
-        QtCore.QMetaObject.connectSlotsByName(Form)
 
     def _mk_lbl(self, text):
         lbl = QtWidgets.QLabel(text)

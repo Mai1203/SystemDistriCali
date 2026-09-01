@@ -123,91 +123,55 @@ class VentasA_View(QWidget, Ui_VentasA):
         # Timer
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
 
-    # def cargar_información(self, factura_completa):
-    #     factura = factura_completa["Factura"]
-    #     cliente = factura_completa["Cliente"]
-    #     detalles = factura_completa["Detalles"]
+    def cargar_información(self, factura_completa):
+        factura = factura_completa["Factura"]
+        cliente = factura_completa["Cliente"]
+        detalles = factura_completa["Detalles"]
 
-    #     subtotal = sum(detalle["Subtotal"] for detalle in detalles)
-    #     delivery_fee = factura["Descuento"]
+        subtotal = sum(detalle["Subtotal"] for detalle in detalles)
+        descuento = factura["Descuento"]
+        total = subtotal - descuento
+        payment_method = factura["MetodoPago"]
+        self.invoice_number = factura["ID_Factura"]
 
-    #     client_name = f"{cliente['Nombre']} {cliente['Apellido']}"
-    #     client_id = cliente["ID_Cliente"]
-    #     client_address = cliente["Direccion"]
-    #     client_phone = cliente["Teléfono"]
+        if payment_method == "Efectivo":
+            pago = str(factura["Monto_efectivo"])
+        elif payment_method == "Transferencia":
+            pago = str(factura["Monto_TRANSACCION"])
+        else:
+            pago = f"{factura['Monto_efectivo']}/{factura['Monto_TRANSACCION']}"
 
-    #     total = subtotal - delivery_fee
+        self.tableWidget.setRowCount(len(detalles))
+        self.cantidades = []
 
-    #     payment_method = factura["MetodoPago"]
-    #     self.invoice_number = factura["ID_Factura"]
+        for row, detalle in enumerate(detalles):
+            id_producto = detalle["ID_Producto"]
+            self.cantidades.append((id_producto, detalle["Cantidad"]))
+            valores = [
+                id_producto,
+                detalle["Producto"],
+                detalle["Marca"],
+                detalle["Categoria"],
+                detalle["Cantidad"],
+                detalle["Precio_Unitario"],
+                detalle["Subtotal"],
+            ]
+            for column, valor in enumerate(valores):
+                item = QTableWidgetItem(str(valor))
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.tableWidget.setItem(row, column, item)
 
-    #     if payment_method == "Efectivo":
-    #         pago = str(factura["Monto_efectivo"])
-    #     elif payment_method == "Transferencia":
-    #         pago = str(factura["Monto_TRANSACCION"])
-    #     else:
-    #         pago = f"{factura['Monto_efectivo']}/{factura['Monto_TRANSACCION']}"
-
-    #     self.tableWidget.setRowCount(len(detalles))
-
-    #     cant = []
-    #     for row, detalles in enumerate(detalles):
-    #         id_producto = detalles["ID_Producto"]
-    #         producto = detalles["Producto"]
-    #         marca = detalles["Marca"]
-    #         categoria = detalles["Categoria"]
-    #         cantidad = detalles["Cantidad"]
-    #         cant.append((id_producto, cantidad))
-    #         precio_unitario = detalles["Precio_Unitario"]
-    #         subtotal_producto = detalles["Subtotal"]
-
-    #         item_id_producto = QTableWidgetItem(str(id_producto))
-    #         item_id_producto.setFlags(item_id_producto.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_id_producto.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 0, item_id_producto)
-
-    #         item_nombre = QTableWidgetItem(producto)
-    #         item_nombre.setFlags(item_nombre.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 1, item_nombre)
-
-    #         item_marca = QTableWidgetItem(marca)
-    #         item_marca.setFlags(item_marca.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_marca.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 2, item_marca)
-
-    #         item_categoria = QTableWidgetItem(categoria)
-    #         item_categoria.setFlags(item_categoria.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_categoria.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 3, item_categoria)
-
-    #         item_cantidad = QTableWidgetItem(str(cantidad))
-    #         item_cantidad.setFlags(item_cantidad.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_cantidad.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 4, item_cantidad)
-
-    #         item_precio = QTableWidgetItem(str(precio_unitario))
-    #         item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 5, item_precio)
-
-    #         item_subtotal = QTableWidgetItem(str(subtotal_producto))
-    #         item_subtotal.setFlags(item_subtotal.flags() & ~Qt.ItemFlag.ItemIsEditable)
-    #         item_subtotal.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #         self.tableWidget.setItem(row, 6, item_subtotal)
-
-    #     self.cantidades = cant
-    #     self.tableWidget.resizeColumnsToContents()
-
-    #     self.InputCedula.setText(str(client_id))
-    #     self.InputNombreCli.setText(str(client_name))
-    #     self.InputTelefonoCli.setText(str(client_phone))
-    #     self.InputDireccion.setText(str(client_address))
-    #     self.InputPago.setText(str(pago))
-    #     self.InputDescuento.setText(str(delivery_fee))
-    #     self.LabelSubtotal.setText(f"{subtotal:,.2f}")
-    #     self.LabelTotal.setText(f"{total:,.2f}")
-    #     self.MetodoPagoBox.setCurrentText(payment_method)
+        self.tableWidget.resizeColumnsToContents()
+        self.InputCedula.setText(str(cliente["ID_Cliente"]))
+        self.InputNombreCli.setText(f"{cliente['Nombre']} {cliente['Apellido']}")
+        self.InputTelefonoCli.setText(str(cliente["Teléfono"]))
+        self.InputDireccion.setText(str(cliente["Direccion"]))
+        self.InputDescuento.setText(str(descuento))
+        self.LabelSubtotal.setText(f"{subtotal:,.2f}")
+        self.LabelTotal.setText(f"{total:,.2f}")
+        self.MetodoPagoBox.setCurrentText(payment_method)
+        self.InputPago.setText(pago)
 
     def configurar_tipo_venta(self, indice):
         self.tipo_venta = indice

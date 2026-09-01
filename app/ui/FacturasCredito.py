@@ -217,6 +217,7 @@ class Ui_FacturasCredito(object):
 
         # Íconos
         icon_search = qta.icon("fa5s.search", color=_PRIMARY).pixmap(16, 16)
+        icon_view = qta.icon("fa5s.eye", color=_PRIMARY).pixmap(16, 16)
         icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(16, 16)
         icon_check = qta.icon("fa5s.check-circle", color="#FFFFFF").pixmap(16, 16)
         icon_sort = qta.icon("fa5s.sort", color=_PRIMARY).pixmap(16, 16)
@@ -376,12 +377,16 @@ class Ui_FacturasCredito(object):
         self.BtnAgregarAbono = self._make_btn(
             "BtnAgregarAbono", "Agregar Abono", _PRIMARY_BTN_QSS, icon_check
         )
+        self.BtnVerFactura = self._make_btn(
+            "BtnVerFactura", "Ver Factura", _SECONDARY_BTN_QSS, icon_view
+        )
         self.BtnEditarFactura = self._make_btn(
             "BtnEditarFactura", "Editar Factura", _SECONDARY_BTN_QSS, icon_edit
         )
         
         actions_layout.addStretch()
         actions_layout.addWidget(self.BtnAgregarAbono)
+        actions_layout.addWidget(self.BtnVerFactura)
         actions_layout.addWidget(self.BtnEditarFactura)
         actions_layout.addStretch()
         
@@ -421,7 +426,7 @@ class Ui_FacturasCredito(object):
         self.InputBuscador.setMinimumHeight(ctrl_h)
 
         btn_h = max(30, min(38, int(height * 0.042)))
-        for btn in (self.BtnAgregarAbono, self.BtnEditarFactura):
+        for btn in (self.BtnAgregarAbono, self.BtnVerFactura, self.BtnEditarFactura):
             btn.setMinimumHeight(btn_h)
 
     # ─────────────────────────────────────────────────────────────
@@ -438,4 +443,5 @@ class Ui_FacturasCredito(object):
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.TablaFacturasCredito.setHorizontalHeaderItem(col, item)
         self.BtnEditarFactura.setText(_translate("Form", "Editar Factura"))
+        self.BtnVerFactura.setText(_translate("Form", "Ver Factura"))
         self.BtnAgregarAbono.setText(_translate("Form", "Agregar Abono"))

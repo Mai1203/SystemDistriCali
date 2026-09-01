@@ -12,6 +12,7 @@ from ..controllers.venta_credito_crud import *
 from ..controllers.facturas_crud import *
 from ..controllers.pago_credito_crud import *
 from ..utils.enviar_notifi import enviar_notificacion
+from ..utils.formateador import formatear_factura_completa
 from datetime import datetime
 
 class CrediFactura_View(QWidget, Ui_FacturasCredito):
@@ -41,6 +42,7 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
         )
 
         self.BtnEditarFactura.clicked.connect(self.editar_ventaCredito)
+        self.BtnVerFactura.clicked.connect(self.ver_factura)
         self.BtnAgregarAbono.clicked.connect(self.agregar_abono)
         self.ComboOrden.currentIndexChanged.connect(self.cambiar_orden)
 
@@ -173,6 +175,14 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
             if venta.estado == True:
                 QMessageBox.warning(self, "Error", "La venta a crédito ya está pagada.")
                 return
+
+            if obtener_pagos_credito(self.db, venta.ID_Venta_Credito):
+                QMessageBox.warning(
+                    self,
+                    "Factura bloqueada",
+                    "La factura de crédito ya tiene abonos y no puede editarse.",
+                )
+                return
             
             factura_completa = obtener_factura_completa(self.db, venta.ID_Factura)
 
@@ -194,6 +204,36 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo abrir la ventana: {e}")
             print(f"Error detallado: {e}")
+
+    def ver_factura(self):
+        ids = self.obtener_ids_seleccionados()
+        if not ids:
+            enviar_notificacion(
+                "Advertencia", "No se seleccionó ninguna factura para consultar."
+            )
+            return
+
+        db = SessionLocal()
+        try:
+            venta_credito = obtener_ventaCredito_id(db, ids[0])
+            if not venta_credito:
+                QMessageBox.warning(self, "Factura", "No se encontró la factura seleccionada.")
+                return
+
+            venta = venta_credito[0]
+            factura_completa = obtener_factura_completa(db, venta.ID_Factura)
+            credito = {
+                "Total_Deuda": venta.Total_Deuda,
+                "Saldo_Pendiente": venta.Saldo_Pendiente,
+                "Fecha_Limite": venta.Fecha_Limite,
+            }
+            pagos = obtener_pagos_credito(db, venta.ID_Venta_Credito)
+            texto = formatear_factura_completa(factura_completa, credito, pagos)
+            QMessageBox.information(self, "Ver factura de crédito", texto)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo consultar la factura: {e}")
+        finally:
+            db.close()
 
     def agregar_abono(self):
         try:
