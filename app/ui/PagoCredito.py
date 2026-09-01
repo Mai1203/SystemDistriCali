@@ -38,21 +38,13 @@ _DANGER_P    = "#7B241C"
 _FONT = "'Segoe UI', Arial, sans-serif"
 
 _CTRL_MIN_H = 38
-_BTN_MIN_H  = 40
+_BTN_MIN_H  = 32
 
 
 def _sp_expand(w: QtWidgets.QWidget):
     w.setSizePolicy(
         QtWidgets.QSizePolicy.Policy.Expanding,
         QtWidgets.QSizePolicy.Policy.Expanding,
-    )
-    return w
-
-
-def _sp_hfix(w: QtWidgets.QWidget):
-    w.setSizePolicy(
-        QtWidgets.QSizePolicy.Policy.Expanding,
-        QtWidgets.QSizePolicy.Policy.Fixed,
     )
     return w
 
@@ -107,7 +99,7 @@ _PRIMARY_BTN_QSS = f"""
         font-size: 13px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 8px 16px;
+        padding: 4px 12px;
         letter-spacing: 0.3px;
         min-height: {_BTN_MIN_H}px;
     }}
@@ -376,9 +368,13 @@ class Ui_PagoCredito(object):
         
         footer_layout = QtWidgets.QHBoxLayout(self.frame_footer)
         footer_layout.setContentsMargins(12, 10, 12, 10)
-        footer_layout.setSpacing(10)
+        footer_layout.setSpacing(4)
 
         self.label_metodo = QtWidgets.QLabel("Método de Pago:", parent=self.frame_footer)
+        self.label_metodo.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.label_metodo.setStyleSheet(
             f"font-size: 13px; font-weight: 600; color: {_MUTED};"
             f" font-family: {_FONT}; background: transparent;"
@@ -387,12 +383,20 @@ class Ui_PagoCredito(object):
 
         self.MetodoPagoBox = QtWidgets.QComboBox(parent=self.frame_footer)
         self.MetodoPagoBox.setObjectName("MetodoPagoBox")
-        _sp_hfix(self.MetodoPagoBox)
+        self.MetodoPagoBox.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self.MetodoPagoBox.setFixedWidth(170)
         self.MetodoPagoBox.setMinimumHeight(_CTRL_MIN_H)
         self.MetodoPagoBox.setStyleSheet(_INPUT_QSS)
         footer_layout.addWidget(self.MetodoPagoBox)
 
-        self.label_monto = QtWidgets.QLabel("Monto:", parent=self.frame_footer)
+        self.label_monto = QtWidgets.QLabel("Monto a pagar:", parent=self.frame_footer)
+        self.label_monto.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.label_monto.setStyleSheet(
             f"font-size: 13px; font-weight: 600; color: {_MUTED};"
             f" font-family: {_FONT}; background: transparent;"
@@ -401,7 +405,11 @@ class Ui_PagoCredito(object):
 
         self.InputPago = QtWidgets.QLineEdit(parent=self.frame_footer)
         self.InputPago.setObjectName("InputPago")
-        _sp_hfix(self.InputPago)
+        self.InputPago.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self.InputPago.setFixedWidth(150)
         self.InputPago.setMinimumHeight(_CTRL_MIN_H)
         self.InputPago.setStyleSheet(_INPUT_QSS)
         self.InputPago.setPlaceholderText("$")
@@ -410,6 +418,11 @@ class Ui_PagoCredito(object):
         self.BtnAbonar = QtWidgets.QPushButton("Abonar", parent=self.frame_footer)
         self.BtnAbonar.setObjectName("BtnAbonar")
         self.BtnAbonar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnAbonar.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self.BtnAbonar.setFixedWidth(110)
         self.BtnAbonar.setMinimumHeight(_BTN_MIN_H)
         self.BtnAbonar.setStyleSheet(_PRIMARY_BTN_QSS)
         self.BtnAbonar.setIcon(qta.icon('fa5s.dollar-sign', color='white'))

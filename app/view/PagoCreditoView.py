@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QMessageBox
+from PyQt6.QtWidgets import QWidget, QMessageBox, QTableWidgetItem
 from PyQt6.QtCore import QDate, Qt, QRegularExpression
 from PyQt6.QtGui import QColor, QBrush, QRegularExpressionValidator
 
@@ -111,7 +111,7 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
             ]
 
             for value, col_idx in items:
-                item = QtWidgets.QTableWidgetItem(value)
+                item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.TablaPagoCredito.setItem(row, col_idx, item)
 
