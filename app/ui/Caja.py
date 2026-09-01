@@ -222,6 +222,35 @@ class Ui_Caja(object):
             QTableWidget::item:alternate {
                 background-color: #FAFAFA;
             }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 6px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #D8C8D5;
+                border-radius: 3px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #A97099;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar:horizontal {
+                background: transparent;
+                height: 6px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:horizontal {
+                background: #D8C8D5;
+                border-radius: 3px;
+                min-width: 30px;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
         """)
         cajas_layout.addWidget(self.TablaCaja, stretch=1)
         self.left_column.addWidget(self.cajas_card)
