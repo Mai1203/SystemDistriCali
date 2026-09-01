@@ -318,6 +318,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             monto_trans_str   = self.InputPagoTransferencia.text().strip()
             payment_method    = self.MetodoPagoBox.currentText().strip()
             descuento         = float(self.InputDescuento.text().strip()) if self.InputDescuento.text() else 0.0
+            domicilio_val     = self.obtener_valor_domicilio()
 
             # Calcular total desde la tabla
             subtotal_items = 0.0
