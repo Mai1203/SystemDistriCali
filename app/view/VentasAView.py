@@ -49,6 +49,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.id_categoria = None
         self.valor_domicilio = 0.0
         self.invoice_number = None
+        self.tipo_venta_original = None
         self.tipo_venta = 0
         self.cantidades = []
         self.fila_seleccionada = None
@@ -70,8 +71,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.BtnFacturaB.hide()
         self.InputCodigo.setPlaceholderText("Ej: 7709991003078")
         self.InputNombre.setPlaceholderText("Ej: Esmalte")
-        self.InputDomicilio.setPlaceholderText("Ej: 5000")
+        self.InputDomicilio.setPlaceholderText("No aplica en facturas normales")
         self.InputDescuento.setPlaceholderText("Ej: 500")
+        self.CheckFacturaPagada.setChecked(True)
 
         # Inicialización y configuración
         self.limpiar_tabla()
@@ -168,12 +170,26 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputTelefonoCli.setText(str(cliente["Teléfono"]))
         self.InputDireccion.setText(str(cliente["Direccion"]))
         self.InputDescuento.setText(str(descuento))
+        self.CheckFacturaPagada.setChecked(bool(factura["Estado"]))
         self.LabelSubtotal.setText(f"{subtotal:,.2f}")
         self.LabelTotal.setText(f"{total:,.2f}")
         self.MetodoPagoBox.setCurrentText(payment_method)
         self.InputPago.setText(pago)
+        self.tipo_venta_original = self.tipo_venta
 
     def configurar_tipo_venta(self, indice):
+        if (
+            self.invoice_number
+            and self.tipo_venta_original is not None
+            and indice != self.tipo_venta_original
+        ):
+            QMessageBox.warning(
+                self,
+                "Edición de factura",
+                "Se está editando una factura y no se puede cambiar el tipo de factura.",
+            )
+            return
+
         self.tipo_venta = indice
         self.actualizar_precios_segun_tipo_venta()
 
@@ -390,10 +406,19 @@ class VentasA_View(QWidget, Ui_VentasA):
             total = calcular_total_venta(subtotal, delivery_fee, descuento)
             pago = self.InputPago.text().strip()
 
-            domicilio = True if delivery_fee > 0 else False
+            domicilio = False
 
             if self.invoice_number and self.invoice_number != "":
-                self.actualizar_factura(db, self.invoice_number, payment_method, produc_datos, monto_pago, delivery_fee, self.usuario_actual_id)
+                self.actualizar_factura(
+                    db,
+                    self.invoice_number,
+                    payment_method,
+                    produc_datos,
+                    monto_pago,
+                    delivery_fee,
+                    self.usuario_actual_id,
+                    self.CheckFacturaPagada.isChecked(),
+                )
                 mensaje = "Factura actualizada exitosamente."
             else:
                 for codigo, quantity, _ in produc_datos:
@@ -401,7 +426,17 @@ class VentasA_View(QWidget, Ui_VentasA):
                     stock_actual = producto.Stock_actual - quantity
                     actualizar_producto(db, id_producto=int(codigo), stock_actual=stock_actual)
 
-                id_factura = self.guardar_factura(db, client_id, payment_method, produc_datos, monto_pago, descuento, self.usuario_actual_id, domicilio)
+                id_factura = self.guardar_factura(
+                    db,
+                    client_id,
+                    payment_method,
+                    produc_datos,
+                    monto_pago,
+                    descuento,
+                    self.usuario_actual_id,
+                    domicilio,
+                    self.CheckFacturaPagada.isChecked(),
+                )
                 self.invoice_number = f"0000{id_factura}"
                 mensaje = "Factura generada exitosamente."
 
@@ -534,8 +569,19 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputDomicilio.clear()
         self.limpiar_datos_cliente()
         self.invoice_number = None
+        self.tipo_venta_original = None
 
-    def actualizar_factura(self, db, id_factura, payment_method, produc_datos, monto_pago, delivery_fee, usuario_actual_id):
+    def actualizar_factura(
+        self,
+        db,
+        id_factura,
+        payment_method,
+        produc_datos,
+        monto_pago,
+        delivery_fee,
+        usuario_actual_id,
+        factura_pagada=True,
+    ):
         detalles_actuales = db.query(DetalleFacturas).filter(DetalleFacturas.ID_Factura == id_factura).all()
         productos_actuales = {detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales}
         productos_nuevos = {int(codigo): cantidad for codigo, cantidad, _ in produc_datos}
@@ -590,6 +636,8 @@ class VentasA_View(QWidget, Ui_VentasA):
         factura.Monto_efectivo = efectivo if payment_method in ["Efectivo", "Mixto"] else 0.0
         factura.ID_Metodo_Pago = id_metodo_pago.ID_Metodo_Pago
         factura.ID_Usuario = usuario_actual_id
+        factura.Estado = factura_pagada
+        factura.Domicilio = False
 
         crear_historial_modificacion(db=db, id_usuario=usuario_actual_id, descripcion="Factura actualizada", id_factura=id_factura)
         db.commit()
@@ -621,17 +669,23 @@ class VentasA_View(QWidget, Ui_VentasA):
         finally:
             db.close()
 
-    def guardar_factura(self, db, client_id, payment_method, items, monto_pago, descuento, id_usuario, domicilio):
+    def guardar_factura(
+        self,
+        db,
+        client_id,
+        payment_method,
+        items,
+        monto_pago,
+        descuento,
+        id_usuario,
+        domicilio,
+        factura_pagada=True,
+    ):
         try:
             id_metodo_pago = obtener_metodo_pago_por_nombre(db, payment_method)
             if not id_metodo_pago:
                 QMessageBox.warning(self, "Error", f"Método de pago {payment_method} no encontrado.")
                 return False
-
-            if self.valor_domicilio == 0.0:
-                estado = True
-            else:
-                estado = False
 
             if '/' in monto_pago:
                 total = monto_pago.split("/")
@@ -646,7 +700,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 monto_efectivo=efectivo if payment_method != "Transferencia" else 0.0,
                 monto_transaccion=tranferencia if payment_method != "Efectivo" else 0.0,
                 descuento=descuento,
-                estado=estado,
+                estado=factura_pagada,
                 id_metodo_pago=id_metodo_pago.ID_Metodo_Pago,
                 id_tipo_factura=self.tipo_venta + 1,
                 id_cliente=client_id,
@@ -963,7 +1017,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                 return 0.0
             return self.valor_domicilio
         else:
-            return self.valor_domicilio
+            self.valor_domicilio = 0.0
+            return 0.0
 
     def calcular_subtotal(self):
         subtotal = 0.0
@@ -1037,8 +1092,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputPrecioUnitario.setText(precio_unitario)
 
                     self.fila_seleccionada = row
-                    self.InputDomicilio.setEnabled(True)
-                    self.InputDomicilio.setText(str(self.valor_domicilio))
+                    self.InputDomicilio.setEnabled(False)
+                    self.InputDomicilio.clear()
                     self.InputCantidad.setFocus()
                 else:
                     QMessageBox.warning(self, "Error", "Algunas celdas de la fila seleccionada están vacías.")

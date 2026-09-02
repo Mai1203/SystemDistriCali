@@ -123,7 +123,17 @@ class Ui_VentasA(object):
         self.InputDomicilio = QtWidgets.QLineEdit(self.inputCard)
         self.InputDomicilio.setMinimumHeight(40)
         self.InputDomicilio.setStyleSheet(_INPUT_QSS)
+        self.InputDomicilio.setEnabled(False)
+        self.InputDomicilio.setPlaceholderText("No aplica en facturas normales")
         inputLayout.addWidget(self.InputDomicilio, 3, 0)
+
+        self.CheckFacturaPagada = QtWidgets.QCheckBox("Factura pagada", self.inputCard)
+        self.CheckFacturaPagada.setChecked(True)
+        self.CheckFacturaPagada.setMinimumHeight(40)
+        self.CheckFacturaPagada.setStyleSheet(
+            f"QCheckBox {{ color: {_TEXT}; font-weight: 600; padding: 0 8px; }}"
+        )
+        inputLayout.addWidget(self.CheckFacturaPagada, 3, 1)
 
         self.BtnEliminar = QtWidgets.QPushButton(" Eliminar Seleccionado", self.inputCard)
         self.BtnEliminar.setIcon(qta.icon('fa5s.trash-alt', color='white'))

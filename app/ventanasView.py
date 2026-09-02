@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QStackedWidget,
     QApplication,
+    QMessageBox,
 )
 from PyQt6.QtGui import QIcon
 from app.view import (
@@ -119,6 +120,21 @@ class MainApp(QWidget):
         self.crediFactura.enviar_ventaCredito.connect(self.cambiar_a_pagoCredito)
 
     def cambiar_tipo_venta(self, indice):
+        if (
+            self.ventas.invoice_number
+            and self.ventas.tipo_venta_original is not None
+            and indice != self.ventas.tipo_venta_original
+        ):
+            QMessageBox.warning(
+                self,
+                "Edición de factura",
+                "Se está editando una factura y no se puede cambiar el tipo de factura.",
+            )
+            self.navbar.comboVentas.blockSignals(True)
+            self.navbar.comboVentas.setCurrentIndex(self.ventas.tipo_venta_original)
+            self.navbar.comboVentas.blockSignals(False)
+            return
+
         tipo_venta = obtener_tipo_venta(indice)["nombre"]
         self.ventas.configurar_tipo_venta(indice)
         self.ventas.LabelVentasA.setText(tipo_venta)
