@@ -72,7 +72,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.BtnFacturaB.hide()
         self.InputCodigo.setPlaceholderText("Ej: 7709991003078")
         self.InputNombre.setPlaceholderText("Ej: Esmalte")
-        self.InputDomicilio.setPlaceholderText("No aplica en facturas normales")
+        self.InputDomicilio.setPlaceholderText("Ej: 5000")
         self.InputDescuento.setPlaceholderText("Ej: 500")
         self.CheckFacturaPagada.setChecked(True)
 
@@ -306,6 +306,23 @@ class VentasA_View(QWidget, Ui_VentasA):
             descuento         = float(self.InputDescuento.text().strip()) if self.InputDescuento.text() else 0.0
             domicilio_val     = self.obtener_valor_domicilio()
 
+            if not client_name or not client_id or not client_address or not client_phone:
+                QMessageBox.warning(
+                    self,
+                    "Campos obligatorios",
+                    "Debes completar todos los datos del cliente antes de generar la venta.",
+                )
+                return
+
+            if len(client_phone) != 10 or not client_phone.isdigit():
+                QMessageBox.warning(
+                    self,
+                    "Teléfono inválido",
+                    "El teléfono debe tener 10 dígitos.",
+                )
+                self.InputTelefonoCli.setFocus()
+                return
+
             # Calcular total desde la tabla
             subtotal_items = 0.0
             for row in range(self.tableWidget.rowCount()):
@@ -411,6 +428,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             delivery_fee = float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
             total = calcular_total_venta(subtotal, delivery_fee, descuento)
             pago = self.InputPago.text().strip()
+            factura_pagada = self.CheckFacturaPagada.checkState() == Qt.CheckState.Checked
 
             domicilio = False
 
@@ -423,7 +441,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     monto_pago,
                     delivery_fee,
                     self.usuario_actual_id,
-                    self.CheckFacturaPagada.isChecked(),
+                    factura_pagada,
                 )
                 mensaje = "Factura actualizada exitosamente."
             else:
@@ -441,7 +459,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     descuento,
                     self.usuario_actual_id,
                     domicilio,
-                    self.CheckFacturaPagada.isChecked(),
+                    factura_pagada,
                 )
                 self.invoice_number = f"0000{id_factura}"
                 mensaje = "Factura generada exitosamente."
@@ -644,8 +662,17 @@ class VentasA_View(QWidget, Ui_VentasA):
         factura.Monto_efectivo = efectivo if payment_method in ["Efectivo", "Mixto"] else 0.0
         factura.ID_Metodo_Pago = id_metodo_pago.ID_Metodo_Pago
         factura.ID_Usuario = usuario_actual_id
+        estaba_pendiente = not factura.Estado
         factura.Estado = factura_pagada
         factura.Domicilio = False
+
+        if factura_pagada and estaba_pendiente:
+            tipo_ingreso = crear_tipo_ingreso(
+                db=db,
+                tipo_ingreso=f"Venta FAC-{self.tipo_venta + 1:02d}",
+                id_factura=id_factura,
+            )
+            crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
 
         crear_historial_modificacion(db=db, id_usuario=usuario_actual_id, descripcion="Factura actualizada", id_factura=id_factura)
         db.commit()
@@ -731,7 +758,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 )
 
             db.commit()
-            if self.valor_domicilio == 0.0:
+            if factura_pagada:
                 tipo_ingreso = crear_tipo_ingreso(
                     db=db,
                     tipo_ingreso=f"Venta FAC-{self.tipo_venta + 1:02d}",
@@ -1025,8 +1052,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 return 0.0
             return self.valor_domicilio
         else:
-            self.valor_domicilio = 0.0
-            return 0.0
+            return self.valor_domicilio
 
     def calcular_subtotal(self):
         subtotal = 0.0
@@ -1100,8 +1126,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                     self.InputPrecioUnitario.setText(precio_unitario)
 
                     self.fila_seleccionada = row
-                    self.InputDomicilio.setEnabled(False)
-                    self.InputDomicilio.clear()
+                    self.InputDomicilio.setEnabled(True)
+                    self.InputDomicilio.setText(str(self.valor_domicilio))
                     self.InputCantidad.setFocus()
                 else:
                     QMessageBox.warning(self, "Error", "Algunas celdas de la fila seleccionada están vacías.")

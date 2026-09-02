@@ -400,13 +400,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 QTimer.singleShot(0, self.InputNombreCli.setFocus)
                 return
 
-            if len(client_id) < 6 or len(client_id) > 11 or not client_id.isdigit():
-                QMessageBox.warning(
-                    self, "Cédula inválida", "La cédula debe tener entre 6 y 11 dígitos."
-                )
-                QTimer.singleShot(0, self.InputCedula.setFocus)
-                return
-
             if len(client_phone) != 10 or not client_phone.isdigit():
                 QMessageBox.warning(
                     self, "Teléfono inválido", "El teléfono debe tener 10 dígitos."

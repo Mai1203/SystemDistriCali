@@ -123,8 +123,7 @@ class Ui_VentasA(object):
         self.InputDomicilio = QtWidgets.QLineEdit(self.inputCard)
         self.InputDomicilio.setMinimumHeight(40)
         self.InputDomicilio.setStyleSheet(_INPUT_QSS)
-        self.InputDomicilio.setEnabled(False)
-        self.InputDomicilio.setPlaceholderText("No aplica en facturas normales")
+        self.InputDomicilio.setPlaceholderText("Ej: 5000")
         inputLayout.addWidget(self.InputDomicilio, 3, 0)
 
         self.CheckFacturaPagada = QtWidgets.QCheckBox("Factura pagada", self.inputCard)

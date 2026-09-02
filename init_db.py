@@ -11,6 +11,7 @@ from app.controllers.tipo_pago_crud import *
 from app.controllers.tipo_ingreso_crud import *
 from app.controllers.ingresos_crud import *
 from app.configuracion import TIPOS_VENTA
+from app.models.productos import Productos
 
 
 def conectar_base():
@@ -49,6 +50,58 @@ def poblar_datos_prueba():
         print("Tipo Pago creado exitosamente.")
     except Exception as e:
         print(f"Error al crear Tipo Pago: {e}")
+
+    def crear_productos_iniciales(db):
+        if db.query(Productos).count() > 0:
+            return
+
+        productos = [
+            ("Esmalte rojo", "Belleza", 2500, 6500),
+            ("Esmalte nude", "Belleza", 2500, 6500),
+            ("Esmalte base", "Belleza", 2800, 7000),
+            ("Esmalte brillo", "Belleza", 2800, 7000),
+            ("Removedor de esmalte", "Cuidado", 4000, 9000),
+            ("Algodon paquete", "Cuidado", 3000, 7000),
+            ("Lima de unas", "Herramientas", 1200, 3500),
+            ("Lima pulidora", "Herramientas", 1800, 4500),
+            ("Cortaunas", "Herramientas", 3500, 8000),
+            ("Empujador de cuticula", "Herramientas", 2500, 6000),
+            ("Aceite de cuticula", "Cuidado", 5000, 11000),
+            ("Crema para manos", "Cuidado", 6500, 14000),
+            ("Guantes desechables", "Desechables", 4500, 9500),
+            ("Tapabocas paquete", "Desechables", 5000, 11000),
+            ("Toallas desechables", "Desechables", 3500, 8000),
+            ("Gel constructor", "Unas", 12000, 25000),
+            ("Primer para unas", "Unas", 7000, 15000),
+            ("Lampara UV", "Equipos", 45000, 85000),
+            ("Brocha para gel", "Herramientas", 3000, 7500),
+            ("Decoracion para unas", "Decoracion", 4000, 10000),
+        ]
+
+        for indice, (nombre, categoria, costo, precio) in enumerate(productos, start=1):
+            id_marca = obtener_o_crear_marca(db, "Lady Nail")
+            id_categoria = obtener_o_crear_categoria(db, categoria)
+            crear_producto(
+                db=db,
+                id_producto=indice,
+                nombre=nombre,
+                precio_costo=costo,
+                stock_actual=20,
+                stock_min=5,
+                precio_venta_1=precio,
+                precio_venta_2=precio * 0.9,
+                precio_venta_3=precio * 0.85,
+                precio_venta_4=precio * 0.8,
+                id_marca=id_marca,
+                id_categoria=id_categoria,
+            )
+
+        print("20 productos iniciales creados exitosamente.")
+
+    try:
+        crear_productos_iniciales(db)
+    except Exception as e:
+        print(f"Error al crear productos iniciales: {e}")
 
     try:
         print("creando Tipo Facturas")
