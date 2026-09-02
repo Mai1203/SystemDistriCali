@@ -193,13 +193,17 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
                 return
 
             parent_window = self.parent()
-            while parent_window and not hasattr(parent_window, 'cambiar_a_ventasA'):
+            while parent_window and not hasattr(parent_window, 'cambiar_a_ventasCredito'):
                 parent_window = parent_window.parent()
             
-            if parent_window and hasattr(parent_window, 'cambiar_a_ventasA'):
-                parent_window.cambiar_a_ventasA(factura_completa)
+            if parent_window and hasattr(parent_window, 'cambiar_a_ventasCredito'):
+                parent_window.cambiar_a_ventasCredito(
+                    factura_completa, venta.ID_Venta_Credito
+                )
             else:
-                self.enviar_facturas_Credito.emit(factura_completa)
+                self.enviar_facturas_Credito.emit(
+                    factura_completa, venta.ID_Venta_Credito
+                )
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo abrir la ventana: {e}")

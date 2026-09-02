@@ -121,7 +121,7 @@ class MainApp(QWidget):
 
     def cambiar_tipo_venta(self, indice):
         if (
-            self.ventas.invoice_number
+            self.ventas.en_edicion
             and self.ventas.tipo_venta_original is not None
             and indice != self.ventas.tipo_venta_original
         ):

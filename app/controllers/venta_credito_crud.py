@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from datetime import datetime
 from app.models.venta_credito import (
     VentaCredito,
 )
-from app.models.facturas import Facturas
+from app.models.facturas import Facturas, TipoFactura
 from app.models.usuarios import Usuarios
 from app.models.clientes import Clientes
 
@@ -60,6 +60,8 @@ def obtener_ventas_credito(db: Session):
         .join(Facturas, VentaCredito.ID_Factura == Facturas.ID_Factura)
         .join(Usuarios, Facturas.ID_Usuario == Usuarios.ID_Usuario)
         .join(Clientes, Facturas.ID_Cliente == Clientes.ID_Cliente)
+        .join(TipoFactura, Facturas.ID_Tipo_Factura == TipoFactura.ID_Tipo_Factura)
+        .filter(TipoFactura.Nombre == "FAC-CREDITO")
         .all()
     )
 
@@ -89,6 +91,8 @@ def obtener_ventaCredito_id(db: Session, id_venta_credito: int):
         .join(Facturas, VentaCredito.ID_Factura == Facturas.ID_Factura)
         .join(Usuarios, Facturas.ID_Usuario == Usuarios.ID_Usuario)
         .join(Clientes, Facturas.ID_Cliente == Clientes.ID_Cliente)
+        .join(TipoFactura, Facturas.ID_Tipo_Factura == TipoFactura.ID_Tipo_Factura)
+        .filter(TipoFactura.Nombre == "FAC-CREDITO")
         .filter(VentaCredito.ID_Venta_Credito == id_venta_credito)
         .all()
     )
@@ -158,12 +162,16 @@ def buscar_ventas_credito(db: Session, busqueda: str):
         .join(Facturas, VentaCredito.ID_Factura == Facturas.ID_Factura)
         .join(Usuarios, Facturas.ID_Usuario == Usuarios.ID_Usuario)
         .join(Clientes, Facturas.ID_Cliente == Clientes.ID_Cliente)
+        .join(TipoFactura, Facturas.ID_Tipo_Factura == TipoFactura.ID_Tipo_Factura)
         .filter(
-            or_(
+            and_(
+                TipoFactura.Nombre == "FAC-CREDITO",
+                or_(
                 VentaCredito.ID_Venta_Credito.like(f"%{busqueda}%"),
                 Facturas.ID_Factura.like(f"%{busqueda}%"),
                 VentaCredito.Fecha_Registro.like(f"%{busqueda}%"),
                 Clientes.Nombre.like(f"%{busqueda}%"),
+                ),
             )
         )
         .all()

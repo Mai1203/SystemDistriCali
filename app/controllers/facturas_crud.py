@@ -169,6 +169,7 @@ def obtener_facturas(db: Session):
         .join(TipoFactura, Facturas.ID_Tipo_Factura == TipoFactura.ID_Tipo_Factura)
         .outerjoin(HistorialModificacion, Facturas.ID_Factura == HistorialModificacion.ID_Factura)
         .join(Clientes, Facturas.ID_Cliente == Clientes.ID_Cliente)
+        .filter(TipoFactura.Nombre.in_(("FAC-01", "FAC-02", "FAC-03", "FAC-04")))
         .all()
     )
 
@@ -205,13 +206,16 @@ def buscar_facturas(db: Session, busqueda: str):
         .outerjoin(HistorialModificacion, Facturas.ID_Factura == HistorialModificacion.ID_Factura)
         .join(Usuarios, Facturas.ID_Usuario == Usuarios.ID_Usuario)
         .filter(
-            or_(
+            and_(
+                TipoFactura.Nombre.in_(("FAC-01", "FAC-02", "FAC-03", "FAC-04")),
+                or_(
                 Facturas.ID_Factura.like(f"%{busqueda}%"),
                 Facturas.Fecha_Factura.like(f"%{busqueda}%"),
                 TipoFactura.Nombre.like(f"%{busqueda}%"),
                 Clientes.Nombre.like(f"%{busqueda}%"),
                 MetodoPago.Nombre.like(f"%{busqueda}%"),
                 Facturas.Estado.like(f"%{busqueda}%"),
+                ),
             )
         )
         .all()

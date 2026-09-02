@@ -16,8 +16,6 @@ from ..controllers.facturas_crud import *
 from ..controllers.metodo_pago_crud import *
 from ..controllers.venta_credito_crud import *
 from ..controllers.pago_credito_crud import *
-from ..controllers.tipo_ingreso_crud import crear_tipo_ingreso
-from ..controllers.ingresos_crud import crear_ingreso
 from ..controllers.historial_modificacion_crud import *
 from ..controllers.caja_crud import obtener_cajas
 from ..ui import Ui_VentasCredito
@@ -54,6 +52,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.cantidades = []
         self.invoice_number = None
         self.id_venta_credito = None
+        self.en_edicion = False
         self.fila_seleccionada = None
         self.timer = QTimer(self)
 
@@ -102,6 +101,44 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.TablaVentasCredito.itemChanged.connect(self.actualizar_total)
 
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
+
+    def cargar_información(self, factura_completa, id_venta_credito=None):
+        factura = factura_completa["Factura"]
+        cliente = factura_completa["Cliente"]
+        detalles = factura_completa["Detalles"]
+
+        self.invoice_number = factura["ID_Factura"]
+        self.id_venta_credito = id_venta_credito
+        self.en_edicion = True
+        self.LabelVentasA.setText("Editando Credi Factura")
+        self.comboBoxPrecio.setCurrentIndex(0)
+        self.comboBoxPrecio.setEnabled(False)
+
+        self.TablaVentasCredito.setRowCount(len(detalles))
+        self.cantidades = []
+        for row, detalle in enumerate(detalles):
+            self.cantidades.append((detalle["ID_Producto"], detalle["Cantidad"]))
+            valores = [
+                detalle["ID_Producto"],
+                detalle["Producto"],
+                detalle["Marca"],
+                detalle["Categoria"],
+                detalle["Cantidad"],
+                detalle["Precio_Unitario"],
+                detalle["Subtotal"],
+            ]
+            for column, valor in enumerate(valores):
+                item = QTableWidgetItem(str(valor))
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.TablaVentasCredito.setItem(row, column, item)
+
+        self.InputCedula.setText(str(cliente["ID_Cliente"]))
+        self.InputNombreCli.setText(str(cliente["Nombre"]))
+        self.InputApellidoCli.setText(str(cliente["Apellido"]))
+        self.InputTelefonoCli.setText(str(cliente["Teléfono"]))
+        self.InputDireccion.setText(str(cliente["Direccion"]))
+        self.actualizar_total()
 
     # def cargar_información(self, factura_completa, id_venta_credito=None):
     #     self.id_venta_credito = id_venta_credito
@@ -298,6 +335,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.limpiar_campos()
         self.limpiar_datos_cliente()
         self.invoice_number = None
+        self.id_venta_credito = None
+        self.en_edicion = False
+        self.comboBoxPrecio.setEnabled(True)
+        self.LabelVentasA.setText("Ventas a Crédito")
         configurar_autocompletado(
             self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
         )
@@ -364,7 +405,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self, "Cédula inválida", "La cédula debe tener entre 6 y 11 dígitos."
                 )
                 QTimer.singleShot(0, self.InputCedula.setFocus)
-                self.limpiar_datos_cliente()
                 return
 
             if len(client_phone) != 10 or not client_phone.isdigit():
@@ -565,6 +605,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.limpiar_campos()
         self.limpiar_datos_cliente()
         self.invoice_number = None
+        self.id_venta_credito = None
+        self.en_edicion = False
+        self.comboBoxPrecio.setEnabled(True)
+        self.LabelVentasA.setText("Ventas a Crédito")
 
     def guardar_factura(
         self,
@@ -628,13 +672,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 fecha_limite=limite_pago,
                 id_factura=id_factura,
             )
-
-            tipo_ingreso = crear_tipo_ingreso(
-                db=db,
-                tipo_ingreso="Venta FAC-CREDITO",
-                id_factura=id_factura,
-            )
-            crear_ingreso(db=db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
 
             db.commit()
             return id_factura

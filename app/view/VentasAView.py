@@ -16,7 +16,7 @@ from ..controllers.ingresos_crud import *
 from ..controllers.historial_modificacion_crud import *
 from ..controllers.caja_crud import obtener_cajas
 from ..ui import Ui_VentasA
-from ..configuracion import obtener_precio_producto
+from ..configuracion import obtener_precio_producto, obtener_tipo_venta
 from ..services.ventas_service import calcular_total_venta, validar_pago
 from ..services.form_validation_service import validar_campos_requeridos
 from ..utils.formateador import formatear_numero
@@ -49,6 +49,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.id_categoria = None
         self.valor_domicilio = 0.0
         self.invoice_number = None
+        self.en_edicion = False
         self.tipo_venta_original = None
         self.tipo_venta = 0
         self.cantidades = []
@@ -175,11 +176,13 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.LabelTotal.setText(f"{total:,.2f}")
         self.MetodoPagoBox.setCurrentText(payment_method)
         self.InputPago.setText(pago)
+        self.en_edicion = True
         self.tipo_venta_original = self.tipo_venta
+        self.LabelVentasA.setText(f"Editando {factura['TipoFactura']}")
 
     def configurar_tipo_venta(self, indice):
         if (
-            self.invoice_number
+            self.en_edicion
             and self.tipo_venta_original is not None
             and indice != self.tipo_venta_original
         ):
@@ -257,6 +260,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.limpiar_campos()
         self.limpiar_datos_cliente()
         self.invoice_number = None
+        self.en_edicion = False
+        self.tipo_venta_original = None
+        self.LabelVentasA.setText(obtener_tipo_venta(self.tipo_venta)["nombre"])
         configurar_autocompletado(self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo)
         configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
 
@@ -569,7 +575,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputDomicilio.clear()
         self.limpiar_datos_cliente()
         self.invoice_number = None
+        self.en_edicion = False
         self.tipo_venta_original = None
+        self.LabelVentasA.setText(obtener_tipo_venta(self.tipo_venta)["nombre"])
 
     def actualizar_factura(
         self,
