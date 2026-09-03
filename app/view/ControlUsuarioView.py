@@ -213,11 +213,6 @@ class ControlUsuario_View(
         )
 
 
-        self.BtnRolUser.setText(
-            "ASESOR"
-        )
-
-
         # ============================================================
         # BUSCADOR
         # ============================================================
@@ -309,6 +304,12 @@ class ControlUsuario_View(
             self.editar_usuario
         )
 
+        self.comboPermisos.lineEdit().returnPressed.connect(
+            self.editar_usuario
+        )
+
+        self.comboPermisos.installEventFilter(self)
+
 
         # ============================================================
         # TABLA
@@ -356,7 +357,6 @@ class ControlUsuario_View(
 
     def nuevo_usuario(self):
         self.widget_3.setVisible(True)
-        self.BtnRolUser.setText("ASESOR")
         self._configurar_permisos_administrador(False)
         self.limpiar_formulario()
         self.InputIdUser.setFocus()
@@ -411,6 +411,31 @@ class ControlUsuario_View(
 
 
         super().keyPressEvent(
+            event
+        )
+
+
+    def eventFilter(
+        self,
+        obj,
+        event
+    ):
+
+        if (
+            obj == self.comboPermisos
+            and event.type() == QtCore.QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+
+            if not self.comboPermisos.view().isVisible():
+
+                self.editar_usuario()
+
+                return True
+
+
+        return super().eventFilter(
+            obj,
             event
         )
 
@@ -524,11 +549,6 @@ class ControlUsuario_View(
             enviar_notificacion(
                 "Éxito",
                 "Usuario registrado exitosamente"
-            )
-
-
-            self.BtnRolUser.setText(
-                "ASESOR"
             )
 
 
@@ -907,7 +927,7 @@ class ControlUsuario_View(
 
                     enviar_notificacion(
                         "Advertencia",
-                        "No se puede eliminar un administrador."
+                        "El administrador no puede ser eliminado del sistema."
                     )
 
                     return
@@ -931,6 +951,22 @@ class ControlUsuario_View(
             if respuesta == QMessageBox.Yes:
 
                 for id_usuario in ids:
+
+                    usuario = obtener_usuario_por_id(
+                        self.db,
+                        id_usuario
+                    )
+
+
+                    if usuario and usuario.rol == "ADMINISTRADOR":
+
+                        enviar_notificacion(
+                            "Advertencia",
+                            "El administrador no puede ser eliminado del sistema."
+                        )
+
+                        continue
+
 
                     eliminar_usuario(
                         self.db,
@@ -1081,9 +1117,6 @@ class ControlUsuario_View(
             if usuario:
 
                 es_administrador = usuario.rol == "ADMINISTRADOR"
-                self.BtnRolUser.setText(
-                    "ADMINISTRADOR" if es_administrador else "ASESOR"
-                )
                 self._configurar_permisos_administrador(es_administrador)
                 permisos_usuario = (
                     self.permisos_vistas

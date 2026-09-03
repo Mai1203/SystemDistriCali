@@ -157,12 +157,6 @@ class Ui_ControlUsuario(object):
             self.gridFormulario.addWidget(label, 1, column)
             self.gridFormulario.addWidget(field, 2, column)
 
-        self.label_6 = QtWidgets.QLabel("Rol:")
-        self.label_6.setStyleSheet(f"color: {MUTED}; font: 600 11px {FONT}; border: none;")
-        self.gridFormulario.addWidget(self.label_6, 3, 0)
-        self.BtnRolUser = self.make_button("BtnRolUser", "ASESOR", "fa5s.user-tag", outlined=True)
-        self.gridFormulario.addWidget(self.BtnRolUser, 4, 0)
-
         self.BtnRegistrarUser = self.make_button("BtnRegistrarUser", "Registrar Usuario", "fa5s.user-plus")
         self.BtnEliminar = self.make_button("BtnEliminar", "Eliminar Usuario", "fa5s.trash-alt", color="#C0392B")
         self.gridFormulario.addWidget(self.BtnRegistrarUser, 4, 3)
