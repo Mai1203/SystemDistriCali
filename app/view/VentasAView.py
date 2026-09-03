@@ -467,9 +467,9 @@ class VentasA_View(QWidget, Ui_VentasA):
             # Impresión del ticket
             max_lines_per_page = 30
             current_line = 0
-            empresa_nombre = "LadyNailShop"
-            empresa_direccion = "Pasto, Colombia"
-            empresa_telefono = "+57 316-144-44-74"
+            empresa_nombre = "Distri Magik"
+            empresa_direccion = "Cali, Colombia"
+            empresa_telefono = "315-436-31-88"
             fecha_actual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             subtotal_formateado = f"${subtotal:,.2f}"
             total_formateado = f"${total:,.2f}"

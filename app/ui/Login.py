@@ -183,7 +183,7 @@ class _HeroPanel(QtWidgets.QWidget):
         )
 
         # ── 6. Texto de marca ──────────────────────────────────────
-        # "Lady Nail" grande
+        # Nombre de la marca grande
         font_title = QtGui.QFont("Segoe UI", 1)
         font_title.setBold(True)
         font_title.setLetterSpacing(
@@ -199,7 +199,7 @@ class _HeroPanel(QtWidgets.QWidget):
         painter.drawText(
             title_rect,
             QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
-            "Lady Nail"
+            "Distri Magik"
         )
         # Texto real blanco
         painter.setPen(QtGui.QColor(255, 255, 255, 240))
@@ -207,7 +207,7 @@ class _HeroPanel(QtWidgets.QWidget):
         painter.drawText(
             title_rect2,
             QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
-            "Lady Nail"
+            "Distri Magik"
         )
 
         # "SHOP" espaciado
@@ -383,10 +383,28 @@ class Ui_Login(object):
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
         self.lblLogo.setSizePolicy(sp)
-        # Use an SVG icon and text instead of PNG
-        self.lblLogo.setText("   DistriCali")
-        self.lblLogo.setStyleSheet(f"font-size: 28px; font-weight: bold; color: {_PRIMARY};")
+        self.logoPixmap = QtGui.QPixmap("assets/LogoDistriMagik.png")
+        if self.logoPixmap.isNull():
+            self.lblLogo.setText("DistriCali")
+            self.lblLogo.setStyleSheet(
+                f"font-size: 28px; font-weight: bold; color: {_PRIMARY};"
+            )
+        else:
+            self._resize_logo()
         self.cardLayout.addWidget(self.lblLogo)
+
+    def _resize_logo(self):
+        if self.logoPixmap.isNull():
+            return
+        available_width = max(1, self.lblLogo.width())
+        self.lblLogo.setPixmap(
+            self.logoPixmap.scaled(
+                available_width,
+                88,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
+            )
+        )
 
     def _add_welcome_banner(self):
         container = QtWidgets.QWidget(parent=self.cardWidget)
@@ -644,7 +662,6 @@ class Ui_Login(object):
         )
 
         card_w = min(480, max(340, int(width * (0.42 if not show_hero else 0.28))))
-        # No dynamic scaling for text logo
 
         # Márgenes card
         card_h_m = max(24, min(40, int(card_w * 0.075)))
@@ -658,12 +675,13 @@ class Ui_Login(object):
         for widget in (self.InputNombreUsuario, self.InputPassword):
             widget.setMinimumHeight(min_input)
         self.BtnLogin.setMinimumHeight(max(44, min(54, int(height * 0.062))))
+        self._resize_logo()
 
     # ── Textos ─────────────────────────────────────────────────────
     def retranslateUi(self, CONTENEDEDOR1):
         t = QtCore.QCoreApplication.translate
         CONTENEDEDOR1.setWindowTitle(
-            t("CONTENEDEDOR1", "Lady Nail – Sistema de Inventario")
+            t("CONTENEDEDOR1", "Distri Magik – Sistema de Inventario")
         )
         self.lblWelcomeTitle.setText(
             t("CONTENEDEDOR1", "Bienvenido de nuevo")

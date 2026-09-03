@@ -79,7 +79,7 @@ class Ui_Navbar(object):
         self.LabelImgNavbar = QtWidgets.QLabel(parent=Navbar)
         self.LabelImgNavbar.setMinimumHeight(80)
         self.LabelImgNavbar.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        pix = QtGui.QPixmap("assets/logoladynail.jpg")
+        pix = QtGui.QPixmap("assets/LogoDistriMagik.png")
         if not pix.isNull():
             self.LabelImgNavbar.setPixmap(pix.scaledToHeight(60, QtCore.Qt.TransformationMode.SmoothTransformation))
         self.LabelImgNavbar.setStyleSheet("border: none;")

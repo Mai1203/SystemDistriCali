@@ -30,7 +30,7 @@ class MainApp(QWidget):
 
         # Configurar la ventana principal
         self.setWindowTitle("System Distri Cali")
-        self.setWindowIcon(QIcon("assets/logo1.ico"))
+        self.setWindowIcon(QIcon("assets/Favicon.ico"))
         self.resize(800, 600)
         screen = QApplication.primaryScreen().availableGeometry()
         self.setMaximumSize(screen.width(), screen.height())

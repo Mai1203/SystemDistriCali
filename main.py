@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
 
         self.usuario_actual_id = None
         self.setWindowTitle("System DistriCali")
-        self.setWindowIcon(QIcon("assets/logo1.ico"))
+        self.setWindowIcon(QIcon("assets/Favicon.ico"))
         self.inicializar_db()
         # Tamaño inicial relativo a la pantalla (80% del espacio disponible)
         self.setMinimumSize(480, 520)
