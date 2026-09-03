@@ -8,7 +8,11 @@ from ..controllers.venta_credito_crud import (
     obtener_ventaCredito_id,
     actualizar_venta_credito,
 )
-from ..controllers.facturas_crud import obtener_factura_por_id, actualizar_factura
+from ..controllers.facturas_crud import (
+    obtener_factura_por_id,
+    obtener_factura_completa,
+    actualizar_factura,
+)
 from ..controllers.metodo_pago_crud import obtener_metodo_pago_por_nombre
 from ..controllers.pago_credito_crud import crear_pago_credito, obtener_pagos_credito
 from ..controllers.tipo_ingreso_crud import crear_tipo_ingreso
@@ -245,6 +249,13 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
             tipo_ingreso = crear_tipo_ingreso(db=self.db, tipo_ingreso="FAC-ABONO", id_pago_credito=pago_credito.ID_Pago_Credito)
             crear_ingreso(db=self.db, id_tipo_ingreso=tipo_ingreso.ID_Tipo_Ingreso)
 
+            self._imprimir_ticket_abono(
+                venta=venta,
+                factura=obtener_factura_completa(self.db, id_factura),
+                pagos=obtener_pagos_credito(self.db, self.id_VentaCredito),
+                abono=abono_total,
+            )
+
             enviar_notificacion("Éxito", "Abono registrado correctamente.")
             self.InputPago.clear()
             self.cargar_informacion(self.id_VentaCredito)
@@ -255,6 +266,141 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
         finally:
             if self.db:
                 self.db.close()
+
+    def _imprimir_ticket_abono(self, venta, factura, pagos, abono):
+        if not factura:
+            return
+
+        try:
+            cliente = factura["Cliente"]
+            nombre_cliente = f'{cliente["Nombre"]} {cliente["Apellido"]}'.strip()
+            direccion = cliente["Direccion"] or ""
+            direccion_linea1 = direccion[:35]
+            direccion_linea2 = direccion[35:] if len(direccion) > 35 else ""
+            detalles = factura["Detalles"]
+            max_lines_per_page = 30
+            current_line = 0
+            empresa_nombre = "Distri Magik"
+            empresa_direccion = "Cali, Colombia"
+            empresa_telefono = "315-436-31-88"
+            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            limite_pago_formateado = (
+                venta.Fecha_Limite.strftime("%d/%m/%Y")
+                if hasattr(venta.Fecha_Limite, "strftime")
+                else str(venta.Fecha_Limite)
+            )
+            total_deuda_formateado = f"${float(venta.Total_Deuda):,.2f}"
+            saldo_formateado = f"${max(0, float(venta.Saldo_Pendiente) - abono):,.2f}"
+
+            impresora = win32print.GetDefaultPrinter()
+            hdc = win32ui.CreateDC()
+            hdc.CreatePrinterDC(impresora)
+            hdc.StartDoc("Ticket de Venta")
+            hdc.StartPage()
+
+            font_encabezado = win32ui.CreateFont({
+                "name": "Lucida Console",
+                "height": 28,
+                "weight": win32con.FW_BOLD,
+            })
+            font_size = 18
+            line_height = font_size + 10
+            font = win32ui.CreateFont({
+                "name": "Lucida Console",
+                "height": font_size,
+                "weight": win32con.FW_BOLD,
+            })
+            hdc.SelectObject(font_encabezado)
+
+            printer_width = hdc.GetDeviceCaps(win32con.HORZRES)
+            center_x = printer_width // 2
+            x, y = 2, 2 + 5 * line_height
+            for index, linea in enumerate(
+                [empresa_nombre, empresa_direccion, empresa_telefono, fecha_actual]
+            ):
+                text_width = hdc.GetTextExtent(linea)[0]
+                hdc.TextOut(center_x - text_width // 2, 50 + index * line_height, linea)
+            y += line_height
+            hdc.SelectObject(font)
+
+            hdc.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
+            y += line_height
+            hdc.TextOut(x, y, "Crédito")
+            y += line_height
+            hdc.TextOut(x, y, f"COT No. 0000{venta.ID_Factura}")
+            y += line_height
+            hdc.TextOut(x, y, f"Cliente: {nombre_cliente}")
+            y += line_height
+            hdc.TextOut(x, y, f"Cédula: {cliente['ID_Cliente']}")
+            y += line_height
+            hdc.TextOut(x, y, f"Teléfono: {cliente['Teléfono'] or ''}")
+            y += line_height
+            hdc.TextOut(x, y, f"Dirección: {direccion_linea1}")
+            y += line_height
+            if direccion_linea2:
+                hdc.TextOut(x, y, direccion_linea2)
+                y += line_height
+
+            hdc.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
+            y += line_height
+            hdc.TextOut(x, y, "{:<18} {:>6} {:>10} {:>10}".format("Producto", "Cant.", "Precio", "Total"))
+            y += line_height
+
+            for detalle in detalles:
+                nombre_producto = str(detalle["Producto"]).strip().replace("\n", " ")[:18].ljust(18)
+                cantidad = str(detalle["Cantidad"])
+                precio_unitario = f"{float(detalle['Precio_Unitario']):,.0f}".replace(",", ".")
+                total_producto = f"{float(detalle['Subtotal']):,.0f}".replace(",", ".")
+                hdc.TextOut(
+                    x,
+                    y,
+                    "{:<18} {:>6} {:>10} {:>10}".format(
+                        nombre_producto, cantidad, precio_unitario, total_producto
+                    ),
+                )
+                y += line_height
+                current_line += 1
+                if current_line >= max_lines_per_page:
+                    hdc.EndPage()
+                    hdc.StartPage()
+                    y = 2
+                    current_line = 0
+
+            totales = f"""
+            -----------------------------------------------------------------------------------------------------
+            Deuda Total: {total_deuda_formateado}
+            Abono actual: ${abono:,.2f}
+            Saldo Pendiente: {saldo_formateado}
+            Fecha Limite: {limite_pago_formateado}
+            -----------------------------------------------------------------------------------------------------
+
+            HISTORIAL DE ABONOS
+            """
+            for linea in totales.split("\n"):
+                hdc.TextOut(x, y, linea.strip())
+                y += line_height
+
+            for pago in pagos:
+                fecha_pago = pago.Fecha_Registro.strftime("%d/%m/%Y %H:%M")
+                hdc.TextOut(
+                    x,
+                    y,
+                    f"{fecha_pago}  ${float(pago.Monto):,.2f}  {pago.metodopago}  {pago.tipopago}",
+                )
+                y += line_height
+
+            hdc.TextOut(x, y, "-----------------------------------------------------------------------------------------------------")
+            y += line_height
+            hdc.TextOut(x, y, "¡Gracias por tu compra!")
+            hdc.EndPage()
+            hdc.EndDoc()
+            hdc.DeleteDC()
+        except Exception as error:
+            QMessageBox.warning(
+                self,
+                "Impresión no disponible",
+                f"El abono se guardó, pero no se pudo imprimir el recibo: {error}",
+            )
 
     def closeEvent(self, event):
         if self.db:

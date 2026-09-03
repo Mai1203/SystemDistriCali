@@ -50,6 +50,14 @@ class ControlUsuario_View(
             self
         )
 
+        self.BtnNuevoUsuario.clicked.connect(
+            self.nuevo_usuario
+        )
+
+        self.BtnVolverUsuarios.clicked.connect(
+            self.volver_a_usuarios
+        )
+
 
         self.permisos_vistas = PERMISOS_VISTAS
 
@@ -82,7 +90,7 @@ class ControlUsuario_View(
 
 
         self.comboPermisos.setPlaceholderText(
-            "Seleccionar permisos"
+            "Seleccione los permisos"
         )
 
 
@@ -345,6 +353,31 @@ class ControlUsuario_View(
         self.limpiar_tabla_usuarios()
 
         self.mostrar_usuarios()
+
+    def nuevo_usuario(self):
+        self.widget_3.setVisible(True)
+        self.BtnRolUser.setText("ASESOR")
+        self._configurar_permisos_administrador(False)
+        self.limpiar_formulario()
+        self.InputIdUser.setFocus()
+
+    def volver_a_usuarios(self):
+        self.limpiar_formulario()
+        self._configurar_permisos_administrador(False)
+        self.widget_3.setVisible(False)
+        self.lineEdit.setFocus()
+
+    def _configurar_permisos_administrador(self, es_administrador):
+        for indice in range(len(self.permisos_vistas)):
+            item = self.modelo_permisos.item(indice)
+            flags = Qt.ItemFlag.ItemIsEnabled
+            if not es_administrador:
+                flags |= Qt.ItemFlag.ItemIsUserCheckable
+            item.setFlags(flags)
+            if es_administrador:
+                item.setCheckState(Qt.CheckState.Checked)
+            self._actualizar_icono_check(item)
+        self.actualizar_texto_permisos()
 
 
     # ================================================================
@@ -694,15 +727,7 @@ class ControlUsuario_View(
         ]
 
 
-        self.comboPermisos.setEditText(
-
-            ", ".join(
-                seleccionados
-            )
-
-            or
-            "Seleccionar permisos"
-        )
+        self.comboPermisos.setEditText(", ".join(seleccionados))
 
 
     # ================================================================
@@ -740,15 +765,20 @@ class ControlUsuario_View(
         usuarios
     ):
 
+        if hasattr(self, "statLabels"):
+            self.statLabels["total"].setText(str(len(usuarios or [])))
+            activos = sum(1 for usuario in (usuarios or []) if usuario.Estado)
+            roles = {str(usuario.rol) for usuario in (usuarios or []) if usuario.rol}
+            self.statLabels["active"].setText(str(activos))
+            self.statLabels["roles"].setText(str(len(roles)))
+
         if not usuarios:
 
             self.TablaUser.setRowCount(
                 0
             )
 
-            self.TablaUser.setColumnCount(
-                6
-            )
+            self.TablaUser.setColumnCount(7)
 
             return
 
@@ -757,9 +787,7 @@ class ControlUsuario_View(
             len(usuarios)
         )
 
-        self.TablaUser.setColumnCount(
-            6
-        )
+        self.TablaUser.setColumnCount(7)
 
 
         for row_idx, row in enumerate(
@@ -795,6 +823,13 @@ class ControlUsuario_View(
                 str(row.Estado)
             )
 
+            permisos = [
+                permiso.strip()
+                for permiso in str(row.Permisos or "").split(",")
+                if permiso.strip()
+            ]
+            permisos_item = QtWidgets.QTableWidgetItem(str(len(permisos)))
+
 
             items = [
                 id_item,
@@ -803,6 +838,7 @@ class ControlUsuario_View(
                 contrasena_item,
                 rol_item,
                 estado_item,
+                permisos_item,
             ]
 
 
@@ -832,9 +868,7 @@ class ControlUsuario_View(
             0
         )
 
-        self.TablaUser.setColumnCount(
-            6
-        )
+        self.TablaUser.setColumnCount(7)
 
 
     # ================================================================
@@ -1046,12 +1080,19 @@ class ControlUsuario_View(
 
             if usuario:
 
-                self.seleccionar_permisos(
+                es_administrador = usuario.rol == "ADMINISTRADOR"
+                self.BtnRolUser.setText(
+                    "ADMINISTRADOR" if es_administrador else "ASESOR"
+                )
+                self._configurar_permisos_administrador(es_administrador)
+                permisos_usuario = (
+                    self.permisos_vistas
+                    if es_administrador
+                    else (usuario.Permisos or "").split(",")
+                )
 
-                    (
-                        usuario.Permisos
-                        or ""
-                    ).split(",")
+                self.seleccionar_permisos(
+                    permisos_usuario
                 )
 
 
