@@ -82,7 +82,7 @@ class Ui_Navbar(object):
         pix = QtGui.QPixmap("assets/LogoDistriMagik.png")
         if not pix.isNull():
             self.LabelImgNavbar.setPixmap(pix.scaledToHeight(60, QtCore.Qt.TransformationMode.SmoothTransformation))
-        self.LabelImgNavbar.setStyleSheet("border: none;")
+        self.LabelImgNavbar.setStyleSheet("background-color: transparent; border: none;")
         self.rootLayout.addWidget(self.LabelImgNavbar)
         self.rootLayout.addSpacing(12)
 
