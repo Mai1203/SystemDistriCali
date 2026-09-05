@@ -37,7 +37,7 @@ def poblar_datos_prueba():
     try:
         print("creando cliente default")
         crear_cliente(
-            db, 111, "Predeterminado", "Predeterminado", "Predeterminado", "1234567890"
+            db, 111, "Consumidor", "Final", "-", "2222222222"
         )
         print("cliente default creado exitosamente.")
     except Exception as e:
@@ -76,10 +76,30 @@ def poblar_datos_prueba():
             ("Lampara UV", "Equipos", 45000, 85000),
             ("Brocha para gel", "Herramientas", 3000, 7500),
             ("Decoracion para unas", "Decoracion", 4000, 10000),
+             ("Esmalte rojo", "Belleza", 2500, 6500),
+            ("Esmalte nude", "Belleza", 2500, 6500),
+            ("Esmalte base", "Belleza", 2800, 7000),
+            ("Esmalte brillo", "Belleza", 2800, 7000),
+            ("Removedor de esmalte", "Cuidado", 4000, 9000),
+            ("Algodon paquete", "Cuidado", 3000, 7000),
+            ("Lima de unas", "Herramientas", 1200, 3500),
+            ("Lima pulidora", "Herramientas", 1800, 4500),
+            ("Cortaunas", "Herramientas", 3500, 8000),
+            ("Empujador de cuticula", "Herramientas", 2500, 6000),
+            ("Aceite de cuticula", "Cuidado", 5000, 11000),
+            ("Crema para manos", "Cuidado", 6500, 14000),
+            ("Guantes desechables", "Desechables", 4500, 9500),
+            ("Tapabocas paquete", "Desechables", 5000, 11000),
+            ("Toallas desechables", "Desechables", 3500, 8000),
+            ("Gel constructor", "Unas", 12000, 25000),
+            ("Primer para unas", "Unas", 7000, 15000),
+            ("Lampara UV", "Equipos", 45000, 85000),
+            ("Brocha para gel", "Herramientas", 3000, 7500),
+            ("Decoracion para unas", "Decoracion", 4000, 10000),
         ]
 
         for indice, (nombre, categoria, costo, precio) in enumerate(productos, start=1):
-            id_marca = obtener_o_crear_marca(db, "Lady Nail")
+            id_marca = obtener_o_crear_marca(db, "Distri Magik")
             id_categoria = obtener_o_crear_categoria(db, categoria)
             crear_producto(
                 db=db,

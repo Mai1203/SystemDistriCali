@@ -621,7 +621,7 @@ class Ui_Egreso(object):
     # ─────────────────────────────────────────────────────────────
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Egresos · Lady Nail"))
+        Form.setWindowTitle(_translate("Form", "Egresos · Distri Magik"))
         self.LabelVentasA.setText(_translate("Form", "Egresos"))
         self.lblSubtitle.setText(
             _translate("Form", "Registra y controla los gastos del negocio")
@@ -634,7 +634,7 @@ class Ui_Egreso(object):
         self.BtnRegistrarEgreso.setText(_translate("Form", "  Registrar Egreso"))
         self.BtnEliminar.setText(_translate("Form", "  Eliminar Egreso"))
         self.lblFooter.setText(
-            _translate("Form", "Solo personal autorizado · Lady Nail SHOP")
+            _translate("Form", "Solo personal autorizado · Distri Magik")
         )
 
         headers = [

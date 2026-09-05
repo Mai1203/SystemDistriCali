@@ -362,7 +362,7 @@ class Ui_Productos(object):
         title_col = QtWidgets.QVBoxLayout()
         title_col.setSpacing(2)
         self.LabelVentasA = _make_label(self.PanelListado, "Productos", "PageTitle")
-        subtitle = _make_label(self.PanelListado, "Gestión de inventario · Lady Nail Shop", "PageSubtitle")
+        subtitle = _make_label(self.PanelListado, "Gestión de inventario · Distri Magik", "PageSubtitle")
         title_col.addWidget(self.LabelVentasA)
         title_col.addWidget(subtitle)
 
