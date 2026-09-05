@@ -226,25 +226,40 @@ class Ui_Egreso(object):
 
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.setMinimumSize(QtCore.QSize(720, 560))
+        Form.setMinimumSize(QtCore.QSize(480, 400))
         Form.setStyleSheet(f"background-color: {_BG};")
 
-        self.horizontalLayout = QtWidgets.QHBoxLayout(Form)
+        # Layout principal del Formulario
+        self.main_layout = QtWidgets.QVBoxLayout(Form)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setObjectName("main_layout")
+
+        # ── Scroll Area Responsivo ─────────────────────────────────
+        self.scrollArea = QtWidgets.QScrollArea(parent=Form)
+        self.scrollArea.setObjectName("scrollArea")
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.scrollArea.setStyleSheet("background: transparent; border: none;")
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # ── Contenedor principal ──────────────────────────────────
+        self.Contenedor = QtWidgets.QWidget()
+        self.Contenedor.setObjectName("Contenedor")
+        self.Contenedor.setStyleSheet("background-color: transparent;")
+        _sp_expand(self.Contenedor)
+
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.Contenedor)
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setObjectName("horizontalLayout")
 
-        # ── Contenedor principal ──────────────────────────────────
-        self.Contenedor = QtWidgets.QWidget(parent=Form)
-        self.Contenedor.setObjectName("Contenedor")
-        self.Contenedor.setStyleSheet("background-color: transparent;")
-        _sp_expand(self.Contenedor)
-        self.horizontalLayout.addWidget(self.Contenedor)
-
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.Contenedor)
-        self.horizontalLayout_2.setContentsMargins(24, 24, 24, 24)
-        self.horizontalLayout_2.setSpacing(24)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setContentsMargins(20, 20, 20, 20)
+        self.horizontalLayout_2.setSpacing(20)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.horizontalLayout.addLayout(self.horizontalLayout_2)
 
         # ── Área de contenido (stacked, 1 página) ─────────────────
         self.Contenido = QtWidgets.QStackedWidget(parent=self.Contenedor)
@@ -259,7 +274,7 @@ class Ui_Egreso(object):
 
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.ContenidoPage1)
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setSpacing(24)
+        self.verticalLayout_2.setSpacing(20)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
 
         # ── Tarjeta de formulario ─────────────────────────────────
@@ -270,6 +285,9 @@ class Ui_Egreso(object):
 
         # ── Pie ───────────────────────────────────────────────────
         self._build_footer()
+
+        self.scrollArea.setWidget(self.Contenedor)
+        self.main_layout.addWidget(self.scrollArea)
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -284,7 +302,7 @@ class Ui_Egreso(object):
             QWidget#widget_3 {{
                 background-color: {_CARD_BG};
                 border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
+                border-radius: 18px;
             }}
         """)
         self.widget_3.setSizePolicy(
@@ -294,15 +312,17 @@ class Ui_Egreso(object):
         _card_shadow(self.widget_3)
 
         self.gridLayout = QtWidgets.QGridLayout(self.widget_3)
-        self.gridLayout.setContentsMargins(32, 28, 32, 28)
+        self.gridLayout.setContentsMargins(24, 20, 24, 20)
         self.gridLayout.setSpacing(0)
         self.gridLayout.setObjectName("gridLayout")
 
         self.gridLayout_2 = QtWidgets.QGridLayout()
-        self.gridLayout_2.setHorizontalSpacing(20)
-        self.gridLayout_2.setVerticalSpacing(18)
+        self.gridLayout_2.setHorizontalSpacing(16)
+        self.gridLayout_2.setVerticalSpacing(14)
         self.gridLayout_2.setColumnStretch(0, 1)
         self.gridLayout_2.setColumnStretch(1, 1)
+        self.gridLayout_2.setColumnStretch(2, 1)
+        self.gridLayout_2.setColumnStretch(3, 1)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.gridLayout.addLayout(self.gridLayout_2, 0, 0, 1, 1)
 
@@ -314,12 +334,12 @@ class Ui_Egreso(object):
         hrow.setSpacing(14)
 
         self.lblBadge = QtWidgets.QLabel(parent=header)
-        self.lblBadge.setFixedSize(48, 48)
+        self.lblBadge.setFixedSize(42, 42)
         self.lblBadge.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         pix = QtGui.QPixmap("assets/iconos/badge_shield_user.svg")
         if not pix.isNull():
             self.lblBadge.setPixmap(
-                pix.scaled(48, 48,
+                pix.scaled(42, 42,
                            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                            QtCore.Qt.TransformationMode.SmoothTransformation)
             )
@@ -330,7 +350,7 @@ class Ui_Egreso(object):
         self.LabelVentasA = QtWidgets.QLabel(parent=header)
         self.LabelVentasA.setObjectName("LabelVentasA")
         self.LabelVentasA.setStyleSheet(
-            f"font-size: 24px; font-weight: 700; color: {_PRIMARY};"
+            f"font-size: 22px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
         titleCol.addWidget(self.LabelVentasA)
@@ -345,41 +365,34 @@ class Ui_Egreso(object):
         hrow.addLayout(titleCol)
         hrow.addStretch()
 
-        self.gridLayout_2.addWidget(header, 0, 0, 1, 2)
+        self.gridLayout_2.addWidget(header, 0, 0, 1, 4)
 
-        # ── Campos, agrupados en un grid de 2 columnas ─────────────
-        # Fila 1: Tipo de Gasto | Método de Pago
+        # ── Fila 1: 4 campos cortos organizados horizontalmente ─────
+        # Tipo de Gasto | Método de Pago | Fecha | Pago
         self._add_field_block(
             1, 0, 1, "label_3", "Tipo de Gasto",
             self._make_tipo_gasto(), "assets/iconos/input_user.svg",
-            max_width=_FIELD_MAX_W,
         )
         self._add_field_block(
             1, 1, 1, "label_6", "Metodo de Pago",
             self._make_metodo(), None,
-            max_width=_FIELD_MAX_W,
         )
-
-        # Fila 2: Fecha | Pago (monto)
         self._add_field_block(
-            2, 0, 1, "label", "Fecha",
+            1, 2, 1, "label", "Fecha",
             self._make_fecha(), qta.icon("fa5s.calendar-alt", color=_MUTED),
-            max_width=_FIELD_MAX_W,
         )
         self._add_field_block(
-            2, 1, 1, "label_7", "Pago",
+            1, 3, 1, "label_7", "Pago",
             self._make_pago(), "assets/iconos/input_lock.svg",
-            max_width=_FIELD_MAX_W,
         )
 
-        # Fila 3: Descripción — único campo a ancho completo
+        # ── Fila 2: Descripción — campo amplio a ancho completo ─────
         self._add_field_block(
-            3, 0, 2, "label_5", "Descripcion",
+            2, 0, 4, "label_5", "Descripcion",
             self._make_descripcion(), "assets/iconos/input_user.svg",
-            max_width=None,
         )
 
-        # Botones
+        # ── Fila 3: Botones de Acción ──────────────────────────────
         btnRow = QtWidgets.QHBoxLayout()
         btnRow.setSpacing(12)
         btnRow.addStretch()
@@ -390,10 +403,11 @@ class Ui_Egreso(object):
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
         self.BtnRegistrarEgreso.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Minimum,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
         self.BtnRegistrarEgreso.setMinimumHeight(_BTN_MIN_H)
+        self.BtnRegistrarEgreso.setMinimumWidth(160)
         self.BtnRegistrarEgreso.setStyleSheet(_PRIMARY_BTN_QSS)
         icon = QtGui.QIcon("assets/iconos/lock_white.svg")
         self.BtnRegistrarEgreso.setIcon(icon)
@@ -405,39 +419,28 @@ class Ui_Egreso(object):
             QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         )
         self.BtnEliminar.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Minimum,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
         self.BtnEliminar.setMinimumHeight(_BTN_MIN_H)
+        self.BtnEliminar.setMinimumWidth(150)
         self.BtnEliminar.setStyleSheet(_DANGER_BTN_QSS)
         trash = qta.icon("fa5s.trash-alt", color="#FFFFFF")
         self.BtnEliminar.setIcon(trash)
         btnRow.addWidget(self.BtnEliminar)
 
-        self.gridLayout_2.addLayout(btnRow, 4, 0, 1, 2)
+        self.gridLayout_2.addLayout(btnRow, 3, 0, 1, 4)
 
         self.verticalLayout_2.addWidget(self.widget_3, 0)
 
     def _add_field_block(self, row, col, colspan, label_name, label_text,
                           control, icon_path, max_width=None):
-        """Etiqueta arriba + control abajo, agrupados en un bloque compacto.
-
-        El bloque (label + control) siempre ocupa el ancho completo de su
-        celda del grid — así dos campos en la misma fila quedan del MISMO
-        ancho entre sí. Es el control interno el que, gracias a max_width,
-        deja de crecer más allá de ese límite y queda alineado a la
-        izquierda con espacio vacío a la derecha, en vez de estirarse.
-
-        icon_path acepta una ruta de archivo SVG (str) o un QIcon ya
-        construido (por ejemplo uno de qtawesome, para campos sin asset
-        propio como la fecha).
-        """
         block = QtWidgets.QWidget(parent=self.widget_3)
         block.setStyleSheet("background: transparent;")
         _sp_hfix(block)
         block_layout = QtWidgets.QVBoxLayout(block)
         block_layout.setContentsMargins(0, 0, 0, 0)
-        block_layout.setSpacing(6)
+        block_layout.setSpacing(5)
 
         label = QtWidgets.QLabel(parent=block)
         label.setObjectName(label_name)
@@ -454,9 +457,6 @@ class Ui_Egreso(object):
                 icon_path if isinstance(icon_path, QtGui.QIcon)
                 else QtGui.QIcon(icon_path)
             )
-            # QComboBox no soporta un ícono "leading" nativo como QLineEdit
-            # (no tiene ActionPosition); por eso el ícono solo se agrega en
-            # inputs de texto, para no dejar un ícono roto o mal alineado.
             if isinstance(control, QtWidgets.QLineEdit):
                 control.addAction(
                     icon, QtWidgets.QLineEdit.ActionPosition.LeadingPosition
@@ -492,7 +492,6 @@ class Ui_Egreso(object):
         _sp_hfix(w)
         w.setMinimumHeight(_INPUT_MIN_H)
         w.setStyleSheet(_INPUT_QSS)
-        # Antes se veía como una caja vacía sin pista de qué escribir.
         w.setPlaceholderText("dd/mm/aaaa")
         self.InputFechaEgreso = w
         return w
@@ -503,8 +502,6 @@ class Ui_Egreso(object):
         _sp_hfix(w)
         w.setMinimumHeight(_INPUT_MIN_H)
         w.setStyleSheet(_INPUT_QSS)
-        # Es un campo de dinero: solo números (con opcional 2 decimales) y
-        # alineado a la derecha, como se acostumbra en montos.
         validator = QtGui.QDoubleValidator(0.0, 999999999.0, 2, w)
         validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
         w.setValidator(validator)
@@ -533,7 +530,7 @@ class Ui_Egreso(object):
             QWidget#widget {{
                 background-color: {_CARD_BG};
                 border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
+                border-radius: 18px;
             }}
         """)
         _sp_expand(self.widget)
@@ -546,20 +543,41 @@ class Ui_Egreso(object):
         self.TablaEgreso = QtWidgets.QTableWidget(parent=self.widget)
         self.TablaEgreso.setObjectName("TablaEgreso")
         _sp_expand(self.TablaEgreso)
-        self.TablaEgreso.setMinimumHeight(280)
+        self.TablaEgreso.setMinimumHeight(240)
         self.TablaEgreso.setStyleSheet(_TABLE_QSS)
         self.TablaEgreso.setColumnCount(6)
         self.TablaEgreso.setRowCount(0)
         self.TablaEgreso.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
         )
-        self.TablaEgreso.horizontalHeader().setSectionResizeMode(
-            QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
         self.TablaEgreso.verticalHeader().setVisible(False)
         self.TablaEgreso.setShowGrid(False)
-        self.verticalLayout_3.addWidget(self.TablaEgreso)
+        self.TablaEgreso.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.TablaEgreso.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
 
+        # Configuración responsive del encabezado horizontal de la tabla
+        header = self.TablaEgreso.horizontalHeader()
+        header.setMinimumSectionSize(60)
+        header.setStretchLastSection(False)
+        
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.Interactive)
+
+        self.TablaEgreso.setColumnWidth(0, 75)
+        self.TablaEgreso.setColumnWidth(1, 120)
+        self.TablaEgreso.setColumnWidth(3, 120)
+        self.TablaEgreso.setColumnWidth(4, 110)
+        self.TablaEgreso.setColumnWidth(5, 160)
+
+        self.verticalLayout_3.addWidget(self.TablaEgreso)
         self.verticalLayout_2.addWidget(self.widget, 1)
 
     # ─────────────────────────────────────────────────────────────
@@ -595,28 +613,12 @@ class Ui_Egreso(object):
     #  Responsividad dinámica
     # ─────────────────────────────────────────────────────────────
     def adapt_to_size(self, width: int, height: int):
-        h_margin = max(16, min(60, int(width * 0.05)))
-        v_margin = max(16, min(48, int(height * 0.04)))
-        self.horizontalLayout_2.setContentsMargins(
-            h_margin, v_margin, h_margin, v_margin
-        )
-
-        card_h = max(24, min(40, int(width * 0.03)))
-        card_v = max(22, min(40, int(height * 0.038)))
-        self.gridLayout.setContentsMargins(card_h, card_v, card_h, card_v)
-
-        min_input = max(40, min(48, int(height * 0.052)))
-        for w in (self.InputTipoGasto, self.InputDescripcionEgreso,
-                  self.InputFechaEgreso, self.InputPagoEgreso,
-                  self.MetodoPagoBox):
-            w.setMinimumHeight(min_input)
-
-        self.BtnRegistrarEgreso.setMinimumHeight(
-            max(40, min(48, int(height * 0.055)))
-        )
-        self.BtnEliminar.setMinimumHeight(
-            max(40, min(48, int(height * 0.055)))
-        )
+        h_margin = max(12, min(32, int(width * 0.03)))
+        v_margin = max(12, min(32, int(height * 0.03)))
+        if hasattr(self, "horizontalLayout_2") and self.horizontalLayout_2:
+            self.horizontalLayout_2.setContentsMargins(
+                h_margin, v_margin, h_margin, v_margin
+            )
 
     # ─────────────────────────────────────────────────────────────
     def retranslateUi(self, Form):
@@ -643,4 +645,4 @@ class Ui_Egreso(object):
         for col, text in enumerate(headers):
             item = QtWidgets.QTableWidgetItem(_translate("Form", text))
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            self.TablaEgreso.setHorizontalHeaderItem(col, item)
+            self.TablaEgreso.setHorizontalHeaderItem(col, item)
