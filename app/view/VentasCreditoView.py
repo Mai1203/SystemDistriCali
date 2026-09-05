@@ -21,7 +21,6 @@ from ..controllers.caja_crud import obtener_cajas
 from ..ui import Ui_VentasCredito
 from ..utils.autocomplementado import configurar_autocompletado
 from ..utils.formateador import formatear_numero
-from ..utils.restructura_ticket import *
 
 # Standard library imports
 import os

@@ -355,6 +355,7 @@ class Ui_VentasCredito(object):
         self.BtnGenerarVentaCredito.setIcon(qta.icon('fa5s.file-invoice-dollar', color='white'))
         self.BtnGenerarVentaCredito.setIconSize(QtCore.QSize(18, 18))
         self.BtnGenerarVentaCredito.setMinimumHeight(48)
+        self.BtnGenerarVentaCredito.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnGenerarVentaCredito.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center;")
         resumenLayout.addWidget(self.BtnGenerarVentaCredito)
 
