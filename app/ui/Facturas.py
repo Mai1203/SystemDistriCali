@@ -212,6 +212,7 @@ class Ui_Facturas(object):
         icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(16, 16)
         icon_check = qta.icon("fa5s.check-circle", color="#FFFFFF").pixmap(16, 16)
         icon_cancel = qta.icon("fa5s.times-circle", color=_DANGER).pixmap(16, 16)
+        icon_print = qta.icon("fa5s.print", color=_PRIMARY).pixmap(16, 16)
 
         self.gridLayout_2 = QtWidgets.QGridLayout(Form)
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
@@ -361,12 +362,16 @@ class Ui_Facturas(object):
         self.BtnVerCancelarVenta = self._make_btn(
             "BtnVerCancelarVenta", "Cancelar Venta", _CANCEL_BTN_QSS, icon_cancel
         )
+        self.BtnImprimirTicket = self._make_btn(
+            "BtnImprimirTicket", "Imprimir Ticket", _SECONDARY_BTN_QSS, icon_print
+        )
         
         actions_layout.addStretch()
         actions_layout.addWidget(self.BtnFacturaPagada)
         actions_layout.addWidget(self.BtnVerFactura)
         actions_layout.addWidget(self.BtnEditarFactura)
         actions_layout.addWidget(self.BtnVerCancelarVenta)
+        actions_layout.addWidget(self.BtnImprimirTicket)
         actions_layout.addStretch()
         
         self.verticalLayout_3.addWidget(self.frame_actions, 0)
@@ -405,7 +410,13 @@ class Ui_Facturas(object):
         self.InputBuscador.setMinimumHeight(ctrl_h)
 
         btn_h = max(30, min(38, int(height * 0.042)))
-        for btn in (self.BtnFacturaPagada, self.BtnVerFactura, self.BtnEditarFactura, self.BtnVerCancelarVenta):
+        for btn in (
+            self.BtnFacturaPagada,
+            self.BtnVerFactura,
+            self.BtnEditarFactura,
+            self.BtnVerCancelarVenta,
+            self.BtnImprimirTicket
+        ):
             btn.setMinimumHeight(btn_h)
 
     # ─────────────────────────────────────────────────────────────

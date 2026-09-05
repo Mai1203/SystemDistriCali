@@ -182,3 +182,8 @@ class MainApp(QWidget):
         except Exception as e:
             print(f"[DEBUG] Error al cargar datos PagoCredito: {e}")
 
+    def cambiar_a_crediFactura(self):
+        """Vuelve a la vista de CrediFactura desde PagoCredito."""
+        self.stacked_widget.setCurrentWidget(self.crediFactura)
+        self.crediFactura.mostrar_ventasCredito()
+

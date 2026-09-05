@@ -44,6 +44,19 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
 
     def configurar_eventos(self):
         self.BtnAbonar.clicked.connect(self.abonar)
+        self.BtnAtras.clicked.connect(self.volver)
+
+    def volver(self):
+        """Regresa a la vista de CrediFactura."""
+        parent_window = self.parent()
+        while parent_window and not hasattr(parent_window, 'cambiar_a_crediFactura'):
+            parent_window = parent_window.parent()
+        if parent_window and hasattr(parent_window, 'cambiar_a_crediFactura'):
+            parent_window.cambiar_a_crediFactura()
+        else:
+            # Fallback: ocultar esta vista
+            self.hide()
+
 
     def cargar_informacion(self, id_ventaCredito):
         print(f"[DEBUG] cargar_informacion llamado con id={id_ventaCredito}")
@@ -282,7 +295,7 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
             current_line = 0
             empresa_nombre = "Distri Magik"
             empresa_direccion = "Cali, Colombia"
-            empresa_telefono = "315-436-31-88"
+            empresa_telefono = "315-038-66-18"
             fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             limite_pago_formateado = (
                 venta.Fecha_Limite.strftime("%d/%m/%Y")

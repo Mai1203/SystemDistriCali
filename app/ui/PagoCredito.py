@@ -229,6 +229,7 @@ class Ui_PagoCredito(object):
         icon_search = qta.icon("fa5s.search", color=_PRIMARY).pixmap(16, 16)
         icon_dollar = qta.icon("fa5s.dollar-sign", color="#28A745").pixmap(16, 16)
         icon_edit = qta.icon("fa5s.edit", color=_PRIMARY).pixmap(16, 16)
+        icon_back = qta.icon("fa5s.arrow-left", color=_PRIMARY).pixmap(16, 16)
 
         self.gridLayout_2 = QtWidgets.QGridLayout(Form)
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
@@ -291,13 +292,42 @@ class Ui_PagoCredito(object):
         header_layout.setVerticalSpacing(8)
         header_layout.setObjectName("header_layout")
 
+        # ── Fila 0: botón atrás + título
+        title_row = QtWidgets.QHBoxLayout()
+        title_row.setSpacing(8)
+
+        self.BtnAtras = QtWidgets.QToolButton(parent=self.frame_header)
+        self.BtnAtras.setObjectName("BtnAtras")
+        self.BtnAtras.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnAtras.setIcon(QtGui.QIcon(icon_back))
+        self.BtnAtras.setIconSize(QtCore.QSize(14, 14))
+        self.BtnAtras.setFixedSize(32, 32)
+        self.BtnAtras.setToolTip("Volver")
+        self.BtnAtras.setStyleSheet(f"""
+            QToolButton {{
+                background-color: transparent;
+                border: 1px solid {_BORDER};
+                border-radius: 6px;
+            }}
+            QToolButton:hover {{
+                background-color: #FBEFF7;
+                border-color: {_PRIMARY};
+            }}
+            QToolButton:pressed {{
+                background-color: #F3E6EF;
+            }}
+        """)
+        title_row.addWidget(self.BtnAtras)
+
         self.LabelPago = QtWidgets.QLabel(parent=self.frame_header)
         self.LabelPago.setObjectName("LabelPago")
         self.LabelPago.setStyleSheet(
             f"font-size: 20px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
-        header_layout.addWidget(self.LabelPago, 0, 0, 1, 1)
+        title_row.addWidget(self.LabelPago)
+        title_row.addStretch()
+        header_layout.addLayout(title_row, 0, 0, 1, 4)
 
         self.LabelDeuda = QtWidgets.QLabel("Total Deuda: $0", parent=self.frame_header)
         self.LabelDeuda.setObjectName("LabelDeuda")

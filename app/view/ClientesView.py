@@ -419,6 +419,15 @@ class Cliente_View(QWidget, Ui_ControlCliente):
 
             return
 
+        if 111 in ids:
+
+            enviar_notificacion(
+                "Advertencia",
+                "No se puede eliminar el cliente predeterminado (Consumidor Final)."
+            )
+
+            return
+
         respuesta = QMessageBox.question(
             self,
             "Confirmar Eliminación",

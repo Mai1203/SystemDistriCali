@@ -46,6 +46,7 @@ class Facturas_View(QWidget, Ui_Facturas):
         self.BtnVerFactura.clicked.connect(self.ver_factura)
         self.BtnEditarFactura.clicked.connect(self.editar_factura)
         self.BtnVerCancelarVenta.clicked.connect(self.cancelar_venta)
+        self.BtnImprimirTicket.clicked.connect(self.imprimir_ticket)
 
         # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
         QTimer.singleShot(50, self._adapt_current)
@@ -336,5 +337,156 @@ class Facturas_View(QWidget, Ui_Facturas):
             QMessageBox.information(self, "Ver factura", texto)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo consultar la factura: {e}")
+        finally:
+            db.close()
+
+    def imprimir_ticket(self):
+        ids = self.obtener_ids_seleccionados()
+        if not ids:
+            enviar_notificacion(
+                "Advertencia", "No se seleccionó ninguna factura para imprimir."
+            )
+            return
+
+        db = SessionLocal()
+        try:
+            import win32print
+            import win32ui
+            import win32con
+            import datetime
+            
+            factura_completa = obtener_factura_completa(db, ids[0])
+            if not factura_completa:
+                QMessageBox.warning(self, "Factura", "No se encontró la factura seleccionada.")
+                return
+
+            factura = factura_completa["Factura"]
+            cliente = factura_completa["Cliente"]
+            detalles = factura_completa["Detalles"]
+
+            client_name = f"{cliente['Nombre']} {cliente['Apellido']}"
+            client_id = str(cliente["ID_Cliente"])
+            client_address = str(cliente.get("Direccion", ""))
+            client_phone = str(cliente.get("Teléfono", ""))
+            
+            items = []
+            for d in detalles:
+                items.append((d["Producto"], d["Cantidad"], d["Precio_Unitario"], d["Subtotal"]))
+
+            subtotal = sum(d["Subtotal"] for d in detalles)
+            delivery_fee = factura.get("Descuento", 0)
+            total = subtotal - delivery_fee
+            payment_method = factura.get("MetodoPago", "")
+            invoice_number = f"0000{factura['ID_Factura']}"
+            
+            max_lines_per_page = 30
+            current_line = 0
+            empresa_nombre = "Distri Magik"
+            empresa_direccion = "Cali, Colombia"
+            empresa_telefono = "315-038-66-18"
+            fecha_actual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            subtotal_formateado = f"${subtotal:,.2f}"
+            total_formateado = f"${total:,.2f}"
+
+            delivery_fee = float(delivery_fee)
+            if delivery_fee.is_integer():
+                delivery_fee_formateado = f"${int(delivery_fee):,.0f}"
+            else:
+                delivery_fee_formateado = f"${delivery_fee:,.2f}"
+
+            direccion = client_address
+            direccion_linea1 = direccion[:35]
+            direccion_linea2 = direccion[35:] if len(direccion) > 35 else ""
+
+            impresora = win32print.GetDefaultPrinter()
+            hDC = win32ui.CreateDC()
+            hDC.CreatePrinterDC(impresora)
+            hDC.StartDoc("Ticket de Venta")
+            hDC.StartPage()
+
+            font_encabezado = win32ui.CreateFont({
+                "name": "Lucida Console",
+                "height": 28,
+                "weight": win32con.FW_BOLD
+            })
+            font_size = 18
+            line_height = font_size + 10
+            font = win32ui.CreateFont({
+                "name": "Lucida Console",
+                "height": font_size,
+                "weight": win32con.FW_BOLD
+            })
+            hDC.SelectObject(font_encabezado)
+
+            printer_width = hDC.GetDeviceCaps(win32con.HORZRES)
+            center_x = printer_width // 2
+            x, y = 2, 2 + 5 * line_height
+
+            for i, linea in enumerate([empresa_nombre, empresa_direccion, empresa_telefono, fecha_actual]):
+                text_size = hDC.GetTextExtent(linea)
+                text_width = text_size[0]
+                hDC.TextOut(center_x - (text_width // 2), 50 + (i * line_height), linea)
+            y += line_height
+            hDC.SelectObject(font)
+
+            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
+            y += line_height
+            hDC.TextOut(x, y, f"COT No. {invoice_number}")
+            y += line_height
+            hDC.TextOut(x, y, f"Cliente: {client_name}")
+            y += line_height
+            hDC.TextOut(x, y, f"Cédula: {client_id}")
+            y += line_height
+            hDC.TextOut(x, y, f"Teléfono: {client_phone}")
+            y += line_height
+            hDC.TextOut(x, y, f"Dirección: {direccion_linea1}")
+            y += line_height
+            if direccion_linea2:
+                hDC.TextOut(x, y, direccion_linea2)
+                y += line_height
+
+            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
+            y += line_height
+            header = "{:<18} {:>6} {:>10} {:>10}".format("Producto", "Cant.", "P.Unit", "Total")
+            hDC.TextOut(x, y, header)
+            y += line_height
+
+            for item in items:
+                nombre_producto = item[0].strip().replace('\n', ' ')[:18].ljust(18)
+                cantidad = str(item[1])
+                precio_unitario = f"{item[2]:,.0f}".replace(",", ".")
+                total_producto = f"{item[3]:,.0f}".replace(",", ".")
+                linea = "{:<18} {:>6} {:>10} {:>10}".format(nombre_producto, cantidad, precio_unitario, total_producto)
+                hDC.TextOut(x, y, linea)
+                y += line_height
+                current_line += 1
+                if current_line >= max_lines_per_page:
+                    hDC.EndPage()
+                    hDC.StartPage()
+                    y = 2
+                    current_line = 0
+
+            totales = f"""
+            -----------------------------------------------------------------------------------------------------
+            Subtotal: {subtotal_formateado}
+            Envío: {delivery_fee_formateado}
+            Total: {total_formateado}
+            Método de Pago: {payment_method}
+            -----------------------------------------------------------------------------------------------------
+            ¡Gracias por tu compra!
+            -----------------------------------------------------------------------------------------------------
+            """
+            for line in totales.split("\n"):
+                hDC.TextOut(x, y, line.strip())
+                y += line_height
+
+            hDC.EndPage()
+            hDC.EndDoc()
+            hDC.DeleteDC()
+            
+            enviar_notificacion("Éxito", "Ticket enviado a la impresora correctamente.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo imprimir el ticket: {e}")
         finally:
             db.close()
