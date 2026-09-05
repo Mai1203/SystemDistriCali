@@ -295,7 +295,7 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
             current_line = 0
             empresa_nombre = "Distri Magik"
             empresa_direccion = "Cali, Colombia"
-            empresa_telefono = "315-436-31-88"
+            empresa_telefono = "315-038-66-18"
             fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             limite_pago_formateado = (
                 venta.Fecha_Limite.strftime("%d/%m/%Y")
