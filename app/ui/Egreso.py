@@ -9,7 +9,7 @@ import qtawesome as qta
 
 
 # ─────────────────────────────────────────────────────────────────
-#  Paleta semántica (Sistema de Diseño Lady Nail)
+#  Paleta semántica (Sistema de Diseño)
 # ─────────────────────────────────────────────────────────────────
 _PRIMARY     = "#862D6D"
 _PRIMARY_H   = "#6E2259"
@@ -623,7 +623,7 @@ class Ui_Egreso(object):
     # ─────────────────────────────────────────────────────────────
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Egresos · Lady Nail"))
+        Form.setWindowTitle(_translate("Form", "Egresos · DISTRI MAGIK"))
         self.LabelVentasA.setText(_translate("Form", "Egresos"))
         self.lblSubtitle.setText(
             _translate("Form", "Registra y controla los gastos del negocio")
@@ -636,7 +636,7 @@ class Ui_Egreso(object):
         self.BtnRegistrarEgreso.setText(_translate("Form", "  Registrar Egreso"))
         self.BtnEliminar.setText(_translate("Form", "  Eliminar Egreso"))
         self.lblFooter.setText(
-            _translate("Form", "Solo personal autorizado · Lady Nail SHOP")
+            _translate("Form", "Solo personal autorizado · DISTRI MAGIK")
         )
 
         headers = [
@@ -645,4 +645,4 @@ class Ui_Egreso(object):
         for col, text in enumerate(headers):
             item = QtWidgets.QTableWidgetItem(_translate("Form", text))
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            self.TablaEgreso.setHorizontalHeaderItem(col, item)
+            self.TablaEgreso.setHorizontalHeaderItem(col, item)

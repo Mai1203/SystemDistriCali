@@ -337,16 +337,41 @@ def generar_analisis_financiero(analisis, ingresos, egresos_lista):
         return
 
     # Cálculos de totales
-    try:
-        total_ingresos_efectivo = sum(ing[3] for ing in ingresos if ing[2] == "Venta")
-        total_ingresos_transferencia = sum(ing[4] for ing in ingresos if ing[2] == "Venta")
-        total_ingresos = total_ingresos_efectivo + total_ingresos_transferencia
-    except Exception as e:
-        print(f"Error al extraer datos: {e}")
-        total_ingresos = 0
+    total_ingresos_efectivo = 0.0
+    total_ingresos_transferencia = 0.0
+    datos_ingresos = []
 
-    total_egresos = sum(eg[3] for eg in egresos_lista)
-    total_ganancias = sum(dato[5] for dato in analisis)
+    for ing in ingresos:
+        tipo_str = str(getattr(ing, "tipo_ingreso", None) or (len(ing) > 2 and ing[2]) or "")
+        
+        m_efectivo = float(getattr(ing, "monto_efectivo", None) or (len(ing) > 3 and ing[3]) or 0.0)
+        m_transaccion = float(getattr(ing, "monto_transaccion", None) or (len(ing) > 4 and ing[4]) or 0.0)
+        m_abono = float(getattr(ing, "monto", None) or (len(ing) > 6 and ing[6]) or 0.0)
+        metodo = str(getattr(ing, "metodo_pago", None) or (len(ing) > 8 and ing[8]) or "")
+
+        if m_efectivo or m_transaccion:
+            tot = m_efectivo + m_transaccion
+            total_ingresos_efectivo += m_efectivo
+            total_ingresos_transferencia += m_transaccion
+        elif m_abono:
+            tot = m_abono
+            if metodo == "Efectivo":
+                total_ingresos_efectivo += m_abono
+            else:
+                total_ingresos_transferencia += m_abono
+        else:
+            tot = 0.0
+
+        id_str = str(getattr(ing, "ID_Ingreso", None) or ing[0] or "")
+        datos_ingresos.append([id_str[:8], tipo_str[:18], f"${tot:,.0f}"])
+
+    total_ingresos = total_ingresos_efectivo + total_ingresos_transferencia
+
+    total_egresos = sum(
+        float(getattr(eg, "Monto_Egreso", None) or (len(eg) > 3 and eg[3]) or (len(eg) > 2 and eg[2]) or 0.0)
+        for eg in egresos_lista
+    )
+    total_ganancias = sum(float(getattr(dato, "ganancia_por_factura", None) or (len(dato) > 5 and dato[5]) or 0.0) for dato in analisis)
 
     doc = SimpleDocTemplate(
         file_path,
@@ -391,8 +416,10 @@ def generar_analisis_financiero(analisis, ingresos, egresos_lista):
         return tabla
 
     # Preparar datos
-    datos_ingresos = [[str(ing[0])[:8], ing[2][:15], f"${ing[3] + ing[4]:,.0f}"] for ing in ingresos if ing[2] == "Venta"]
-    datos_ganancias = [[str(dato[0])[:8], dato[1][:15], f"${dato[5]:,.0f}"] for dato in analisis]
+    datos_ganancias = [
+        [str(getattr(dato, "ID_Factura", None) or dato[0])[:8], str(getattr(dato, "Tipo_Ingreso", None) or dato[1])[:15], f"${float(getattr(dato, 'ganancia_por_factura', None) or dato[5] or 0.0):,.0f}"]
+        for dato in analisis
+    ]
 
     def dividir_en_chunks(datos, max_filas):
         return [datos[i:i + max_filas] for i in range(0, len(datos), max_filas)]

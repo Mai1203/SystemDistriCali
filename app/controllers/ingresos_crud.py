@@ -49,22 +49,21 @@ def obtener_ingresos(db: Session, FechaInicio: datetime = None, FechaFin: dateti
         .outerjoin(MetodoPago, PagoCredito.ID_Metodo_Pago == MetodoPago.ID_Metodo_Pago)
     )
     
-    if FechaFin:
+    if FechaInicio and FechaFin:
         ingresos = ingresos.filter(
             or_(
                 Facturas.Fecha_Factura.between(FechaInicio, FechaFin),
                 PagoCredito.Fecha_Registro.between(FechaInicio, FechaFin)
             )
         )
-    else:
+    elif FechaInicio:
         ingresos = ingresos.filter(
             or_(
                 Facturas.Fecha_Factura >= FechaInicio,
                 PagoCredito.Fecha_Registro >= FechaInicio
             )
         )
-        
-    
+
     return ingresos.all()
 
 def obtener_ingresos_reportes(db: Session, FechaInicio: datetime = None, FechaFin: datetime = None):
