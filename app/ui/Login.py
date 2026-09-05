@@ -384,10 +384,14 @@ class Ui_Login(object):
         )
         self.lblLogo.setSizePolicy(sp)
         self.logoPixmap = QtGui.QPixmap("assets/LogoDistriMagik.png")
+        self.lblLogo.setStyleSheet(
+            f"background-color: {_CARD_BG};"
+        )
         if self.logoPixmap.isNull():
             self.lblLogo.setText("DistriCali")
             self.lblLogo.setStyleSheet(
-                f"font-size: 28px; font-weight: bold; color: {_PRIMARY};"
+                f"font-size: 28px; font-weight: bold; color: #000000;"
+                f" background-color: {_CARD_BG};"
             )
         else:
             self._resize_logo()
