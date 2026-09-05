@@ -44,6 +44,19 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
 
     def configurar_eventos(self):
         self.BtnAbonar.clicked.connect(self.abonar)
+        self.BtnAtras.clicked.connect(self.volver)
+
+    def volver(self):
+        """Regresa a la vista de CrediFactura."""
+        parent_window = self.parent()
+        while parent_window and not hasattr(parent_window, 'cambiar_a_crediFactura'):
+            parent_window = parent_window.parent()
+        if parent_window and hasattr(parent_window, 'cambiar_a_crediFactura'):
+            parent_window.cambiar_a_crediFactura()
+        else:
+            # Fallback: ocultar esta vista
+            self.hide()
+
 
     def cargar_informacion(self, id_ventaCredito):
         print(f"[DEBUG] cargar_informacion llamado con id={id_ventaCredito}")
