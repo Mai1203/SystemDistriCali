@@ -258,8 +258,10 @@ def obtener_reporte_facturas(db: Session, fecha_inicio, fecha_fin=None):
         func.sum(
             DetalleFacturas.Cantidad * 
             case(
-                (Facturas.ID_Tipo_Factura == 1, Productos.Ganancia_Producto_normal),
-                (Facturas.ID_Tipo_Factura == 2, Productos.Ganancia_Producto_mayor),
+                (Facturas.ID_Tipo_Factura == 1, Productos.Ganancia_1),
+                (Facturas.ID_Tipo_Factura == 2, Productos.Ganancia_2),
+                (Facturas.ID_Tipo_Factura == 3, Productos.Ganancia_3),
+                (Facturas.ID_Tipo_Factura == 4, Productos.Ganancia_4),
                 else_=0
             )
         )

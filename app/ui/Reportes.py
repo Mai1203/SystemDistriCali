@@ -1,17 +1,11 @@
-# UI de Reportes — Escrita a mano siguiendo el Sistema de Diseño Lady Nail
-# (paleta plum/berry, tarjetas con sombra, combos/calendario focus, SVG, responsiva)
-#
-# Reglas aplicadas del design_system_login.txt:
-#  · Colores semánticos con prefijo _
-#  · Tarjetas flotantes (border-radius + QGraphicsDropShadowEffect)
-#  · ComboBox/inputs con borde 1.5px, foco 2px _PRIMARY, hover plum
-#  · Botones primarios _PRIMARY (hover/pressed/disabled) con ícono PDF
-#  · QCalendarWidget con cabecera plum y selección berry
-#  · resizeEvent → adapt_to_size recalcula márgenes y alturas
-#  · PointingHandCursor en controles interactivos
+# UI de Reportes — Rediseño Completo siguiendo el Sistema de Diseño Lady Nail
+# (paleta plum/berry #862D6D, tarjetas flotantes con sombra, QScrollArea responsivo, SVG, Gráficas Mensuales)
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 import qtawesome as qta
+
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -29,11 +23,12 @@ _MUTED       = "#7B737F"
 _FOCUS_BG    = "#FFFAFE"
 _DIVIDER     = "#E2DAE1"
 _CARD_BORDER = "#EAE0E8"
+_BADGE_BG    = "#F9EEF6"
 
 _FONT = "'Segoe UI', Arial, sans-serif"
 
-_CTRL_MIN_H = 44
-_BTN_MIN_H  = 48
+_CTRL_MIN_H = 40
+_BTN_MIN_H  = 38
 
 
 def _sp_expand(w: QtWidgets.QWidget):
@@ -59,7 +54,7 @@ _COMBO_QSS = f"""
     QComboBox {{
         background-color: {_CARD_BG};
         border: 1.5px solid {_BORDER};
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 0px 12px;
         font-size: 13px;
         color: {_TEXT};
@@ -67,10 +62,11 @@ _COMBO_QSS = f"""
     }}
     QComboBox:focus, QComboBox:hover {{
         border: 2px solid {_PRIMARY};
+        background-color: {_FOCUS_BG};
     }}
     QComboBox::drop-down {{
         border: none;
-        width: 26px;
+        width: 24px;
     }}
     QComboBox QAbstractItemView {{
         background-color: {_CARD_BG};
@@ -78,7 +74,7 @@ _COMBO_QSS = f"""
         color: {_TEXT};
         selection-background-color: {_PRIMARY};
         selection-color: #FFFFFF;
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 4px;
         font-family: {_FONT};
     }}
@@ -89,20 +85,18 @@ _PRIMARY_BTN_QSS = f"""
         background-color: {_PRIMARY};
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
-        font-size: 14px;
+        border-radius: 6px;
+        font-size: 12px;
         font-weight: 600;
         font-family: {_FONT};
-        padding: 10px 16px;
-        letter-spacing: 0.4px;
-        min-height: {_BTN_MIN_H}px;
+        padding: 0px 12px;
+        height: 32px;
     }}
     QPushButton:hover {{
         background-color: {_PRIMARY_H};
     }}
     QPushButton:pressed {{
         background-color: {_PRIMARY_P};
-        padding-top: 12px;
     }}
     QPushButton:disabled {{
         background-color: #C4A8BF;
@@ -112,7 +106,7 @@ _PRIMARY_BTN_QSS = f"""
 
 _TITLE_QSS = f"""
     QLabel {{
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 700;
         color: {_PRIMARY};
         font-family: {_FONT};
@@ -139,43 +133,79 @@ _CAPTION_QSS = f"""
     }}
 """
 
+_INFO_BADGE_QSS = f"""
+    QLabel {{
+        font-size: 11px;
+        font-weight: 600;
+        color: {_PRIMARY};
+        background-color: {_BADGE_BG};
+        border: 1px solid {_BORDER_H};
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-family: {_FONT};
+    }}
+"""
+
 _CALENDAR_QSS = f"""
     QCalendarWidget {{
         background-color: {_CARD_BG};
         border: 1px solid {_DIVIDER};
-        border-radius: 14px;
+        border-radius: 10px;
         font-family: {_FONT};
         color: {_TEXT};
     }}
     QCalendarWidget QWidget#qt_calendar_navigationbar {{
         background-color: {_PRIMARY};
-        border-radius: 13px 13px 0 0;
+        border-radius: 9px 9px 0 0;
+        padding: 2px;
     }}
     QCalendarWidget QAbstractItemView {{
         background-color: {_CARD_BG};
         color: {_TEXT};
         selection-background-color: {_PRIMARY};
         selection-color: #FFFFFF;
-        border-radius: 8px;
+        border-radius: 4px;
+        outline: none;
     }}
     QCalendarWidget QToolButton {{
         color: #FFFFFF;
         background: transparent;
         font-family: {_FONT};
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 2px;
+    }}
+    QCalendarWidget QToolButton:hover {{
+        background-color: {_PRIMARY_H};
     }}
     QCalendarWidget QMenu {{
         background-color: {_CARD_BG};
         color: {_TEXT};
+        border: 1px solid {_DIVIDER};
     }}
 """
 
 
+class ChartCanvas(FigureCanvasQTAgg):
+    """Canvas interactivo de Matplotlib para gráficas mensuales estilizadas."""
+    def __init__(self, parent=None):
+        self.fig = Figure(figsize=(4.0, 2.8), dpi=100, facecolor="#FFFFFF")
+        super().__init__(self.fig)
+        self.setParent(parent)
+        self.setMinimumHeight(210)
+        self.setMaximumHeight(260)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+
+
 def _card_shadow(widget: QtWidgets.QWidget):
     shadow = QtWidgets.QGraphicsDropShadowEffect(widget)
-    shadow.setBlurRadius(40)
+    shadow.setBlurRadius(24)
     shadow.setXOffset(0)
-    shadow.setYOffset(12)
-    shadow.setColor(QtGui.QColor(100, 30, 80, 45))
+    shadow.setYOffset(6)
+    shadow.setColor(QtGui.QColor(100, 30, 80, 25))
     widget.setGraphicsEffect(shadow)
 
 
@@ -183,23 +213,94 @@ class Ui_Reportes(object):
 
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.setMinimumSize(QtCore.QSize(900, 600))
+        Form.setMinimumSize(QtCore.QSize(850, 560))
         Form.setStyleSheet(f"background-color: {_BG};")
 
-        self.gridLayout_2 = QtWidgets.QGridLayout(Form)
-        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.main_layout = QtWidgets.QVBoxLayout(Form)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setObjectName("main_layout")
 
-        self.Contenedor = QtWidgets.QWidget(parent=Form)
+        # ── Contenedor Scrollable Responsivo ────────────────────────
+        self.scrollArea = QtWidgets.QScrollArea(parent=Form)
+        self.scrollArea.setObjectName("scrollArea")
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.scrollArea.setStyleSheet(f"""
+            QScrollArea {{
+                background: transparent;
+                border: none;
+            }}
+            QScrollBar:vertical {{
+                background: {_DIVIDER};
+                width: 8px;
+                border-radius: 4px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {_BORDER_H};
+                border-radius: 4px;
+                min-height: 32px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {_PRIMARY};
+            }}
+            QScrollBar::handle:vertical:pressed {{
+                background: {_PRIMARY_H};
+            }}
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+                background: none;
+            }}
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {{
+                background: none;
+            }}
+            QScrollBar:horizontal {{
+                background: {_DIVIDER};
+                height: 8px;
+                border-radius: 4px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: {_BORDER_H};
+                border-radius: 4px;
+                min-width: 32px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: {_PRIMARY};
+            }}
+            QScrollBar::handle:horizontal:pressed {{
+                background: {_PRIMARY_H};
+            }}
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {{
+                width: 0px;
+                background: none;
+            }}
+            QScrollBar::add-page:horizontal,
+            QScrollBar::sub-page:horizontal {{
+                background: none;
+            }}
+        """)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.Contenedor = QtWidgets.QWidget()
         self.Contenedor.setObjectName("Contenedor")
         self.Contenedor.setStyleSheet("background-color: transparent;")
         _sp_expand(self.Contenedor)
-        self.gridLayout_2.addWidget(self.Contenedor, 0, 0, 1, 1)
 
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.Contenedor)
-        self.horizontalLayout_2.setContentsMargins(24, 24, 24, 24)
-        self.horizontalLayout_2.setSpacing(24)
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.Contenedor)
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout.setSpacing(0)
+
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setContentsMargins(18, 18, 18, 18)
+        self.horizontalLayout_2.setSpacing(18)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.horizontalLayout.addLayout(self.horizontalLayout_2)
 
         self.Contenido = QtWidgets.QStackedWidget(parent=self.Contenedor)
         self.Contenido.setObjectName("Contenido")
@@ -213,7 +314,7 @@ class Ui_Reportes(object):
 
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.ContenidoPage1)
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setSpacing(24)
+        self.verticalLayout_2.setSpacing(16)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
 
         # ── Encabezado ─────────────────────────────────────────────
@@ -231,23 +332,44 @@ class Ui_Reportes(object):
         self.widget_3 = QtWidgets.QWidget(parent=self.widget)
         self.widget_3.setObjectName("widget_3")
         self.widget_3.setStyleSheet("background: transparent;")
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.widget_3)
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout.setSpacing(24)
-        self.horizontalLayout.setObjectName("horizontalLayout")
+        _sp_hfix(self.widget_3)
+
+        self.cards_grid = QtWidgets.QGridLayout(self.widget_3)
+        self.cards_grid.setContentsMargins(0, 0, 0, 0)
+        self.cards_grid.setHorizontalSpacing(16)
+        self.cards_grid.setVerticalSpacing(16)
+        self.cards_grid.setColumnStretch(0, 1)  # Columna 1: Reporte de Caja
+        self.cards_grid.setColumnStretch(1, 1)  # Columna 2: Análisis Financiero
+        self.cards_grid.setColumnStretch(2, 1)  # Columna 3: Gráficas Mensuales
 
         self._build_card_caja()
         self._build_card_productos()
         self._build_card_analisis()
+        self._build_card_graficas()
 
-        self.verticalLayout_3.addWidget(self.widget_3)
-        self.verticalLayout_2.addWidget(self.widget, 1)
+        # Disposición en 3 Columnas arriba + Productos abajo:
+        # Fila 0 (3 Columnas principales):
+        self.cards_grid.addWidget(self.widget_4, 0, 0, 1, 1)         # Col 0: Caja
+        self.cards_grid.addWidget(self.widget_6, 0, 1, 1, 1)         # Col 1: Análisis
+        self.cards_grid.addWidget(self.widget_graficas, 0, 2, 1, 1)  # Col 2: Gráficas
+
+        # Fila 1 (Abajo): Reporte de Productos abarcando las 3 columnas
+        self.cards_grid.addWidget(self.widget_5, 1, 0, 1, 3)
+
+        self.verticalLayout_3.addWidget(self.widget_3, 0)
+        self.verticalLayout_3.addStretch(1)
+
+        self.verticalLayout_2.addWidget(self.widget, 0)
+        self.verticalLayout_2.addStretch(1)
+
+        self.scrollArea.setWidget(self.Contenedor)
+        self.main_layout.addWidget(self.scrollArea)
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     # ─────────────────────────────────────────────────────────────
-    #  Encabezado
+    #  Encabezado Hero
     # ─────────────────────────────────────────────────────────────
     def _build_header(self):
         self.widget_2 = QtWidgets.QWidget(parent=self.ContenidoPage1)
@@ -256,7 +378,7 @@ class Ui_Reportes(object):
             QWidget#widget_2 {{
                 background-color: {_CARD_BG};
                 border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
+                border-radius: 14px;
             }}
         """)
         self.widget_2.setSizePolicy(
@@ -266,17 +388,17 @@ class Ui_Reportes(object):
         _card_shadow(self.widget_2)
 
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.widget_2)
-        self.horizontalLayout_3.setContentsMargins(28, 22, 28, 22)
-        self.horizontalLayout_3.setSpacing(14)
+        self.horizontalLayout_3.setContentsMargins(18, 12, 18, 12)
+        self.horizontalLayout_3.setSpacing(12)
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
 
         badge = QtWidgets.QLabel(parent=self.widget_2)
-        badge.setFixedSize(48, 48)
+        badge.setFixedSize(38, 38)
         badge.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         pix = QtGui.QPixmap("assets/iconos/badge_shield_user.svg")
         if not pix.isNull():
             badge.setPixmap(
-                pix.scaled(48, 48,
+                pix.scaled(38, 38,
                            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                            QtCore.Qt.TransformationMode.SmoothTransformation)
             )
@@ -287,7 +409,7 @@ class Ui_Reportes(object):
         self.LabelReportes = QtWidgets.QLabel(parent=self.widget_2)
         self.LabelReportes.setObjectName("LabelReportes")
         self.LabelReportes.setStyleSheet(
-            f"font-size: 28px; font-weight: 700; color: {_PRIMARY};"
+            f"font-size: 20px; font-weight: 700; color: {_PRIMARY};"
             f" font-family: {_FONT}; background: transparent;"
         )
         titleCol.addWidget(self.LabelReportes)
@@ -296,13 +418,14 @@ class Ui_Reportes(object):
         self.lblReportesSub.setObjectName("lblReportesSub")
         self.lblReportesSub.setStyleSheet(_SUBTITLE_QSS)
         titleCol.addWidget(self.lblReportesSub)
+
         self.horizontalLayout_3.addLayout(titleCol)
         self.horizontalLayout_3.addStretch()
 
         self.verticalLayout_2.addWidget(self.widget_2, 0)
 
     # ─────────────────────────────────────────────────────────────
-    #  Helpers de tarjeta
+    #  Helpers de Tarjeta
     # ─────────────────────────────────────────────────────────────
     def _make_card(self, name):
         card = QtWidgets.QWidget(parent=self.widget_3)
@@ -312,18 +435,18 @@ class Ui_Reportes(object):
             QWidget#{name} {{
                 background-color: {_CARD_BG};
                 border: 1px solid {_CARD_BORDER};
-                border-radius: 22px;
+                border-radius: 14px;
             }}
         """)
         card.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
         )
         _card_shadow(card)
 
         layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(14)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(8)
         layout.setObjectName(f"layout_{name}")
         return card, layout
 
@@ -360,12 +483,15 @@ class Ui_Reportes(object):
         btn = QtWidgets.QPushButton(parent=self.widget_3)
         btn.setObjectName(name)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        _sp_hfix(btn)
-        btn.setMinimumHeight(_BTN_MIN_H)
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        btn.setFixedHeight(32)
         btn.setStyleSheet(_PRIMARY_BTN_QSS)
-        icon_pdf = qta.icon("fa5s.file-pdf", color="#FFFFFF").pixmap(20, 20)
+        icon_pdf = qta.icon("fa5s.file-pdf", color="#FFFFFF").pixmap(14, 14)
         btn.setIcon(QtGui.QIcon(icon_pdf))
-        btn.setIconSize(QtCore.QSize(20, 20))
+        btn.setIconSize(QtCore.QSize(14, 14))
         btn.setText(text)
         return btn
 
@@ -374,161 +500,215 @@ class Ui_Reportes(object):
     # ─────────────────────────────────────────────────────────────
     def _build_card_caja(self):
         card, layout = self._make_card("widget_4")
-        self.gridLayout = QtWidgets.QGridLayout()
-        self.gridLayout.setVerticalSpacing(12)
-        self.gridLayout.setHorizontalSpacing(0)
-        self.gridLayout.setObjectName("gridLayout")
 
+        # Header de tarjeta con ícono
+        h_box = QtWidgets.QHBoxLayout()
+        h_box.setSpacing(8)
+        icon_lbl = QtWidgets.QLabel(parent=card)
+        icon_lbl.setPixmap(qta.icon("fa5s.cash-register", color=_PRIMARY).pixmap(20, 20))
+        h_box.addWidget(icon_lbl)
         self.label = self._make_title("label", "Reporte de Caja")
-        self.gridLayout.addWidget(self.label, 0, 0, 1, 1,
-                                  QtCore.Qt.AlignmentFlag.AlignLeft)
+        h_box.addWidget(self.label)
+        h_box.addStretch()
+        layout.addLayout(h_box)
 
-        self.label_2 = self._make_subtitle("label_2", "Caja")
-        self.gridLayout.addWidget(self.label_2, 1, 0, 1, 1,
-                                  QtCore.Qt.AlignmentFlag.AlignLeft)
+        # Opciones
+        opts_layout = QtWidgets.QGridLayout()
+        opts_layout.setSpacing(8)
 
+        self.label_2 = self._make_caption("label_2", "Tipo de Movimiento")
+        opts_layout.addWidget(self.label_2, 0, 0)
         self.TipoCajaComboBox = self._make_combo("TipoCajaComboBox")
-        self.gridLayout.addWidget(self.TipoCajaComboBox, 2, 0, 1, 1)
+        opts_layout.addWidget(self.TipoCajaComboBox, 1, 0)
 
-        self.label_3 = self._make_caption("label_3", "Tiempo")
-        self.gridLayout.addWidget(self.label_3, 3, 0, 1, 1,
-                                  QtCore.Qt.AlignmentFlag.AlignLeft)
-
+        self.label_3 = self._make_caption("label_3", "Modalidad de Tiempo")
+        opts_layout.addWidget(self.label_3, 0, 1)
         self.TiempoCajaComboBox = self._make_combo("TiempoCajaComboBox")
-        self.gridLayout.addWidget(self.TiempoCajaComboBox, 4, 0, 1, 1)
+        opts_layout.addWidget(self.TiempoCajaComboBox, 1, 1)
 
-        self.CalendarioCaja = QtWidgets.QCalendarWidget(parent=self.widget_3)
+        layout.addLayout(opts_layout)
+
+        # Indicador visual de fecha seleccionada
+        self.lblInfoFechaCaja = QtWidgets.QLabel("Fecha seleccionada: Haz clic en el calendario", parent=card)
+        self.lblInfoFechaCaja.setObjectName("lblInfoFechaCaja")
+        self.lblInfoFechaCaja.setStyleSheet(_INFO_BADGE_QSS)
+        layout.addWidget(self.lblInfoFechaCaja)
+
+        # Calendario
+        self.CalendarioCaja = QtWidgets.QCalendarWidget(parent=card)
         self.CalendarioCaja.setObjectName("CalendarioCaja")
         self.CalendarioCaja.setStyleSheet(_CALENDAR_QSS)
+        self.CalendarioCaja.setMinimumHeight(200)
         self.CalendarioCaja.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
-        self.gridLayout.addWidget(self.CalendarioCaja, 5, 0, 1, 1,
-                                  QtCore.Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.CalendarioCaja)
 
+        # Botón PDF en contenedor alineado a la derecha
+        btn_box = QtWidgets.QHBoxLayout()
+        btn_box.addStretch()
         self.BtnTicketCaja = self._make_pdf_button(
-            "BtnTicketCaja", "   Generar PDF"
+            "BtnTicketCaja", "  Generar PDF de Caja"
         )
-        self.gridLayout.addWidget(self.BtnTicketCaja, 6, 0, 1, 1)
-
-        layout.addLayout(self.gridLayout)
-        layout.addStretch()
-        self.horizontalLayout.addWidget(card)
+        btn_box.addWidget(self.BtnTicketCaja)
+        layout.addLayout(btn_box)
 
     # ─────────────────────────────────────────────────────────────
     #  Tarjeta: Reporte de Productos
     # ─────────────────────────────────────────────────────────────
     def _build_card_productos(self):
         card, layout = self._make_card("widget_5")
-        self.gridLayout_3 = QtWidgets.QGridLayout()
-        self.gridLayout_3.setVerticalSpacing(12)
-        self.gridLayout_3.setHorizontalSpacing(0)
-        self.gridLayout_3.setObjectName("gridLayout_3")
 
-        self.label_5 = self._make_title("label_5", "Reporte de Productos")
-        self.gridLayout_3.addWidget(self.label_5, 0, 0, 1, 1,
-                                    QtCore.Qt.AlignmentFlag.AlignLeft)
+        h_main = QtWidgets.QHBoxLayout()
+        h_main.setSpacing(16)
+
+        # Columna izquierda: Ícono, Título y Subtítulo
+        v_info = QtWidgets.QVBoxLayout()
+        v_info.setSpacing(2)
+
+        h_title = QtWidgets.QHBoxLayout()
+        h_title.setSpacing(8)
+        icon_lbl = QtWidgets.QLabel(parent=card)
+        icon_lbl.setPixmap(qta.icon("fa5s.boxes", color=_PRIMARY).pixmap(20, 20))
+        h_title.addWidget(icon_lbl)
+        self.label_5 = self._make_title("label_5", "Reporte de Productos e Inventario")
+        h_title.addWidget(self.label_5)
+        h_title.addStretch()
+        v_info.addLayout(h_title)
+
+        sub_lbl = self._make_subtitle("lblProdSub", "Filtra y exporta inventario por stock, ventas o estado")
+        v_info.addWidget(sub_lbl)
+
+        h_main.addLayout(v_info, stretch=1)
+
+        # Columna derecha: Controles (ComboBox + Botón PDF)
+        h_ctrls = QtWidgets.QHBoxLayout()
+        h_ctrls.setSpacing(12)
 
         self.TipoProductosComboBox = self._make_combo("TipoProductosComboBox")
-        self.gridLayout_3.addWidget(self.TipoProductosComboBox, 1, 0, 1, 1)
+        self.TipoProductosComboBox.setMinimumWidth(260)
+        h_ctrls.addWidget(self.TipoProductosComboBox)
 
         self.BtnTicketProducto = self._make_pdf_button(
-            "BtnTicketProducto", "   Generar PDF"
+            "BtnTicketProducto", "  Generar PDF de Productos"
         )
-        self.gridLayout_3.addWidget(self.BtnTicketProducto, 2, 0, 1, 1)
+        h_ctrls.addWidget(self.BtnTicketProducto)
 
-        layout.addLayout(self.gridLayout_3)
-        layout.addStretch()
-        self.horizontalLayout.addWidget(card)
+        h_main.addLayout(h_ctrls, stretch=0)
+        layout.addLayout(h_main)
 
     # ─────────────────────────────────────────────────────────────
     #  Tarjeta: Análisis de Venta
     # ─────────────────────────────────────────────────────────────
     def _build_card_analisis(self):
         card, layout = self._make_card("widget_6")
-        self.gridLayout_4 = QtWidgets.QGridLayout()
-        self.gridLayout_4.setVerticalSpacing(12)
-        self.gridLayout_4.setHorizontalSpacing(0)
-        self.gridLayout_4.setObjectName("gridLayout_4")
 
-        self.label_6 = self._make_title("label_6", "Analisis de Venta")
-        self.gridLayout_4.addWidget(self.label_6, 0, 0, 1, 1,
-                                    QtCore.Qt.AlignmentFlag.AlignLeft)
+        # Header de tarjeta con ícono
+        h_box = QtWidgets.QHBoxLayout()
+        h_box.setSpacing(8)
+        icon_lbl = QtWidgets.QLabel(parent=card)
+        icon_lbl.setPixmap(qta.icon("fa5s.chart-line", color=_PRIMARY).pixmap(20, 20))
+        h_box.addWidget(icon_lbl)
+        self.label_6 = self._make_title("label_6", "Análisis Financiero & Crédito")
+        h_box.addWidget(self.label_6)
+        h_box.addStretch()
+        layout.addLayout(h_box)
 
-        self.label_7 = self._make_subtitle("label_7", "Ventas")
-        self.gridLayout_4.addWidget(self.label_7, 1, 0, 1, 1,
-                                    QtCore.Qt.AlignmentFlag.AlignLeft)
+        # Opciones
+        opts_layout = QtWidgets.QGridLayout()
+        opts_layout.setSpacing(8)
 
+        self.label_7 = self._make_caption("label_7", "Tipo de Análisis")
+        opts_layout.addWidget(self.label_7, 0, 0)
         self.ReporteAnalisisComboBox = self._make_combo("ReporteAnalisisComboBox")
-        self.gridLayout_4.addWidget(self.ReporteAnalisisComboBox, 2, 0, 1, 1)
+        opts_layout.addWidget(self.ReporteAnalisisComboBox, 1, 0)
 
-        self.label_8 = self._make_caption("label_8", "Tiempo")
-        self.gridLayout_4.addWidget(self.label_8, 3, 0, 1, 1,
-                                    QtCore.Qt.AlignmentFlag.AlignLeft)
-
+        self.label_8 = self._make_caption("label_8", "Modalidad de Tiempo")
+        opts_layout.addWidget(self.label_8, 0, 1)
         self.TiempoAnalisisComboBox = self._make_combo("TiempoAnalisisComboBox")
-        self.gridLayout_4.addWidget(self.TiempoAnalisisComboBox, 4, 0, 1, 1)
+        opts_layout.addWidget(self.TiempoAnalisisComboBox, 1, 1)
 
-        self.CalendarioAnalisis = QtWidgets.QCalendarWidget(parent=self.widget_3)
+        layout.addLayout(opts_layout)
+
+        # Indicador visual de fecha seleccionada
+        self.lblInfoFechaAnalisis = QtWidgets.QLabel("Fecha seleccionada: Haz clic en el calendario", parent=card)
+        self.lblInfoFechaAnalisis.setObjectName("lblInfoFechaAnalisis")
+        self.lblInfoFechaAnalisis.setStyleSheet(_INFO_BADGE_QSS)
+        layout.addWidget(self.lblInfoFechaAnalisis)
+
+        # Calendario
+        self.CalendarioAnalisis = QtWidgets.QCalendarWidget(parent=card)
         self.CalendarioAnalisis.setObjectName("CalendarioAnalisis")
         self.CalendarioAnalisis.setStyleSheet(_CALENDAR_QSS)
+        self.CalendarioAnalisis.setMinimumHeight(200)
         self.CalendarioAnalisis.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
-        self.gridLayout_4.addWidget(self.CalendarioAnalisis, 5, 0, 1, 1,
-                                    QtCore.Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.CalendarioAnalisis)
 
+        # Botón PDF en contenedor alineado a la derecha
+        btn_box = QtWidgets.QHBoxLayout()
+        btn_box.addStretch()
         self.BtnTicketAnalisis = self._make_pdf_button(
-            "BtnTicketAnalisis", "   Exportar PDF"
+            "BtnTicketAnalisis", "  Exportar PDF Financiero"
         )
-        self.gridLayout_4.addWidget(self.BtnTicketAnalisis, 6, 0, 1, 1)
+        btn_box.addWidget(self.BtnTicketAnalisis)
+        layout.addLayout(btn_box)
 
-        layout.addLayout(self.gridLayout_4)
-        layout.addStretch()
-        self.horizontalLayout.addWidget(card)
+    # ─────────────────────────────────────────────────────────────
+    #  Tarjeta: Gráficas Mensuales
+    # ─────────────────────────────────────────────────────────────
+    def _build_card_graficas(self):
+        card, layout = self._make_card("widget_graficas")
+
+        # Header de tarjeta con ícono
+        h_box = QtWidgets.QHBoxLayout()
+        h_box.setSpacing(8)
+        icon_lbl = QtWidgets.QLabel(parent=card)
+        icon_lbl.setPixmap(qta.icon("fa5s.chart-bar", color=_PRIMARY).pixmap(20, 20))
+        h_box.addWidget(icon_lbl)
+        lbl_title = self._make_title("lblGraficasTitle", "Estadísticas & Tendencias Mensuales del Negocio")
+        h_box.addWidget(lbl_title)
+        h_box.addStretch()
+        layout.addLayout(h_box)
+
+        sub_lbl = self._make_subtitle("lblGraficasSub", "Comparativa de ingresos vs egresos y distribución de métodos de pago")
+        layout.addWidget(sub_lbl)
+
+        # Matplotlib canvas widget
+        self.canvas_graficas = ChartCanvas(parent=card)
+        layout.addWidget(self.canvas_graficas)
 
     # ─────────────────────────────────────────────────────────────
     #  Responsividad dinámica
     # ─────────────────────────────────────────────────────────────
     def adapt_to_size(self, width: int, height: int):
-        h_margin = max(16, min(60, int(width * 0.05)))
-        v_margin = max(16, min(48, int(height * 0.04)))
-        self.horizontalLayout_2.setContentsMargins(
-            h_margin, v_margin, h_margin, v_margin
-        )
-
-        card_pad = max(20, min(32, int(width * 0.02)))
-        for card in (self.widget_4, self.widget_5, self.widget_6):
-            card.layout().setContentsMargins(card_pad, card_pad, card_pad, card_pad)
-
-        ctrl_h = max(42, min(52, int(height * 0.058)))
-        for combo in (self.TipoCajaComboBox, self.TiempoCajaComboBox,
-                      self.TipoProductosComboBox, self.ReporteAnalisisComboBox,
-                      self.TiempoAnalisisComboBox):
-            combo.setMinimumHeight(ctrl_h)
-
-        btn_h = max(44, min(56, int(height * 0.062)))
-        for btn in (self.BtnTicketCaja, self.BtnTicketProducto,
-                    self.BtnTicketAnalisis):
-            btn.setMinimumHeight(btn_h)
+        h_margin = max(12, min(32, int(width * 0.03)))
+        v_margin = max(12, min(32, int(height * 0.03)))
+        if hasattr(self, "horizontalLayout_2") and self.horizontalLayout_2:
+            self.horizontalLayout_2.setContentsMargins(
+                h_margin, v_margin, h_margin, v_margin
+            )
 
     # ─────────────────────────────────────────────────────────────
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Reportes · Lady Nail"))
-        self.LabelReportes.setText(_translate("Form", "Reportes"))
+        Form.setWindowTitle(_translate("Form", "Reportes · Distri Magik"))
+        self.LabelReportes.setText(_translate("Form", "Panel de Reportes & Analítica"))
         self.lblReportesSub.setText(
-            _translate("Form", "Genera e exporta los informes del negocio")
+            _translate("Form", "Genera, analiza y exporta los informes de caja, productos y finanzas del negocio")
         )
         self.label.setText(_translate("Form", "Reporte de Caja"))
-        self.label_2.setText(_translate("Form", "Caja"))
-        self.label_3.setText(_translate("Form", "Tiempo"))
-        self.label_5.setText(_translate("Form", "Reporte de Productos"))
-        self.label_6.setText(_translate("Form", "Analisis de Venta"))
-        self.label_7.setText(_translate("Form", "Ventas"))
-        self.label_8.setText(_translate("Form", "Tiempo"))
-        self.BtnTicketCaja.setText(_translate("Form", "   Generar PDF"))
-        self.BtnTicketProducto.setText(_translate("Form", "   Generar PDF"))
-        self.BtnTicketAnalisis.setText(_translate("Form", "   Exportar PDF"))
+        self.label_2.setText(_translate("Form", "Tipo de Movimiento"))
+        self.label_3.setText(_translate("Form", "Modalidad de Tiempo"))
+        self.label_5.setText(_translate("Form", "Reporte de Productos e Inventario"))
+        self.label_6.setText(_translate("Form", "Análisis Financiero & Crédito"))
+        self.label_7.setText(_translate("Form", "Tipo de Análisis"))
+        self.label_8.setText(_translate("Form", "Modalidad de Tiempo"))
+        self.BtnTicketCaja.setText(_translate("Form", "  Generar PDF de Caja"))
+        self.BtnTicketProducto.setText(_translate("Form", "  Generar PDF de Productos"))
+        self.BtnTicketAnalisis.setText(_translate("Form", "  Exportar PDF Financiero"))
+
+

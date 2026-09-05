@@ -40,7 +40,7 @@ def generar_pdf_transacciones(transacciones, tipo, fecha_inicio=None, fecha_fin=
         c.drawString(50, 650, f"Rango de fechas: {fecha_inicio} - {fecha_fin}")
     else:
         c.drawString(50, 650, f"Fecha de reporte: {fecha_inicio}")
-    c.drawString(50, 635, "Generado por: Sistema LADYNAILS POS")
+    c.drawString(50, 635, "Generado por: Sistema DISTRI MAGIK POS")
     
     # Encabezados
     y_position = height - 200
