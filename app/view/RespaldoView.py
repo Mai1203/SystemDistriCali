@@ -7,8 +7,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "SystemDistriCali"
-DATABASE_PATH = app_data_dir / "systemdistricali.db"
+app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "SystemDistriMagik"
+DATABASE_PATH = app_data_dir / "systemdistrimagik.db"
 
 class Respaldo_View(QWidget, Ui_Respaldo):
     def __init__(self, parent=None):

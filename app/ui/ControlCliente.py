@@ -2,7 +2,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 import qtawesome as qta
 
 # ═══════════════════════════════════════════════════════════════════
-# SystemDistriCali — Lady Nail SHOP
+# SystemDistriMagik — SHOP
 # Módulo: Control de Clientes
 # Diseño alineado visualmente con Control de Usuarios
 # ═══════════════════════════════════════════════════════════════════

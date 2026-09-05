@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.usuario_actual_id = None
-        self.setWindowTitle("System DistriCali")
+        self.setWindowTitle("System Distri Magik")
         self.setWindowIcon(QIcon("assets/Favicon.ico"))
         self.inicializar_db()
         # Tamaño inicial relativo a la pantalla (80% del espacio disponible)
@@ -79,10 +79,10 @@ class MainWindow(QMainWindow):
         self.MainApp.navbar.BtnCerrarSesion.clicked.connect(self.cerrar_sesion)
 
     def inicializar_db(self):
-        app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriCali"
+        app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriMagik"
         app_data_dir.mkdir(parents=True, exist_ok=True)
 
-        db_path = app_data_dir / "systemdistricali.db"
+        db_path = app_data_dir / "systemdistrimagik.db"
 
         if not db_path.exists():
             progress = QProgressDialog("Creando la base de datos...", None, 0, 0, self)

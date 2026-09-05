@@ -2,8 +2,8 @@ import sqlite3
 import os
 from pathlib import Path
 
-app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "SystemDistriCali"
-db_path = app_data_dir / "systemdistricali.db"
+app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~/.local/share")) / "SystemDistriMagik"
+db_path = app_data_dir / "systemdistrimagik.db"
 
 def migrate():
     print(f"Migrando BD en: {db_path}")

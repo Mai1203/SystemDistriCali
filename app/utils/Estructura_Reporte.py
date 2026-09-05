@@ -82,22 +82,38 @@ def generar_pdf_caja_ingresos(caja, ingresos, egresos=None):
         elementos.append(Paragraph("<b>📊 Ingresos Registrados:</b>", estilo_negrita))
 
         # Preparar datos de ingresos
+        # Los abonos de crédito usan `monto` + `metodo_pago`; las ventas directas usan `monto_efectivo`/`monto_transaccion`.
         datos_ingresos = [["ID", "Tipo", "M.Efectivo", "M.Transferencia", "Total"]]
+        total_efectivo = 0.0
+        total_transferencia = 0.0
         for ingreso in ingresos:
-            monto_efectivo = ingreso.monto_efectivo or 0
-            monto_transaccion = ingreso.monto_transaccion or 0
-            total = monto_efectivo + monto_transaccion
+            tipo_str = str(getattr(ingreso, 'tipo_ingreso', '') or '')
+            m_efectivo = float(getattr(ingreso, 'monto_efectivo', None) or 0)
+            m_transaccion = float(getattr(ingreso, 'monto_transaccion', None) or 0)
+
+            if m_efectivo or m_transaccion:
+                # Venta directa (contado)
+                ef = m_efectivo
+                tr = m_transaccion
+            else:
+                # Abono de crédito: el dinero está en `monto` y el medio en `metodo_pago`
+                m_abono = float(getattr(ingreso, 'monto', None) or 0)
+                metodo = str(getattr(ingreso, 'metodo_pago', '') or '')
+                ef = m_abono if metodo == "Efectivo" else 0.0
+                tr = m_abono if metodo != "Efectivo" else 0.0
+
+            total = ef + tr
+            total_efectivo += ef
+            total_transferencia += tr
             datos_ingresos.append([
                 ingreso.ID_Ingreso,
-                ingreso.tipo_ingreso,
-                f"${monto_efectivo:,.2f}",
-                f"${monto_transaccion:,.2f}",
+                tipo_str,
+                f"${ef:,.2f}",
+                f"${tr:,.2f}",
                 f"${total:,.2f}"
             ])
 
         # Totales
-        total_efectivo = sum(i.monto_efectivo or 0 for i in ingresos)
-        total_transferencia = sum(i.monto_transaccion or 0 for i in ingresos)
         total_general = total_efectivo + total_transferencia
         datos_ingresos.append([
             "", "TOTAL",
