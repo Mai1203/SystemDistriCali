@@ -109,6 +109,7 @@ class Productos_View(QWidget, Ui_Productos):
         self.TablaProductos.cellDoubleClicked.connect(self._doble_clic_editar)
 
         self.BtnRegistrarProducto.clicked.connect(self.abrir_nuevo_producto)
+        self.BtnVerLotes.clicked.connect(self.abrir_gestion_lotes)
         self.BtnIngresarProducto.clicked.connect(self.ingresar_producto)
         self.BtnActualizar.clicked.connect(self.editar_producto)
         self.BtnEliminar.clicked.connect(self.eliminar_productos)
@@ -117,6 +118,21 @@ class Productos_View(QWidget, Ui_Productos):
 
         # Estado inicial: modo NUEVO
         self._set_modo_nuevo()
+
+    def abrir_gestion_lotes(self):
+        """Abre el diálogo de gestión de lotes para el producto seleccionado."""
+        id_producto = self.obtener_id_producto()
+        if not id_producto:
+            return
+        try:
+            from .LotesDialog import LotesDialog
+            dialog = LotesDialog(int(id_producto), self)
+            dialog.exec()
+            # Al cerrar, refrescar la tabla de productos para reflejar el nuevo stock y precios
+            self.limpiar_tabla_productos()
+            self.mostrar_productos()
+        except Exception as e:
+            enviar_notificacion("Error", f"Error al abrir gestión de lotes: {e}")
 
     # ─── Modo Nuevo / Modo Editar ────────────────────────────────────────────────
 

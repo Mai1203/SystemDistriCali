@@ -12,3 +12,4 @@ from .egresos import Egresos
 from .analisis_financiero import AnalisisFinanciero
 from .reporte import Reporte
 from .historial import HistorialModificacion, HistorialInicio
+from .lotes import LoteProducto

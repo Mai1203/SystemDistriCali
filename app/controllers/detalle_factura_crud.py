@@ -10,6 +10,7 @@ def crear_detalle_factura(
     subtotal: float,
     id_producto: int,
     id_factura: int,
+    id_lote: int = None,
 ):
     """
     Crea un nuevo registro de detalle de factura.
@@ -19,6 +20,7 @@ def crear_detalle_factura(
     :param subtotal: Subtotal del detalle.
     :param id_producto: ID del producto relacionado.
     :param id_factura: ID de la factura relacionada.
+    :param id_lote: ID del lote del producto (opcional).
     :return: Objeto del detalle de factura creado.
     """
     nuevo_detalle = DetalleFacturas(
@@ -27,6 +29,7 @@ def crear_detalle_factura(
         Subtotal=subtotal,
         ID_Producto=id_producto,
         ID_Factura=id_factura,
+        ID_Lote=id_lote,
     )
     db.add(nuevo_detalle)
     db.commit()

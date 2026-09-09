@@ -15,8 +15,14 @@ from ..controllers.clientes_crud import *
 from ..controllers.ingresos_crud import *
 from ..controllers.historial_modificacion_crud import *
 from ..controllers.caja_crud import obtener_cajas
+from ..controllers.lote_crud import (
+    obtener_lotes_por_producto,
+    descontar_stock_lote,
+    restaurar_stock_lote,
+    obtener_lote_por_id,
+)
 from ..ui import Ui_VentasA
-from ..configuracion import obtener_precio_producto, obtener_tipo_venta
+from ..configuracion import obtener_precio_producto, obtener_tipo_venta, obtener_precio_lote
 from ..services.ventas_service import calcular_total_venta, validar_pago
 from ..services.form_validation_service import validar_campos_requeridos
 from ..utils.formateador import formatear_numero
@@ -95,6 +101,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputPago.returnPressed.connect(self.generar_venta)
         self.InputPagoTransferencia.returnPressed.connect(self.generar_venta)
         self.MetodoPagoBox.currentIndexChanged.connect(self.configuracion_pago)
+        self.ComboLote.currentIndexChanged.connect(self._on_lote_cambiado)
         configurar_autocompletado(self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo)
         configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
 
@@ -126,6 +133,18 @@ class VentasA_View(QWidget, Ui_VentasA):
         # Timer
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
 
+    def _on_lote_cambiado(self, index):
+        lote_id = self.ComboLote.currentData()
+        if lote_id:
+            db = SessionLocal()
+            try:
+                lote = obtener_lote_por_id(db, lote_id)
+                if lote:
+                    precio = obtener_precio_lote(lote, self.tipo_venta)
+                    self.InputPrecioUnitario.setText(str(precio))
+            finally:
+                db.close()
+
     def cargar_información(self, factura_completa):
         factura = factura_completa["Factura"]
         cliente = factura_completa["Cliente"]
@@ -150,11 +169,13 @@ class VentasA_View(QWidget, Ui_VentasA):
         for row, detalle in enumerate(detalles):
             id_producto = detalle["ID_Producto"]
             self.cantidades.append((id_producto, detalle["Cantidad"]))
+            lote_nombre = detalle.get("Lote", "LOTE")
             valores = [
                 id_producto,
                 detalle["Producto"],
                 detalle["Marca"],
                 detalle["Categoria"],
+                lote_nombre,
                 detalle["Cantidad"],
                 detalle["Precio_Unitario"],
                 detalle["Subtotal"],
@@ -163,6 +184,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                 item = QTableWidgetItem(str(valor))
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                if column == 4 and "ID_Lote" in detalle:
+                    item.setData(Qt.ItemDataRole.UserRole, detalle["ID_Lote"])
                 self.tableWidget.setItem(row, column, item)
 
         self.tableWidget.resizeColumnsToContents()
@@ -202,10 +225,16 @@ class VentasA_View(QWidget, Ui_VentasA):
         if codigo_input and codigo_input.isdigit():
             db_temp = SessionLocal()
             try:
-                prod = obtener_producto_por_id(db_temp, int(codigo_input))
-                if prod:
-                    nuevo_p = obtener_precio_producto(prod[0], self.tipo_venta)
-                    self.InputPrecioUnitario.setText(str(nuevo_p))
+                lote_id = self.ComboLote.currentData()
+                if lote_id:
+                    lote = obtener_lote_por_id(db_temp, lote_id)
+                    if lote:
+                        self.InputPrecioUnitario.setText(str(obtener_precio_lote(lote, self.tipo_venta)))
+                else:
+                    prod = obtener_producto_por_id(db_temp, int(codigo_input))
+                    if prod:
+                        nuevo_p = obtener_precio_producto(prod[0], self.tipo_venta)
+                        self.InputPrecioUnitario.setText(str(nuevo_p))
             except Exception:
                 pass
             finally:
@@ -218,31 +247,36 @@ class VentasA_View(QWidget, Ui_VentasA):
         try:
             for row in range(self.tableWidget.rowCount()):
                 item_cod = self.tableWidget.item(row, 0)
-                item_cant = self.tableWidget.item(row, 4)
+                item_lote = self.tableWidget.item(row, 4)
+                item_cant = self.tableWidget.item(row, 5)
                 if not item_cod or not item_cant:
                     continue
                 try:
                     codigo = int(item_cod.text().strip())
                     cantidad = int(item_cant.text().strip())
+                    id_lote = item_lote.data(Qt.ItemDataRole.UserRole) if item_lote else None
                 except ValueError:
                     continue
 
-                productos = obtener_producto_por_id(db, codigo)
-                if productos:
-                    producto = productos[0]
-                    nuevo_precio = float(obtener_precio_producto(producto, self.tipo_venta))
-                    nuevo_total = cantidad * nuevo_precio
-                    nuevo_total_redondeado = round(nuevo_total / 100) * 100
+                if id_lote:
+                    lote = obtener_lote_por_id(db, id_lote)
+                    nuevo_precio = float(obtener_precio_lote(lote, self.tipo_venta)) if lote else 0.0
+                else:
+                    productos = obtener_producto_por_id(db, codigo)
+                    nuevo_precio = float(obtener_precio_producto(productos[0], self.tipo_venta)) if productos else 0.0
 
-                    item_precio = QTableWidgetItem(str(nuevo_precio))
-                    item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                    item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    self.tableWidget.setItem(row, 5, item_precio)
+                nuevo_total = cantidad * nuevo_precio
+                nuevo_total_redondeado = round(nuevo_total / 100) * 100
 
-                    item_total = QTableWidgetItem(str(nuevo_total_redondeado))
-                    item_total.setFlags(item_total.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                    item_total.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    self.tableWidget.setItem(row, 6, item_total)
+                item_precio = QTableWidgetItem(str(nuevo_precio))
+                item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.tableWidget.setItem(row, 6, item_precio)
+
+                item_total = QTableWidgetItem(str(nuevo_total_redondeado))
+                item_total.setFlags(item_total.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item_total.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.tableWidget.setItem(row, 7, item_total)
 
             self.actualizar_total()
             self.InputPago.clear()
@@ -327,7 +361,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             subtotal_items = 0.0
             for row in range(self.tableWidget.rowCount()):
                 try:
-                    subtotal_items += float(self.tableWidget.item(row, 6).text().replace(",", ""))
+                    subtotal_items += float(self.tableWidget.item(row, 7).text().replace(",", ""))
                 except (AttributeError, ValueError):
                     pass
             # Subtotal de los ítems con descuento aplicado (base para cobrar/base de datos)
@@ -412,9 +446,11 @@ class VentasA_View(QWidget, Ui_VentasA):
             for row in range(self.tableWidget.rowCount()):
                 codigo = self.tableWidget.item(row, 0).text()
                 description = self.tableWidget.item(row, 1).text()
-                quantity = int(self.tableWidget.item(row, 4).text())
-                precio_unitario = float(self.tableWidget.item(row, 5).text())
-                value = float(self.tableWidget.item(row, 6).text())
+                lote_item = self.tableWidget.item(row, 4)
+                id_lote = lote_item.data(Qt.ItemDataRole.UserRole) if lote_item else None
+                quantity = int(self.tableWidget.item(row, 5).text())
+                precio_unitario = float(self.tableWidget.item(row, 6).text())
+                value = float(self.tableWidget.item(row, 7).text())
 
                 producto = obtener_producto_por_id(db, int(codigo))
                 if not producto:
@@ -422,7 +458,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     return
                 producto = producto[0]
                 items.append((description, quantity, precio_unitario, value))
-                produc_datos.append((codigo, quantity, precio_unitario))
+                produc_datos.append((codigo, quantity, precio_unitario, id_lote))
 
             subtotal = sum(item[3] for item in items)
             delivery_fee = float(self.InputDomicilio.text()) if self.InputDomicilio.text() else 0.0
@@ -445,10 +481,13 @@ class VentasA_View(QWidget, Ui_VentasA):
                 )
                 mensaje = "Factura actualizada exitosamente."
             else:
-                for codigo, quantity, _ in produc_datos:
-                    producto = obtener_producto_por_id(db, codigo)[0]
-                    stock_actual = producto.Stock_actual - quantity
-                    actualizar_producto(db, id_producto=int(codigo), stock_actual=stock_actual)
+                for codigo, quantity, _, id_lote in produc_datos:
+                    if id_lote:
+                        descontar_stock_lote(db, id_lote, quantity)
+                    else:
+                        producto = obtener_producto_por_id(db, int(codigo))[0]
+                        stock_actual = producto.Stock_actual - quantity
+                        actualizar_producto(db, id_producto=int(codigo), stock_actual=stock_actual)
 
                 id_factura = self.guardar_factura(
                     db,
@@ -746,7 +785,10 @@ class VentasA_View(QWidget, Ui_VentasA):
             id_factura = factura.ID_Factura
 
             for item in items:
-                codigo, quantity, precio_unitario = item
+                codigo = item[0]
+                quantity = item[1]
+                precio_unitario = item[2]
+                id_lote = item[3] if len(item) > 3 else None
                 total = quantity * precio_unitario
                 crear_detalle_factura(
                     db=db,
@@ -754,7 +796,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                     precio_unitario=precio_unitario,
                     subtotal=total,
                     id_producto=codigo,
-                    id_factura=id_factura
+                    id_factura=id_factura,
+                    id_lote=id_lote,
                 )
 
             db.commit()
@@ -834,58 +877,59 @@ class VentasA_View(QWidget, Ui_VentasA):
 
         db = SessionLocal()
         try:
+            producto = None
             if codigo:
                 if not codigo.isdigit():
                     QMessageBox.warning(self, "Error", "El código debe ser un número válido.")
                     return
 
-                codigo = int(codigo)
-                productos = obtener_producto_por_id(db, codigo)
-
-                if productos:
-                    producto = productos[0]
-                    self.InputCodigo.setText(str(producto.ID_Producto))
-                    self.InputNombre.setText(producto.Nombre)
-                    self.InputMarca.setText(str(producto.marcas))
-                    self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(obtener_precio_producto(producto, self.tipo_venta)))
-                    self.InputPrecioUnitario.setEnabled(False)
-                    self.id_categoria = producto.categorias
-                    self.InputCantidad.clear()
-                else:
-                    self.mostrar_mensaje_temporal(
-                        "Producto no encontrado",
-                        "No existe un producto asociado a este código.",
-                    )
-                    self.limpiar_campos()
-                return
-
+                prods = obtener_producto_por_id(db, int(codigo))
+                if prods:
+                    producto = prods[0]
             elif nombre:
-                productos_nom = buscar_productos(db, nombre)
-                if productos_nom:
-                    producto = productos_nom[0]
-                    self.InputCodigo.setText(str(producto.ID_Producto))
-                    self.InputNombre.setText(producto.Nombre)
-                    self.InputMarca.setText(str(producto.marcas))
-                    self.InputMarca.setEnabled(False)
-                    self.InputPrecioUnitario.setText(str(obtener_precio_producto(producto, self.tipo_venta)))
-                    self.InputPrecioUnitario.setEnabled(False)
-                    self.id_categoria = producto.categorias
-                    self.InputCantidad.clear()
-                else:
-                    QMessageBox.warning(
-                        self,
-                        "Producto no encontrado",
-                        "No existe un producto asociado a este nombre.",
-                    )
-                return
-
+                prods = buscar_productos(db, nombre)
+                if prods:
+                    producto = prods[0]
             else:
                 QMessageBox.warning(
                     self,
                     "Error",
                     "Por favor, ingrese un código o un nombre para buscar el producto.",
                 )
+                return
+
+            if producto:
+                self.InputCodigo.setText(str(producto.ID_Producto))
+                self.InputNombre.setText(producto.Nombre)
+                self.InputMarca.setText(str(producto.marcas))
+                self.InputMarca.setEnabled(False)
+                self.id_categoria = producto.categorias
+                self.InputCantidad.clear()
+
+                # Cargar lotes disponibles
+                lotes = obtener_lotes_por_producto(db, producto.ID_Producto, solo_disponibles=True)
+                self.ComboLote.blockSignals(True)
+                self.ComboLote.clear()
+                if lotes:
+                    for l in lotes:
+                        pv = obtener_precio_lote(l, self.tipo_venta)
+                        nom = l.Numero_Lote or f"LOTE-{l.ID_Lote}"
+                        self.ComboLote.addItem(f"{nom} (Stock: {l.Stock_actual}) - ${pv:,.0f}", l.ID_Lote)
+                    self.ComboLote.blockSignals(False)
+                    precio = obtener_precio_lote(lotes[0], self.tipo_venta)
+                    self.InputPrecioUnitario.setText(str(precio))
+                else:
+                    self.ComboLote.addItem("Sin lote activo", None)
+                    self.ComboLote.blockSignals(False)
+                    precio = obtener_precio_producto(producto, self.tipo_venta)
+                    self.InputPrecioUnitario.setText(str(precio))
+                self.InputPrecioUnitario.setEnabled(False)
+            else:
+                self.mostrar_mensaje_temporal(
+                    "Producto no encontrado",
+                    "No existe un producto asociado a esta búsqueda.",
+                )
+                self.limpiar_campos()
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al buscar el producto: {str(e)}")
@@ -916,12 +960,14 @@ class VentasA_View(QWidget, Ui_VentasA):
         nombre = self.InputNombre.text().strip()
         marca = self.InputMarca.text().strip()
         categoria = str(self.id_categoria)
-        cantidad = self.InputCantidad.text().strip()
-        precio_unitario = self.InputPrecioUnitario.text().strip()
+        cantidad_str = self.InputCantidad.text().strip()
+        precio_unitario_str = self.InputPrecioUnitario.text().strip()
+        id_lote = self.ComboLote.currentData()
+        lote_nombre = self.ComboLote.currentText().split(" (Stock:")[0] if self.ComboLote.count() > 0 else "LOTE"
 
         try:
-            cantidad = int(cantidad)
-            precio_unitario = float(precio_unitario)
+            cantidad = int(cantidad_str)
+            precio_unitario = float(precio_unitario_str)
         except ValueError:
             if mostrar_mensaje:
                 QMessageBox.warning(
@@ -933,32 +979,45 @@ class VentasA_View(QWidget, Ui_VentasA):
 
         for row in range(self.tableWidget.rowCount()):
             item_codigo = self.tableWidget.item(row, 0)
-            if item_codigo and item_codigo.text() == codigo:
-                self.mostrar_mensaje_temporal("Error", "Este código de producto ya existe.")
+            item_lote = self.tableWidget.item(row, 4)
+            row_lote_id = item_lote.data(Qt.ItemDataRole.UserRole) if item_lote else None
+            if item_codigo and item_codigo.text() == codigo and row_lote_id == id_lote:
+                self.mostrar_mensaje_temporal("Error", "Este producto y lote ya existen en la venta.")
                 self.limpiar_campos()
                 return
 
         db = SessionLocal()
         try:
-            productos = obtener_producto_por_id(db, int(codigo))
-            if productos:
-                producto = productos[0]
-                stock_disponible = producto.Stock_actual
-                if cantidad > stock_disponible:
+            if id_lote:
+                lote = obtener_lote_por_id(db, id_lote)
+                if not lote or lote.Stock_actual < cantidad:
+                    disp = lote.Stock_actual if lote else 0
                     QMessageBox.warning(
                         self,
                         "Stock insuficiente",
-                        f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
+                        f"El lote seleccionado solo tiene {disp} unidades disponibles.",
                     )
-                    self.limpiar_campos()
                     return
             else:
-                QMessageBox.warning(
-                    self,
-                    "Producto no encontrado",
-                    "No existe un producto asociado a este código.",
-                )
-                return
+                productos = obtener_producto_por_id(db, int(codigo))
+                if productos:
+                    producto = productos[0]
+                    stock_disponible = producto.Stock_actual
+                    if cantidad > stock_disponible:
+                        QMessageBox.warning(
+                            self,
+                            "Stock insuficiente",
+                            f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
+                        )
+                        self.limpiar_campos()
+                        return
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Producto no encontrado",
+                        "No existe un producto asociado a este código.",
+                    )
+                    return
 
             total = cantidad * precio_unitario
             total_redondeado = round(total / 100) * 100
@@ -966,43 +1025,27 @@ class VentasA_View(QWidget, Ui_VentasA):
             rowPosition = self.tableWidget.rowCount()
             self.tableWidget.insertRow(rowPosition)
 
-            item_codigo = QTableWidgetItem(codigo)
-            item_codigo.setFlags(item_codigo.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_codigo.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 0, item_codigo)
-
-            item_nombre = QTableWidgetItem(nombre)
-            item_nombre.setFlags(item_nombre.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 1, item_nombre)
-
-            item_marca = QTableWidgetItem(marca)
-            item_marca.setFlags(item_marca.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_marca.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 2, item_marca)
-
-            item_categoria = QTableWidgetItem(categoria)
-            item_categoria.setFlags(item_categoria.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_categoria.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 3, item_categoria)
-
-            item_cantidad = QTableWidgetItem(str(cantidad))
-            item_cantidad.setFlags(item_cantidad.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_cantidad.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 4, item_cantidad)
-
-            item_precio = QTableWidgetItem(str(precio_unitario))
-            item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 5, item_precio)
-
-            item_total_redondeado = QTableWidgetItem(str(total_redondeado))
-            item_total_redondeado.setFlags(item_total_redondeado.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_total_redondeado.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(rowPosition, 6, item_total_redondeado)
+            vals = [
+                (0, codigo, None),
+                (1, nombre, None),
+                (2, marca, None),
+                (3, categoria, None),
+                (4, lote_nombre, id_lote),
+                (5, str(cantidad), None),
+                (6, str(precio_unitario), None),
+                (7, str(total_redondeado), None),
+            ]
+            for col, val_str, user_data in vals:
+                item = QTableWidgetItem(str(val_str))
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                if user_data is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, user_data)
+                self.tableWidget.setItem(rowPosition, col, item)
 
             self.reproducir_sonido()
             self.limpiar_campos()
+            self.actualizar_total()
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al agregar el producto: {str(e)}")
@@ -1013,6 +1056,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputCodigo.clear()
         self.InputNombre.clear()
         self.InputMarca.clear()
+        self.ComboLote.clear()
         self.InputCantidad.clear()
         self.InputPrecioUnitario.clear()
         self.InputCodigo.setFocus()
@@ -1033,7 +1077,6 @@ class VentasA_View(QWidget, Ui_VentasA):
             QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            # Eliminar de mayor a menor índice para no desplazar filas
             for idx in sorted([f.row() for f in filas_seleccionadas], reverse=True):
                 self.tableWidget.removeRow(idx)
             self.limpiar_campos()
@@ -1057,7 +1100,7 @@ class VentasA_View(QWidget, Ui_VentasA):
     def calcular_subtotal(self):
         subtotal = 0.0
         for row in range(self.tableWidget.rowCount()):
-            total_item = self.tableWidget.item(row, 6)
+            total_item = self.tableWidget.item(row, 7)
             if total_item is not None:
                 try:
                     subtotal += float(total_item.text())
@@ -1110,8 +1153,8 @@ class VentasA_View(QWidget, Ui_VentasA):
                 nombre_item = self.tableWidget.item(row, 1)
                 marca_item = self.tableWidget.item(row, 2)
                 categoria_item = self.tableWidget.item(row, 3)
-                cantidad_item = self.tableWidget.item(row, 4)
-                precio_unitario_item = self.tableWidget.item(row, 5)
+                cantidad_item = self.tableWidget.item(row, 5)
+                precio_unitario_item = self.tableWidget.item(row, 6)
 
                 if all(item is not None for item in [nombre_item, marca_item, categoria_item, cantidad_item, precio_unitario_item]):
                     nombre = nombre_item.text()
@@ -1158,8 +1201,10 @@ class VentasA_View(QWidget, Ui_VentasA):
                 row = self.fila_seleccionada
                 if row < self.tableWidget.rowCount():
                     item_codigo = self.tableWidget.item(row, 0)
+                    item_lote = self.tableWidget.item(row, 4)
                     if item_codigo:
                         codigo = item_codigo.text().strip()
+                        id_lote = item_lote.data(Qt.ItemDataRole.UserRole) if item_lote else None
                     else:
                         QMessageBox.warning(self, "Error", "No se pudo obtener el código del producto desde la fila seleccionada.")
                         return
@@ -1169,40 +1214,30 @@ class VentasA_View(QWidget, Ui_VentasA):
 
                 db = SessionLocal()
                 try:
-                    productos = obtener_producto_por_id(db, int(codigo))
-                    if productos:
-                        producto = productos[0]
-                        stock_disponible = producto.Stock_actual
-                    else:
-                        QMessageBox.warning(self, "Producto no encontrado", "No existe un producto asociado a este código.")
-                        return
-
-                    if self.invoice_number and self.invoice_number != "":
-                        cant = 0
-                        for id_producto, canti in self.cantidades:
-                            if id_producto == int(codigo):
-                                cant = canti
-                                break
-
-                        cantidad_adicional = cantidad - cant
-                        if cantidad_adicional > stock_disponible:
-                            QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.")
+                    if id_lote:
+                        lote = obtener_lote_por_id(db, id_lote)
+                        if not lote or cantidad > lote.Stock_actual:
+                            disp = lote.Stock_actual if lote else 0
+                            QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock en este lote. Solo quedan {disp} unidades.")
                             return
                     else:
-                        if cantidad > stock_disponible:
-                            QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.")
-                            return
-
+                        productos = obtener_producto_por_id(db, int(codigo))
+                        if productos:
+                            stock_disponible = productos[0].Stock_actual
+                            if cantidad > stock_disponible:
+                                QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.")
+                                return
                 finally:
                     db.close()
 
-                self.tableWidget.setItem(row, 4, QTableWidgetItem(str(cantidad)))
-                self.tableWidget.item(row, 4).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.tableWidget.setItem(row, 5, QTableWidgetItem(str(precio_unitario)))
+                self.tableWidget.setItem(row, 5, QTableWidgetItem(str(cantidad)))
                 self.tableWidget.item(row, 5).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                total = cantidad * precio_unitario
-                self.tableWidget.setItem(row, 6, QTableWidgetItem(str(total)))
+                self.tableWidget.setItem(row, 6, QTableWidgetItem(str(precio_unitario)))
                 self.tableWidget.item(row, 6).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                total = cantidad * precio_unitario
+                total_redondeado = round(total / 100) * 100
+                self.tableWidget.setItem(row, 7, QTableWidgetItem(str(total_redondeado)))
+                self.tableWidget.item(row, 7).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 self.actualizar_total()
                 self.limpiar_campos()

@@ -88,20 +88,24 @@ def obtener_factura_completa(db: Session, id_factura: int):
         return None  # Si no se encuentra la factura, devolver None
 
     # Consulta para los detalles de la factura
+    from app.models.lotes import LoteProducto
     detalles = (
         db.query(
             DetalleFacturas.ID_Detalle_Factura,
             DetalleFacturas.ID_Producto,
+            DetalleFacturas.ID_Lote,
             DetalleFacturas.Cantidad,
             DetalleFacturas.Precio_unitario,
             DetalleFacturas.Subtotal,
             Productos.Nombre.label("producto"),
             Marcas.Nombre.label("marca"),
             Categorias.Nombre.label("categoria"),
+            LoteProducto.Numero_Lote.label("numero_lote"),
         )
         .join(Productos, DetalleFacturas.ID_Producto == Productos.ID_Producto)
         .join(Marcas, Productos.ID_Marca == Marcas.ID_Marca)
         .join(Categorias, Productos.ID_Categoria == Categorias.ID_Categoria)
+        .outerjoin(LoteProducto, DetalleFacturas.ID_Lote == LoteProducto.ID_Lote)
         .filter(DetalleFacturas.ID_Factura == id_factura)
         .all()
     )
@@ -129,6 +133,8 @@ def obtener_factura_completa(db: Session, id_factura: int):
             {
                 "ID_Detalle": detalle.ID_Detalle_Factura,
                 "ID_Producto": detalle.ID_Producto,
+                "ID_Lote": detalle.ID_Lote,
+                "Lote": detalle.numero_lote or (f"LOTE-{detalle.ID_Lote}" if detalle.ID_Lote else "LOTE"),
                 "Cantidad": detalle.Cantidad,
                 "Marca": detalle.marca,
                 "Categoria": detalle.categoria,
@@ -254,18 +260,24 @@ def obtener_factura_por_id(db: Session, id_factura: int):
     return facturas
 
 def obtener_reporte_facturas(db: Session, fecha_inicio, fecha_fin=None):
-    subquery_ganancia = (
-        func.sum(
-            DetalleFacturas.Cantidad * 
-            case(
-                (Facturas.ID_Tipo_Factura == 1, Productos.Ganancia_1),
-                (Facturas.ID_Tipo_Factura == 2, Productos.Ganancia_2),
-                (Facturas.ID_Tipo_Factura == 3, Productos.Ganancia_3),
-                (Facturas.ID_Tipo_Factura == 4, Productos.Ganancia_4),
-                else_=0
-            )
+    from app.models.lotes import LoteProducto
+    ganancia_por_item = case(
+        (DetalleFacturas.ID_Lote != None, case(
+            (Facturas.ID_Tipo_Factura == 1, LoteProducto.Ganancia_1),
+            (Facturas.ID_Tipo_Factura == 2, LoteProducto.Ganancia_2),
+            (Facturas.ID_Tipo_Factura == 3, LoteProducto.Ganancia_3),
+            (Facturas.ID_Tipo_Factura == 4, LoteProducto.Ganancia_4),
+            else_=0
+        )),
+        else_=case(
+            (Facturas.ID_Tipo_Factura == 1, Productos.Ganancia_1),
+            (Facturas.ID_Tipo_Factura == 2, Productos.Ganancia_2),
+            (Facturas.ID_Tipo_Factura == 3, Productos.Ganancia_3),
+            (Facturas.ID_Tipo_Factura == 4, Productos.Ganancia_4),
+            else_=0
         )
     )
+    subquery_ganancia = func.sum(DetalleFacturas.Cantidad * ganancia_por_item)
 
     query = (
         db.query(
@@ -279,6 +291,7 @@ def obtener_reporte_facturas(db: Session, fecha_inicio, fecha_fin=None):
         .join(TipoIngreso, TipoIngreso.ID_Factura == Facturas.ID_Factura)
         .join(DetalleFacturas, DetalleFacturas.ID_Factura == Facturas.ID_Factura)
         .join(Productos, Productos.ID_Producto == DetalleFacturas.ID_Producto)
+        .outerjoin(LoteProducto, DetalleFacturas.ID_Lote == LoteProducto.ID_Lote)
         .group_by(Facturas.ID_Factura, TipoIngreso.Tipo_Ingreso, Facturas.Descuento, Facturas.Monto_efectivo, Facturas.Monto_TRANSACCION, Facturas.Fecha_Factura)
     )
 

@@ -13,7 +13,9 @@ class DetalleFacturas(Base):
 
     ID_Producto = Column(Integer, ForeignKey("PRODUCTOS.ID_Producto"))
     ID_Factura = Column(Integer, ForeignKey("FACTURA.ID_Factura"))
+    ID_Lote = Column(Integer, ForeignKey("LOTES_PRODUCTO.ID_Lote"), nullable=True)
 
     # Relaciones
     productos = relationship("Productos", back_populates="detallefacturas")
     facturas = relationship("Facturas", back_populates="detallefacturas")
+    lote = relationship("LoteProducto", back_populates="detallefacturas")

@@ -105,9 +105,10 @@ class Ui_VentasCredito(object):
         inputLayout.addWidget(self._mk_lbl("Código"), 0, 0)
         inputLayout.addWidget(self._mk_lbl("Nombre del Producto"), 0, 1)
         inputLayout.addWidget(self._mk_lbl("Marca"), 0, 2)
-        inputLayout.addWidget(self._mk_lbl("Cantidad"), 0, 3)
-        inputLayout.addWidget(self._mk_lbl("Precio"), 0, 4)
+        inputLayout.addWidget(self._mk_lbl("Lote"), 0, 3)
+        inputLayout.addWidget(self._mk_lbl("Cantidad"), 0, 4)
         inputLayout.addWidget(self._mk_lbl("Tipo Precio"), 0, 5)
+        inputLayout.addWidget(self._mk_lbl("Precio"), 0, 6)
 
         # Inputs Row 1
         self.InputCodigo = QtWidgets.QLineEdit(self.inputCard)
@@ -128,18 +129,18 @@ class Ui_VentasCredito(object):
         self.InputMarca.setStyleSheet(_INPUT_QSS)
         inputLayout.addWidget(self.InputMarca, 1, 2)
 
+        self.ComboLote = QtWidgets.QComboBox(self.inputCard)
+        self.ComboLote.setObjectName("ComboLote")
+        self.ComboLote.setMinimumHeight(40)
+        self.ComboLote.setStyleSheet(_INPUT_QSS)
+        inputLayout.addWidget(self.ComboLote, 1, 3)
+
         self.InputCantidad = QtWidgets.QLineEdit(self.inputCard)
         self.InputCantidad.setObjectName("InputCantidad")
         self.InputCantidad.setMinimumHeight(40)
         self.InputCantidad.setStyleSheet(_INPUT_QSS)
-        inputLayout.addWidget(self.InputCantidad, 1, 3)
+        inputLayout.addWidget(self.InputCantidad, 1, 4)
 
-        self.InputPrecioUnitario = QtWidgets.QLineEdit(self.inputCard)
-        self.InputPrecioUnitario.setObjectName("InputPrecioUnitario")
-        self.InputPrecioUnitario.setMinimumHeight(40)
-        self.InputPrecioUnitario.setStyleSheet(_INPUT_QSS)
-        inputLayout.addWidget(self.InputPrecioUnitario, 1, 4)
-        
         self.comboBoxPrecio = QtWidgets.QComboBox(self.inputCard)
         self.comboBoxPrecio.setObjectName("comboBoxPrecio")
         self.comboBoxPrecio.setMinimumHeight(40)
@@ -147,12 +148,18 @@ class Ui_VentasCredito(object):
         self.comboBoxPrecio.addItems(["PV-01", "PV-02", "PV-03", "PV-04"])
         inputLayout.addWidget(self.comboBoxPrecio, 1, 5)
 
-        self.BtnAgregar = QtWidgets.QPushButton(" Agregar Producto", self.inputCard)
+        self.InputPrecioUnitario = QtWidgets.QLineEdit(self.inputCard)
+        self.InputPrecioUnitario.setObjectName("InputPrecioUnitario")
+        self.InputPrecioUnitario.setMinimumHeight(40)
+        self.InputPrecioUnitario.setStyleSheet(_INPUT_QSS)
+        inputLayout.addWidget(self.InputPrecioUnitario, 1, 6)
+
+        self.BtnAgregar = QtWidgets.QPushButton(" Agregar", self.inputCard)
         self.BtnAgregar.setIcon(qta.icon('fa5s.plus', color='white'))
         self.BtnAgregar.setMinimumHeight(40)
         self.BtnAgregar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnAgregar.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        inputLayout.addWidget(self.BtnAgregar, 1, 6)
+        inputLayout.addWidget(self.BtnAgregar, 1, 7)
 
         self.BtnEliminar = QtWidgets.QPushButton(" Eliminar Seleccionado", self.inputCard)
         self.BtnEliminar.setObjectName("BtnEliminar")
@@ -161,7 +168,7 @@ class Ui_VentasCredito(object):
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
         # Posicionarlo en una nueva fila, alineado a la derecha
-        inputLayout.addWidget(self.BtnEliminar, 2, 6, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        inputLayout.addWidget(self.BtnEliminar, 2, 7, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.rootLayout.addWidget(self.inputCard)
 
@@ -173,8 +180,8 @@ class Ui_VentasCredito(object):
         
         self.TablaVentasCredito = QtWidgets.QTableWidget(self.tableCard)
         self.TablaVentasCredito.setObjectName("TablaVentasCredito")
-        self.TablaVentasCredito.setColumnCount(7)
-        self.TablaVentasCredito.setHorizontalHeaderLabels(["Código", "Producto", "Marca", "Categoría", "Cantidad", "Precio", "Total"])
+        self.TablaVentasCredito.setColumnCount(8)
+        self.TablaVentasCredito.setHorizontalHeaderLabels(["Código", "Producto", "Marca", "Categoría", "Lote", "Cantidad", "Precio", "Total"])
         self.TablaVentasCredito.horizontalHeader().setStretchLastSection(True)
         self.TablaVentasCredito.verticalHeader().setVisible(False)
         self.TablaVentasCredito.setShowGrid(False)

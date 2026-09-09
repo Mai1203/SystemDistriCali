@@ -375,6 +375,12 @@ class Ui_Productos(object):
         self.BtnRegistrarProducto.setIcon(qta.icon("fa5s.plus", color="#FFFFFF"))
         header_row.addWidget(self.BtnRegistrarProducto)
 
+        self.BtnVerLotes = QtWidgets.QPushButton("  Ver Lotes", parent=self.PanelListado)
+        self.BtnVerLotes.setObjectName("BtnSecondary")
+        self.BtnVerLotes.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnVerLotes.setIcon(qta.icon("fa5s.boxes", color=_PRIMARY))
+        header_row.addWidget(self.BtnVerLotes)
+
         self.BtnEliminar = QtWidgets.QPushButton("  Eliminar seleccionados", parent=self.PanelListado)
         self.BtnEliminar.setObjectName("BtnDanger")
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))

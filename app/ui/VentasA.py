@@ -81,8 +81,9 @@ class Ui_VentasA(object):
         inputLayout.addWidget(self._mk_lbl("Código"), 0, 0)
         inputLayout.addWidget(self._mk_lbl("Nombre del Producto"), 0, 1)
         inputLayout.addWidget(self._mk_lbl("Marca"), 0, 2)
-        inputLayout.addWidget(self._mk_lbl("Cantidad"), 0, 3)
-        inputLayout.addWidget(self._mk_lbl("Precio por Mayor"), 0, 4)
+        inputLayout.addWidget(self._mk_lbl("Lote"), 0, 3)
+        inputLayout.addWidget(self._mk_lbl("Cantidad"), 0, 4)
+        inputLayout.addWidget(self._mk_lbl("Precio Unitario"), 0, 5)
 
         # Inputs Row 1
         self.InputCodigo = QtWidgets.QLineEdit(self.inputCard)
@@ -100,22 +101,27 @@ class Ui_VentasA(object):
         self.InputMarca.setStyleSheet(_INPUT_QSS)
         inputLayout.addWidget(self.InputMarca, 1, 2)
 
+        self.ComboLote = QtWidgets.QComboBox(self.inputCard)
+        self.ComboLote.setMinimumHeight(40)
+        self.ComboLote.setStyleSheet(_INPUT_QSS)
+        inputLayout.addWidget(self.ComboLote, 1, 3)
+
         self.InputCantidad = QtWidgets.QLineEdit(self.inputCard)
         self.InputCantidad.setMinimumHeight(40)
         self.InputCantidad.setStyleSheet(_INPUT_QSS)
-        inputLayout.addWidget(self.InputCantidad, 1, 3)
+        inputLayout.addWidget(self.InputCantidad, 1, 4)
 
         self.InputPrecioUnitario = QtWidgets.QLineEdit(self.inputCard)
         self.InputPrecioUnitario.setMinimumHeight(40)
         self.InputPrecioUnitario.setStyleSheet(_INPUT_QSS)
-        inputLayout.addWidget(self.InputPrecioUnitario, 1, 4)
+        inputLayout.addWidget(self.InputPrecioUnitario, 1, 5)
 
-        self.BtnAgregar = QtWidgets.QPushButton(" Agregar Producto", self.inputCard)
+        self.BtnAgregar = QtWidgets.QPushButton(" Agregar", self.inputCard)
         self.BtnAgregar.setIcon(qta.icon('fa5s.plus', color='white'))
         self.BtnAgregar.setMinimumHeight(40)
         self.BtnAgregar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnAgregar.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        inputLayout.addWidget(self.BtnAgregar, 1, 5)
+        inputLayout.addWidget(self.BtnAgregar, 1, 6)
 
         # Row 2
         inputLayout.addWidget(self._mk_lbl("Valor Domicilio"), 2, 0)
@@ -139,7 +145,7 @@ class Ui_VentasA(object):
         self.BtnEliminar.setMinimumHeight(40)
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        inputLayout.addWidget(self.BtnEliminar, 3, 5, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        inputLayout.addWidget(self.BtnEliminar, 3, 6, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.rootLayout.addWidget(self.inputCard)
 
@@ -150,8 +156,15 @@ class Ui_VentasA(object):
         tableLayout = QtWidgets.QVBoxLayout(self.tableCard)
         
         self.tableWidget = QtWidgets.QTableWidget(self.tableCard)
-        self.tableWidget.setColumnCount(7)
-        self.tableWidget.setHorizontalHeaderLabels(["Código", "Producto", "Marca", "Categoría", "Cantidad", "PAM", "Total"])
+        self.tableWidget.setColumnCount(8)
+        self.tableWidget.setHorizontalHeaderLabels(["Código", "Producto", "Marca", "Categoría", "Lote", "Cantidad", "Precio Unit.", "Total"])
+        self.tableWidget.horizontalHeader().setStretchLastSection(True)
+        self.tableWidget.verticalHeader().setVisible(False)
+        self.tableWidget.setShowGrid(False)
+        self.tableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.tableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tableWidget.setStyleSheet(f"QTableWidget {{ border: none; background-color: {_CARD_BG}; }} QHeaderView::section {{ background-color: {_CARD_BG}; font-weight: bold; border: none; border-bottom: 1px solid {_DIVIDER}; padding: 8px; }} QTableWidget::item:selected {{ background-color: {_PINK_BG}; color: {_TEXT}; }}")
+        tableLayout.addWidget(self.tableWidget)
         self.tableWidget.horizontalHeader().setStretchLastSection(True)
         self.tableWidget.verticalHeader().setVisible(False)
         self.tableWidget.setShowGrid(False)

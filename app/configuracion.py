@@ -35,3 +35,11 @@ def obtener_tipo_venta(indice):
 def obtener_precio_producto(producto, indice):
     tipo_venta = obtener_tipo_venta(indice)
     return tipo_venta["precio"].obtener(producto)
+
+
+def obtener_precio_lote(lote, indice):
+    if not lote:
+        return 0.0
+    tipo_venta = obtener_tipo_venta(indice)
+    return tipo_venta["precio"].obtener(lote)
+

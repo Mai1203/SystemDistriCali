@@ -30,6 +30,7 @@ class Productos(Base):
     marcas = relationship("Marcas", back_populates="productos")
     categorias = relationship("Categorias", back_populates="productos")
     detallefacturas = relationship("DetalleFacturas", back_populates="productos")
+    lotes = relationship("LoteProducto", back_populates="producto", cascade="all, delete-orphan")
 
 
 class Marcas(Base):

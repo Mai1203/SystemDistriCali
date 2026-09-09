@@ -85,6 +85,28 @@ def crear_producto(
     )
     db.add(nuevo_producto)
     db.commit()
+
+    from app.models.lotes import LoteProducto
+    primer_lote = LoteProducto(
+        ID_Producto=id_producto,
+        Numero_Lote="LOTE-001",
+        Stock_inicial=stock_actual,
+        Stock_actual=stock_actual,
+        Precio_costo=precio_costo,
+        Precio_venta_1=precio_venta_1,
+        Precio_venta_2=precio_venta_2,
+        Precio_venta_3=precio_venta_3,
+        Precio_venta_4=precio_venta_4,
+        Ganancia_1=ganancia_1,
+        Ganancia_2=ganancia_2,
+        Ganancia_3=ganancia_3,
+        Ganancia_4=ganancia_4,
+        Estado=estado,
+        Proveedor="Inventario Inicial",
+        Notas="Lote inicial al crear el producto",
+    )
+    db.add(primer_lote)
+    db.commit()
     db.refresh(nuevo_producto)
     return nuevo_producto
 

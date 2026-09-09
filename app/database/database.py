@@ -39,6 +39,7 @@ def init_db():
         analisis_financiero,
         reporte,
         historial,
+        lotes,
     )  # Importar los modelos
 
     try:
@@ -57,10 +58,53 @@ def init_db():
 
 
 def migrar_esquema():
-    """Añade los PV nuevos y actualiza los tipos de factura sin perder datos."""
+    """Añade los PV nuevos, lotes y actualiza los tipos de factura sin perder datos."""
     inspector = inspect(engine)
 
     with engine.begin() as connection:
+        # Migración de columnas en DETALLE_FACTURAS
+        if "DETALLE_FACTURAS" in inspector.get_table_names():
+            columnas_df = {columna["name"] for columna in inspector.get_columns("DETALLE_FACTURAS")}
+            if "ID_Lote" not in columnas_df:
+                connection.execute(text(
+                    'ALTER TABLE "DETALLE_FACTURAS" ADD COLUMN "ID_Lote" INTEGER REFERENCES "LOTES_PRODUCTO"("ID_Lote")'
+                ))
+
+        # Migración de productos existentes a lotes si no tienen ninguno
+        if "LOTES_PRODUCTO" in inspector.get_table_names():
+            connection.execute(text('''
+                INSERT INTO "LOTES_PRODUCTO" (
+                    "ID_Producto", "Numero_Lote", "Fecha_Entrada", "Fecha_Vencimiento",
+                    "Stock_inicial", "Stock_actual", "Precio_costo",
+                    "Precio_venta_1", "Precio_venta_2", "Precio_venta_3", "Precio_venta_4",
+                    "Ganancia_1", "Ganancia_2", "Ganancia_3", "Ganancia_4",
+                    "Estado", "Proveedor", "Notas"
+                )
+                SELECT 
+                    p."ID_Producto",
+                    'LOTE-INICIAL',
+                    CURRENT_TIMESTAMP,
+                    NULL,
+                    p."Stock_actual",
+                    p."Stock_actual",
+                    p."Precio_costo",
+                    p."Precio_venta_1",
+                    p."Precio_venta_2",
+                    p."Precio_venta_3",
+                    p."Precio_venta_4",
+                    p."Ganancia_1",
+                    p."Ganancia_2",
+                    p."Ganancia_3",
+                    p."Ganancia_4",
+                    1,
+                    'Inventario Inicial',
+                    'Lote generado automáticamente por migración'
+                FROM "PRODUCTOS" p
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM "LOTES_PRODUCTO" l WHERE l."ID_Producto" = p."ID_Producto"
+                )
+            '''))
+
         columnas = {columna["name"] for columna in inspector.get_columns("PRODUCTOS")}
         for columna in ("Precio_venta_1", "Precio_venta_2", "Precio_venta_3", "Precio_venta_4"):
             if columna not in columnas:
