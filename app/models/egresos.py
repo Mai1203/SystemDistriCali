@@ -2,11 +2,11 @@ from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String, fun
 from sqlalchemy.orm import relationship
 from app.database.database import Base
 from datetime import datetime
-from zoneinfo import ZoneInfo
+from pytz import timezone
 
 def get_local_time():
     # Cambia 'America/Bogota' por tu zona horaria local
-    local_tz = ZoneInfo("America/Bogota")
+    local_tz = timezone("America/Bogota")
     now = datetime.now(local_tz)
     return now.replace(microsecond=0)
 
