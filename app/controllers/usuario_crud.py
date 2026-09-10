@@ -65,13 +65,16 @@ def obtener_usuarios(db: Session):
 
 
 # Obtener un usuario por ID
-def obtener_usuario_por_id(db: Session, id_usuario: str):
+def obtener_usuario_por_id(db: Session, id_usuario):
     """
     Obtiene un usuario por su ID.
     :param db: Sesión de base de datos.
     :param id_usuario: ID del usuario.
     :return: Objeto de usuario o None si no existe.
     """
+    if id_usuario is None:
+        return None
+    id_str = str(id_usuario).strip()
     usuario = (
         db.query(
             Usuarios.ID_Usuario,
@@ -83,7 +86,7 @@ def obtener_usuario_por_id(db: Session, id_usuario: str):
             Rol.Nombre.label("rol"),
         )
         .join(Rol, Usuarios.ID_Rol == Rol.ID_Rol)
-        .filter(Usuarios.ID_Usuario == id_usuario)
+        .filter(Usuarios.ID_Usuario == id_str)
         .first()
     )
 
@@ -93,7 +96,7 @@ def obtener_usuario_por_id(db: Session, id_usuario: str):
 # Actualizar un usuario
 def actualizar_usuario(
     db: Session,
-    id_usuario: int,
+    id_usuario,
     nombre: str = None,
     usuario: str = None,
     contrasena: str = None,
@@ -110,8 +113,11 @@ def actualizar_usuario(
     :param estado: Nuevo estado del usuario.
     :return: Objeto de usuario actualizado o None si no existe.
     """
+    if id_usuario is None:
+        return None
+    id_str = str(id_usuario).strip()
     usuario_existente = (
-        db.query(Usuarios).filter(Usuarios.ID_Usuario == id_usuario).first()
+        db.query(Usuarios).filter(Usuarios.ID_Usuario == id_str).first()
     )
     if not usuario_existente:
         return None
@@ -138,6 +144,7 @@ def buscar_usuarios(db: Session, buscar: str):
     :param buscar: Texto a buscar.
     :return: Lista de usuarios.
     """
+    busq_str = str(buscar).strip() if buscar is not None else ""
     usuario = (
         db.query(
             Usuarios.ID_Usuario,
@@ -151,8 +158,8 @@ def buscar_usuarios(db: Session, buscar: str):
         .join(Rol, Usuarios.ID_Rol == Rol.ID_Rol)
         .filter(
             or_(
-                Usuarios.ID_Usuario.like(f"%{buscar}%"),
-                Usuarios.Nombre.like(f"%{buscar}%"),
+                Usuarios.ID_Usuario.like(f"%{busq_str}%"),
+                Usuarios.Nombre.like(f"%{busq_str}%"),
             )
         )
         .all()
@@ -161,17 +168,20 @@ def buscar_usuarios(db: Session, buscar: str):
     return usuario
 
 # Eliminar un usuario
-def eliminar_usuario(db: Session, id_usuario: str):
+def eliminar_usuario(db: Session, id_usuario):
     """
     Elimina un usuario por su ID.
     :param db: Sesión de base de datos.
     :param id_usuario: ID del usuario a eliminar.
     :return: True si se eliminó correctamente, False si no se encontró.
     """
+    if id_usuario is None:
+        return False
+    id_str = str(id_usuario).strip()
     usuario_existente = (
         db.query(
             Usuarios     
-        ).filter(Usuarios.ID_Usuario == id_usuario).first()
+        ).filter(Usuarios.ID_Usuario == id_str).first()
     )
     if not usuario_existente:
         return False
