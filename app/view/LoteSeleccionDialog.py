@@ -296,7 +296,8 @@ class LoteSeleccionDialog(QDialog):
         btn_confirmar.setCursor(QtGui.QCursor(Qt.CursorShape.PointingHandCursor))
         btn_confirmar.setIcon(qta.icon("fa5s.check", color="#FFFFFF"))
         btn_confirmar.setIconSize(QtCore.QSize(11, 11))
-        btn_confirmar.clicked.connect(self._confirmar)
+        btn_confirmar.setDefault(True)
+        btn_confirmar.clicked.connect(self.accept)
 
         btn_row.addWidget(btn_cancelar)
         btn_row.addWidget(btn_confirmar)
@@ -319,7 +320,7 @@ class LoteSeleccionDialog(QDialog):
             self._spin_cantidad.setValue(stock)
 
     # ─────────────────────────────────────────────────────────────
-    def _confirmar(self):
+    def accept(self):
         lote = self._combo_lote.currentData()
         cantidad = self._spin_cantidad.value()
         if lote is None or cantidad < 1:
@@ -332,7 +333,7 @@ class LoteSeleccionDialog(QDialog):
             return
         self.lote_seleccionado = lote
         self.cantidad_seleccionada = cantidad
-        self.accept()
+        super().accept()
 
     # ─────────────────────────────────────────────────────────────
     # Centrar respecto al padre al mostrarse

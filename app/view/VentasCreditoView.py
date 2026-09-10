@@ -263,7 +263,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         }
 
         productos_nuevos = {
-            int(codigo): cantidad for codigo, cantidad, _ in produc_datos
+            int(codigo): cantidad for codigo, cantidad, _, _ in produc_datos
         }
 
         productos_eliminados = set(productos_actuales.keys()) - set(

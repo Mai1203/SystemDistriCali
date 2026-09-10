@@ -651,7 +651,7 @@ class VentasA_View(QWidget, Ui_VentasA):
     ):
         detalles_actuales = db.query(DetalleFacturas).filter(DetalleFacturas.ID_Factura == id_factura).all()
         productos_actuales = {detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales}
-        productos_nuevos = {int(codigo): cantidad for codigo, cantidad, _ in produc_datos}
+        productos_nuevos = {int(codigo): cantidad for codigo, cantidad, _, _ in produc_datos}
         productos_eliminados = set(productos_actuales.keys()) - set(productos_nuevos.keys())
 
         for id_producto in productos_eliminados:
