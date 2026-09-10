@@ -4,7 +4,10 @@ from PyQt6.QtCore import (
 QTimer,
 QPropertyAnimation,
 QEasingCurve,
+QUrl,
 )
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+import os
 
 from PyQt6.QtWidgets import (
 QApplication,
@@ -193,6 +196,17 @@ class ToastNotification(QWidget):
 
         self._posicionar()
         self._setup_animaciones()
+
+        if self.tipo == "error":
+            self._reproducir_audio()
+
+    def _reproducir_audio(self):
+        self.error_player = QMediaPlayer()
+        self.error_audio = QAudioOutput()
+        self.error_player.setAudioOutput(self.error_audio)
+        self.error_audio.setVolume(1.0)
+        self.error_player.setSource(QUrl.fromLocalFile(os.path.abspath("assets/sonidos/Error.mp3")))
+        self.error_player.play()
 
     def _setup_ui(
         self,

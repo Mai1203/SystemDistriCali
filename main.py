@@ -17,6 +17,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QUrl
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6 import QtWidgets  # Para poder reasignar QMessageBox si es necesario
 
 from init_db import conectar_base, inicializar_db
@@ -69,6 +71,14 @@ class MainWindow(QMainWindow):
         self.Login.InputPassword.returnPressed.connect(self.iniciar_sesion)
 
         self.db = conectar_base()
+
+        # Reproductor de inicio
+        self.player_inicio = QMediaPlayer()
+        self.audio_inicio = QAudioOutput()
+        self.player_inicio.setAudioOutput(self.audio_inicio)
+        self.audio_inicio.setVolume(1.0)
+        self.player_inicio.setSource(QUrl.fromLocalFile(os.path.abspath("assets/sonidos/Start.mp3")))
+        self.player_inicio.play()
 
     def crear_mainapp(self):
         if self.MainApp is not None:
@@ -151,6 +161,14 @@ class MainWindow(QMainWindow):
         token = self.generar_token(usuario_autenticado.ID_Usuario, rol)
 
         self.token_actual = token
+
+        # Reproductor de bienvenida (Voz)
+        self.player_voz = QMediaPlayer()
+        self.audio_voz = QAudioOutput()
+        self.player_voz.setAudioOutput(self.audio_voz)
+        self.audio_voz.setVolume(1.0)
+        self.player_voz.setSource(QUrl.fromLocalFile(os.path.abspath("assets/sonidos/Voz.mp3")))
+        self.player_voz.play()
 
         enviar_notificacion("Inicio de sesión exitoso", "Bienvenido")
         self.stacked_widget.setCurrentWidget(self.MainApp)
