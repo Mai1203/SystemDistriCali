@@ -17,10 +17,14 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtGui import QIcon
-from PyQt6 import QtWidgets  # Para poder reasignar QMessageBox si es necesario
+from PyQt6 import QtWidgets
 
-from init_db import conectar_base, inicializar_db
+from app.database.config import load_config, is_configured
+from app.database.engine import get_engine, reset_engine
+from app.database.session import SessionLocal
 from app.database.database import init_db
+from app.services.connection_service import test_connection
+from app.utils.logger import logger
 from app.utils.enviar_notifi import (
     Mensajes,
     enviar_notificacion,
@@ -28,10 +32,11 @@ from app.utils.enviar_notifi import (
 from app.controllers.usuario_crud import verificar_credenciales, obtener_usuario_por_id
 from app.ventanasView import MainApp
 from app.view import Login_View
+from app.view.SetupWizardView import SetupWizardView
 from app.services.permisos_service import obtener_permisos_usuario
 
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_distrimagik_2026")
 
 
 class MainWindow(QMainWindow):
@@ -41,7 +46,7 @@ class MainWindow(QMainWindow):
         self.usuario_actual_id = None
         self.setWindowTitle("System Distri Magik")
         self.setWindowIcon(QIcon("assets/Favicon.ico"))
-        self.inicializar_db()
+        
         # Tamaño inicial relativo a la pantalla (80% del espacio disponible)
         self.setMinimumSize(480, 520)
         screen = QApplication.primaryScreen().availableGeometry()
@@ -60,15 +65,53 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         layout.addWidget(self.stacked_widget)
 
+        self.SetupWizard = SetupWizardView()
         self.Login = Login_View()
         self.MainApp = None
 
+        self.stacked_widget.addWidget(self.SetupWizard)
         self.stacked_widget.addWidget(self.Login)
 
+        self.SetupWizard.configuracion_finalizada.connect(self.al_finalizar_configuracion)
         self.Login.BtnLogin.clicked.connect(self.iniciar_sesion)
         self.Login.InputPassword.returnPressed.connect(self.iniciar_sesion)
 
-        self.db = conectar_base()
+        # Flujo de inicio: validar configuración existente
+        self.verificar_o_iniciar_configuracion()
+
+    def verificar_o_iniciar_configuracion(self):
+        config = load_config()
+        if not is_configured():
+            logger.info("Sistema no configurado previamente. Mostrando Asistente de Configuración...")
+            self.stacked_widget.setCurrentWidget(self.SetupWizard)
+            return
+
+        # Probar conexión
+        ok, msg = test_connection(config, timeout_seconds=3)
+        if not ok:
+            logger.warning(f"Conexión inicial falló: {msg}. Redirigiendo al Asistente de Configuración.")
+            QMessageBox.warning(
+                self,
+                "Configuración de Conexión Requerida",
+                f"No se pudo conectar a la base de datos configurada ({config.mode}):\n\n{msg}\n\nPor favor revise los datos en el Asistente.",
+            )
+            self.stacked_widget.setCurrentWidget(self.SetupWizard)
+        else:
+            logger.info("Conexión inicial verificada con éxito. Inicializando esquema si es necesario...")
+            try:
+                init_db()
+                self.stacked_widget.setCurrentWidget(self.Login)
+            except Exception as e:
+                logger.error(f"Error al inicializar esquema: {e}")
+                self.stacked_widget.setCurrentWidget(self.SetupWizard)
+
+    def al_finalizar_configuracion(self):
+        logger.info("Asistente de configuración completado. Cambiando a vista de Login...")
+        self.stacked_widget.setCurrentWidget(self.Login)
+
+    def abrir_asistente_configuracion(self):
+        """Permite abrir el asistente desde cualquier parte del sistema (ej. ajustes)."""
+        self.stacked_widget.setCurrentWidget(self.SetupWizard)
 
     def crear_mainapp(self):
         if self.MainApp is not None:
@@ -77,29 +120,6 @@ class MainWindow(QMainWindow):
         self.MainApp = MainApp()
         self.stacked_widget.addWidget(self.MainApp)
         self.MainApp.navbar.BtnCerrarSesion.clicked.connect(self.cerrar_sesion)
-
-    def inicializar_db(self):
-        app_data_dir = Path(os.getenv("APPDATA") or os.path.expanduser("~")) / "SystemDistriMagik"
-        app_data_dir.mkdir(parents=True, exist_ok=True)
-
-        db_path = app_data_dir / "systemdistrimagik.db"
-
-        if not db_path.exists():
-            progress = QProgressDialog("Creando la base de datos...", None, 0, 0, self)
-            progress.setWindowTitle("Por favor espera")
-            progress.setCancelButton(None)
-            progress.setMinimumDuration(0)
-            progress.show()
-
-            QApplication.processEvents()
-
-            inicializar_db()
-            time.sleep(2)
-
-            progress.close()
-        else:
-            print("✅ La base de datos ya existe. Continuando con el programa...")
-            init_db()
 
     def cerrar_sesion(self):
         enviar_notificacion("Sesión cerrada", "Puedes iniciar sesión nuevamente")
@@ -123,7 +143,6 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def showEvent(self, event):
-        # La ventana ya abre maximizada; no se necesita centrado manual.
         super().showEvent(event)
 
     def iniciar_sesion(self):
@@ -134,30 +153,33 @@ class MainWindow(QMainWindow):
             enviar_notificacion("Error", "Por favor, ingresa tus credenciales")
             return
 
-        usuario_autenticado = verificar_credenciales(self.db, usuario, contraseña)
-        if not usuario_autenticado:
-            enviar_notificacion("Error", "Usuario o contraseña incorrectos")
-            return
+        db = SessionLocal()
+        try:
+            usuario_autenticado = verificar_credenciales(db, usuario, contraseña)
+            if not usuario_autenticado:
+                enviar_notificacion("Error", "Usuario o contraseña incorrectos")
+                return
 
-        usuario_data = obtener_usuario_por_id(self.db, usuario_autenticado.ID_Usuario)
-        rol = usuario_data.rol if (usuario_data and usuario_data.rol) else "ASESOR"
+            usuario_data = obtener_usuario_por_id(db, usuario_autenticado.ID_Usuario)
+            rol = usuario_data.rol if (usuario_data and usuario_data.rol) else "ASESOR"
 
-        self.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.crear_mainapp()
-        self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.MainApp.pagoCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
-        self.MainApp.caja.usuario_actual_id = usuario_autenticado.ID_Usuario
-        token = self.generar_token(usuario_autenticado.ID_Usuario, rol)
+            self.usuario_actual_id = usuario_autenticado.ID_Usuario
+            self.crear_mainapp()
+            self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
+            self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
+            self.MainApp.pagoCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
+            self.MainApp.caja.usuario_actual_id = usuario_autenticado.ID_Usuario
+            token = self.generar_token(usuario_autenticado.ID_Usuario, rol)
 
-        self.token_actual = token
+            self.token_actual = token
 
-        enviar_notificacion("Inicio de sesión exitoso", "Bienvenido")
-        self.stacked_widget.setCurrentWidget(self.MainApp)
+            enviar_notificacion("Inicio de sesión exitoso", "Bienvenido")
+            self.stacked_widget.setCurrentWidget(self.MainApp)
 
-        self.configurar_accesos_por_usuario(usuario_autenticado)
-        self.MainApp.navbar.actualizar_usuario_rol(usuario_autenticado)
-        self.db.close()
+            self.configurar_accesos_por_usuario(usuario_autenticado)
+            self.MainApp.navbar.actualizar_usuario_rol(usuario_autenticado)
+        finally:
+            db.close()
 
     def generar_token(self, usuario_id, rol):
         payload = {
@@ -166,7 +188,6 @@ class MainWindow(QMainWindow):
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1),
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-        # PyJWT 2.x devuelve bytes, lo convertimos a string si es necesario
         if isinstance(token, bytes):
             token = token.decode("utf-8")
         return token
@@ -216,9 +237,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # Si deseas reemplazar QMessageBox globalmente, usa:
-    # QtWidgets.QMessageBox = Mensajes
-    # (asegúrate de importar QtWidgets)
     main_window = MainWindow()
-    main_window.showMaximized()  # Pantalla completa al iniciar
+    main_window.showMaximized()
     sys.exit(app.exec())

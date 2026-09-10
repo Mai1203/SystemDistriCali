@@ -2,7 +2,7 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
-    Float,
+    Numeric,
     ForeignKey,
     DateTime,
     Boolean,
@@ -17,9 +17,12 @@ from pytz import timezone
 
 def get_local_time():
     # Cambia 'America/Bogota' por tu zona horaria local
-    local_tz = timezone("America/Bogota")
-    now = datetime.now(local_tz)
-    return now.replace(microsecond=0)
+    try:
+        local_tz = timezone("America/Bogota")
+        now = datetime.now(local_tz)
+        return now.replace(microsecond=0)
+    except Exception:
+        return datetime.now().replace(microsecond=0)
 
 
 class Facturas(Base):
@@ -27,16 +30,16 @@ class Facturas(Base):
 
     ID_Factura = Column(Integer, primary_key=True, autoincrement=True)
     Fecha_Factura = Column(DateTime(timezone=True), default=get_local_time)
-    Monto_efectivo = Column(Float, nullable=False)
-    Monto_TRANSACCION = Column(Float, nullable=False)
-    Descuento = Column(Float, nullable=False)
+    Monto_efectivo = Column(Numeric(12, 2, asdecimal=False), nullable=False)
+    Monto_TRANSACCION = Column(Numeric(12, 2, asdecimal=False), nullable=False)
+    Descuento = Column(Numeric(12, 2, asdecimal=False), nullable=False)
     Estado = Column(Boolean, nullable=False)
     Domicilio = Column(Boolean)
 
     ID_Metodo_Pago = Column(Integer, ForeignKey("METODO_PAGO.ID_Metodo_Pago"))
     ID_Tipo_Factura = Column(Integer, ForeignKey("TIPO_FACTURA.ID_Tipo_Factura"))
-    ID_Cliente = Column(Integer, ForeignKey("CLIENTES.ID_Cliente"))
-    ID_Usuario = Column(Integer, ForeignKey("USUARIOS.ID_Usuario"))
+    ID_Cliente = Column(String(100), ForeignKey("CLIENTES.ID_Cliente"))
+    ID_Usuario = Column(String(100), ForeignKey("USUARIOS.ID_Usuario"))
 
     # Relaciones
     ventacredito = relationship("VentaCredito", back_populates="facturas")
@@ -58,7 +61,7 @@ class MetodoPago(Base):
     Nombre = Column(String, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("Nombre IN ('Transferencia', 'Efectivo', 'Mixto')"),
+        CheckConstraint('"Nombre" IN (\'Transferencia\', \'Efectivo\', \'Mixto\')'),
     )
 
     # Relación con Factura
@@ -74,7 +77,7 @@ class TipoFactura(Base):
     Nombre = Column(String, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("Nombre IN ('FAC-01', 'FAC-02', 'FAC-03', 'FAC-04', 'FAC-CREDITO')"),
+        CheckConstraint('"Nombre" IN (\'FAC-01\', \'FAC-02\', \'FAC-03\', \'FAC-04\', \'FAC-CREDITO\')'),
     )
 
     # Relación con Factura

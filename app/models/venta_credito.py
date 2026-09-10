@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, Numeric, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database.database import Base
@@ -8,17 +8,20 @@ from pytz import timezone
 
 def get_local_time():
     # Cambia 'America/Bogota' por tu zona horaria local
-    local_tz = timezone("America/Bogota")
-    now = datetime.now(local_tz)
-    return now.replace(microsecond=0)
+    try:
+        local_tz = timezone("America/Bogota")
+        now = datetime.now(local_tz)
+        return now.replace(microsecond=0)
+    except Exception:
+        return datetime.now().replace(microsecond=0)
 
 
 class VentaCredito(Base):
     __tablename__ = "VENTA_CREDITO"
 
     ID_Venta_Credito = Column(Integer, primary_key=True, autoincrement=True)
-    Total_Deuda = Column(Float, nullable=False)
-    Saldo_Pendiente = Column(Float, nullable=False)
+    Total_Deuda = Column(Numeric(12, 2, asdecimal=False), nullable=False)
+    Saldo_Pendiente = Column(Numeric(12, 2, asdecimal=False), nullable=False)
     Fecha_Registro = Column(DateTime, default=get_local_time)
     Fecha_Limite = Column(DateTime, nullable=True)
 

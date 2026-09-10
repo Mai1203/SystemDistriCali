@@ -1,7 +1,7 @@
 from sqlalchemy import (
     Column,
     Integer,
-    Float,
+    Numeric,
     ForeignKey,
     DateTime,
     String,
@@ -16,16 +16,19 @@ from pytz import timezone
 
 def get_local_time():
     # Cambia 'America/Bogota' por tu zona horaria local
-    local_tz = timezone("America/Bogota")
-    now = datetime.now(local_tz)
-    return now.replace(microsecond=0)
+    try:
+        local_tz = timezone("America/Bogota")
+        now = datetime.now(local_tz)
+        return now.replace(microsecond=0)
+    except Exception:
+        return datetime.now().replace(microsecond=0)
 
 
 class PagoCredito(Base):
     __tablename__ = "PAGO_CREDITO"
 
     ID_Pago_Credito = Column(Integer, primary_key=True, autoincrement=True)
-    Monto = Column(Float, nullable=False)
+    Monto = Column(Numeric(12, 2, asdecimal=False), nullable=False)
     Fecha_Registro = Column(DateTime, default=get_local_time)
 
     ID_Venta_Credito = Column(Integer, ForeignKey("VENTA_CREDITO.ID_Venta_Credito"))
@@ -45,7 +48,7 @@ class TipoPago(Base):
     ID_Tipo_Pago = Column(Integer, primary_key=True, autoincrement=True)
     Nombre = Column(String, nullable=False)
 
-    __table_args__ = (CheckConstraint("Nombre IN ('Abono', 'Pago Total')"),)
+    __table_args__ = (CheckConstraint('"Nombre" IN (\'Abono\', \'Pago Total\')'),)
 
     # Relación con PagoCredito
     pagocredito = relationship("PagoCredito", back_populates="tipopago")

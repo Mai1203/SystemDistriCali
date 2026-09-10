@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database.database import Base
 
@@ -8,18 +8,17 @@ class Productos(Base):
 
     ID_Producto = Column(Integer, primary_key=True, index=True)
     Nombre = Column(String, nullable=False)
-    Precio_costo = Column(Float, nullable=False)
-    Precio_venta_1 = Column(Float, nullable=False, default=0)
-    Precio_venta_2 = Column(Float, nullable=False, default=0)
-    Precio_venta_3 = Column(Float, nullable=False, default=0)
-    Precio_venta_4 = Column(Float, nullable=False, default=0)
-    Ganancia_1 = Column(Float, nullable=False, default=0)
-    Ganancia_2 = Column(Float, nullable=False, default=0)
-    Ganancia_3 = Column(Float, nullable=False, default=0)
-    Ganancia_4 = Column(Float, nullable=False, default=0)
+    Precio_costo = Column(Numeric(12, 2, asdecimal=False), nullable=False)
+    Precio_venta_1 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Precio_venta_2 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Precio_venta_3 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Precio_venta_4 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Ganancia_1 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Ganancia_2 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Ganancia_3 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
+    Ganancia_4 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0)
     Stock_actual = Column(Integer, nullable=False)
     Stock_min = Column(Integer, nullable=False)
-
 
     Estado = Column(Boolean, nullable=False)
 
