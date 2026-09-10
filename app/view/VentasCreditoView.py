@@ -1030,7 +1030,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.ComboLote.clear()
         self.InputCantidad.clear()
         self.InputPrecioUnitario.clear()
-        self.comboBoxPrecio.setCurrentIndex(0)
         self.InputCodigo.setFocus()
 
     def eliminar_fila(self):
