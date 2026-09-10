@@ -26,6 +26,7 @@ from ..controllers.lote_crud import (
 )
 from ..configuracion import obtener_precio_lote, obtener_tipo_venta, obtener_precio_producto
 from ..ui import Ui_VentasCredito
+from .LoteSeleccionDialog import LoteSeleccionDialog
 from ..utils.autocomplementado import configurar_autocompletado
 from ..utils.formateador import formatear_numero
 
@@ -61,6 +62,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.en_edicion = False
         self.fila_seleccionada = None
         self.timer = QTimer(self)
+        self._lotes_cargados = []  # objetos LoteProducto del último producto buscado
 
         # Placeholders
         self.InputCedula.setPlaceholderText("Ej: 10004194608")
@@ -831,6 +833,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
                 # Cargar lotes activos
                 lotes = obtener_lotes_por_producto(db, producto.ID_Producto, solo_disponibles=True)
+                self._lotes_cargados = lotes  # guardar objetos para el diálogo
                 self.ComboLote.blockSignals(True)
                 self.ComboLote.clear()
                 if lotes:
@@ -880,10 +883,45 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         if codigo:
             self.procesar_codigo()
             if self.id_categoria is not None:
-                self.InputCantidad.setText("1")
-                self.agregar_producto(mostrar_mensaje=False)
-                self.InputCodigo.clear()
-                self.InputCodigo.setFocus()
+                # Usar objetos lote guardados en procesar_codigo (no IDs del combo)
+                if len(self._lotes_cargados) > 1:
+                    # Más de 1 lote → el usuario elige cuál usar
+                    self._mostrar_dialogo_lote(self._lotes_cargados)
+                else:
+                    # 0 o 1 lote → ingreso directo (si hay 1, ya está seleccionado en ComboLote)
+                    self.InputCantidad.setText("1")
+                    self.agregar_producto(mostrar_mensaje=False)
+                    self.InputCodigo.clear()
+                    self.InputCodigo.setFocus()
+
+    def _mostrar_dialogo_lote(self, lotes_activos):
+        """Muestra el diálogo de selección de lote y agrega el producto al confirmar."""
+        nombre_producto = self.InputNombre.text().strip()
+        tipo_venta = self.comboBoxPrecio.currentIndex()
+        dlg = LoteSeleccionDialog(
+            lotes=lotes_activos,
+            nombre_producto=nombre_producto,
+            tipo_venta=tipo_venta,
+            obtener_precio_fn=obtener_precio_lote,
+            parent=self,
+        )
+        if dlg.exec() == LoteSeleccionDialog.DialogCode.Accepted:
+            lote = dlg.lote_seleccionado
+            cantidad = dlg.cantidad_seleccionada
+            # Sincronizar ComboLote con el lote elegido en el diálogo
+            # (ComboLote guarda ID entero, no el objeto)
+            for i in range(self.ComboLote.count()):
+                if self.ComboLote.itemData(i) == lote.ID_Lote:
+                    self.ComboLote.setCurrentIndex(i)
+                    break
+            self.InputCantidad.setText(str(cantidad))
+            self.agregar_producto(mostrar_mensaje=False)
+            self.InputCodigo.clear()
+            self.InputCodigo.setFocus()
+        else:
+            # Usuario canceló → limpiar y devolver foco
+            self.InputCodigo.clear()
+            self.InputCodigo.setFocus()
 
     def agregar_producto(self, mostrar_mensaje=True):
         codigo = self.InputCodigo.text().strip()
