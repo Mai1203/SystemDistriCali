@@ -362,13 +362,19 @@ class LotesDialog(QtWidgets.QDialog):
         if not costo_txt:
             self.input_pv1.setPlaceholderText("PV-1")
             self.input_pv2.setPlaceholderText("PV-2")
+            self.input_pv3.setPlaceholderText("PV-3")
+            self.input_pv4.setPlaceholderText("PV-4")
             return
         try:
             costo = float(costo_txt)
-            pv1 = redondear_a_cientos(costo + costo * 0.50)
-            pv2 = redondear_a_cientos(costo + costo * 0.35)
+            pv1 = redondear_a_cientos(costo + costo * 0.20)
+            pv2 = redondear_a_cientos(costo + costo * 0.25)
+            pv3 = redondear_a_cientos(costo + costo * 0.30)
+            pv4 = redondear_a_cientos(costo + costo * 0.35)
             self.input_pv1.setPlaceholderText(f"{pv1}")
             self.input_pv2.setPlaceholderText(f"{pv2}")
+            self.input_pv3.setPlaceholderText(f"{pv3}")
+            self.input_pv4.setPlaceholderText(f"{pv4}")
         except ValueError:
             pass
 
@@ -383,10 +389,23 @@ class LotesDialog(QtWidgets.QDialog):
             ]:
                 txt = inp_pv.text().strip()
                 if txt:
+                    # Precio real ingresado → ganancia real en el campo
                     ganancia = float(txt) - costo
                     inp_g.setText(f"{ganancia:,.0f}")
+                    inp_g.setPlaceholderText("Auto")
                 else:
                     inp_g.setText("")
+                    # Si hay un precio sugerido como placeholder, mostrar
+                    # la ganancia sugerida también como placeholder
+                    ph_pv = inp_pv.placeholderText().strip()
+                    try:
+                        if ph_pv and float(ph_pv) > 0 and costo > 0:
+                            ganancia_sugerida = float(ph_pv) - costo
+                            inp_g.setPlaceholderText(f"{ganancia_sugerida:,.0f}")
+                        else:
+                            inp_g.setPlaceholderText("Auto")
+                    except ValueError:
+                        inp_g.setPlaceholderText("Auto")
         except ValueError:
             pass
 

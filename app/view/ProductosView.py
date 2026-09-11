@@ -228,18 +228,24 @@ class Productos_View(QWidget, Ui_Productos):
         self.InputBuscador.setFocus()
 
     def agregar_placeholder(self):
-        """Muestra precios sugeridos (50% y 35% de margen) como placeholder."""
+        """Muestra precios sugeridos (20%, 25%, 30%, 35% de margen) como placeholder."""
         precio_compra = self.InputPrecioCompra.text().strip()
         if not precio_compra:
             self.InputPrecioVenta1.setPlaceholderText("PV-1")
             self.InputPrecioVenta2.setPlaceholderText("PV-2")
+            self.InputPrecioVenta3.setPlaceholderText("PV-3")
+            self.InputPrecioVenta4.setPlaceholderText("PV-4")
             return
         try:
             costo = float(precio_compra)
-            pv1 = redondear_a_cientos(costo + costo * 0.50)
-            pv2 = redondear_a_cientos(costo + costo * 0.35)
+            pv1 = redondear_a_cientos(costo + costo * 0.20)
+            pv2 = redondear_a_cientos(costo + costo * 0.25)
+            pv3 = redondear_a_cientos(costo + costo * 0.30)
+            pv4 = redondear_a_cientos(costo + costo * 0.35)
             self.InputPrecioVenta1.setPlaceholderText(f"{pv1}")
             self.InputPrecioVenta2.setPlaceholderText(f"{pv2}")
+            self.InputPrecioVenta3.setPlaceholderText(f"{pv3}")
+            self.InputPrecioVenta4.setPlaceholderText(f"{pv4}")
         except ValueError:
             pass
 
@@ -255,10 +261,23 @@ class Productos_View(QWidget, Ui_Productos):
             ]:
                 txt = inp_pv.text().strip()
                 if txt:
+                    # Precio real ingresado → ganancia real en el campo
                     ganancia = float(txt) - costo
                     inp_g.setText(f"{ganancia:,.0f}")
+                    inp_g.setPlaceholderText("Auto")
                 else:
                     inp_g.setText("")
+                    # Si hay un precio sugerido como placeholder, mostrar
+                    # la ganancia sugerida también como placeholder
+                    ph_pv = inp_pv.placeholderText().strip()
+                    try:
+                        if ph_pv and float(ph_pv) > 0 and costo > 0:
+                            ganancia_sugerida = float(ph_pv) - costo
+                            inp_g.setPlaceholderText(f"{ganancia_sugerida:,.0f}")
+                        else:
+                            inp_g.setPlaceholderText("Auto")
+                    except ValueError:
+                        inp_g.setPlaceholderText("Auto")
         except ValueError:
             pass
 
