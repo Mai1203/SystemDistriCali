@@ -11,4 +11,6 @@ venv/
 dist/
 
 build/
-.kilo/*
+
+.kilo/
+

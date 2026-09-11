@@ -1327,7 +1327,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.InputDescuento.setValidator(validator_descuento)
 
     def completar_campos(self):
-        id_cliente = int(self.InputCedula.text().strip())
+        id_cliente = self.InputCedula.text().strip()
+        if not id_cliente:
+            return
         self.db = SessionLocal()
         try:
             cliente = obtener_cliente_por_id(self.db, id_cliente)

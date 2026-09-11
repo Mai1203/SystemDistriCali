@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from app.database.database import Base
 from datetime import datetime
@@ -24,15 +24,15 @@ class LoteProducto(Base):
     Fecha_Vencimiento = Column(String, nullable=True)
     Stock_inicial = Column(Integer, nullable=False, default=0)
     Stock_actual = Column(Integer, nullable=False, default=0)
-    Precio_costo = Column(Float, nullable=False, default=0.0)
-    Precio_venta_1 = Column(Float, nullable=False, default=0.0)
-    Precio_venta_2 = Column(Float, nullable=False, default=0.0)
-    Precio_venta_3 = Column(Float, nullable=False, default=0.0)
-    Precio_venta_4 = Column(Float, nullable=False, default=0.0)
-    Ganancia_1 = Column(Float, nullable=False, default=0.0)
-    Ganancia_2 = Column(Float, nullable=False, default=0.0)
-    Ganancia_3 = Column(Float, nullable=False, default=0.0)
-    Ganancia_4 = Column(Float, nullable=False, default=0.0)
+    Precio_costo = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Precio_venta_1 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Precio_venta_2 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Precio_venta_3 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Precio_venta_4 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Ganancia_1 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Ganancia_2 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Ganancia_3 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
+    Ganancia_4 = Column(Numeric(12, 2, asdecimal=False), nullable=False, default=0.0)
     Estado = Column(Boolean, nullable=False, default=True)
     Proveedor = Column(String, nullable=True)
     Notas = Column(String, nullable=True)

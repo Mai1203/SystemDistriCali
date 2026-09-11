@@ -8,7 +8,7 @@ from app.models.clientes import Clientes
 # Crear un cliente
 def crear_cliente(
     db: Session,
-    id_cliente: str,
+    id_cliente,
     nombre: str,
     apellido: str,
     direccion: str,
@@ -24,8 +24,9 @@ def crear_cliente(
     :param telefono: Teléfono del cliente.
     :return: Objeto del cliente creado.
     """
+    id_str = str(id_cliente).strip() if id_cliente is not None else ""
     nuevo_cliente = Clientes(
-        ID_Cliente=id_cliente,
+        ID_Cliente=id_str,
         Nombre=nombre,
         Apellido=apellido,
         Direccion=direccion,
@@ -88,20 +89,23 @@ def obtener_cliente_por_nombre_completo(db, nombre_completo):
     return cliente
 
 # Obtener un cliente por ID
-def obtener_cliente_por_id(db: Session, id_cliente: int):
+def obtener_cliente_por_id(db: Session, id_cliente):
     """
     Obtiene un cliente específico por su ID.
     :param db: Sesión de base de datos.
     :param id_cliente: ID del cliente.
     :return: Objeto del cliente o None si no existe.
     """
-    return db.query(Clientes).filter(Clientes.ID_Cliente == id_cliente).first()
+    if id_cliente is None:
+        return None
+    id_str = str(id_cliente).strip()
+    return db.query(Clientes).filter(Clientes.ID_Cliente == id_str).first()
 
 
 # Actualizar un cliente
 def actualizar_cliente(
     db: Session,
-    id_cliente: int,
+    id_cliente,
     nombre: str = None,
     apellido: str = None,
     direccion: str = None,
@@ -117,8 +121,11 @@ def actualizar_cliente(
     :param telefono: Nuevo teléfono del cliente.
     :return: Objeto del cliente actualizado o None si no existe.
     """
+    if id_cliente is None:
+        return None
+    id_str = str(id_cliente).strip()
     cliente_existente = (
-        db.query(Clientes).filter(Clientes.ID_Cliente == id_cliente).first()
+        db.query(Clientes).filter(Clientes.ID_Cliente == id_str).first()
     )
     if not cliente_existente:
         return None
@@ -137,7 +144,8 @@ def actualizar_cliente(
     return cliente_existente
 
 # Buscar Cliente
-def buscar_cliente(db:Session, busqueda: str):
+def buscar_cliente(db: Session, busqueda: str):
+    busq_str = str(busqueda).strip() if busqueda is not None else ""
     clientes = (
         db.query(
             Clientes.ID_Cliente,
@@ -148,9 +156,9 @@ def buscar_cliente(db:Session, busqueda: str):
         )
         .filter(
             or_(
-                Clientes.ID_Cliente.like(f"%{busqueda}%"),
-                Clientes.Nombre.like(f"%{busqueda}%"),
-                Clientes.Apellido.like(f"%{busqueda}%"),
+                Clientes.ID_Cliente.like(f"%{busq_str}%"),
+                Clientes.Nombre.like(f"%{busq_str}%"),
+                Clientes.Apellido.like(f"%{busq_str}%"),
             )
         )
         .all()
@@ -158,15 +166,18 @@ def buscar_cliente(db:Session, busqueda: str):
     return clientes
 
 # Eliminar un cliente
-def eliminar_cliente(db: Session, id_cliente: int):
+def eliminar_cliente(db: Session, id_cliente):
     """
     Elimina un cliente por su ID.
     :param db: Sesión de base de datos.
     :param id_cliente: ID del cliente a eliminar.
     :return: True si se eliminó correctamente, False si no se encontró.
     """
+    if id_cliente is None:
+        return False
+    id_str = str(id_cliente).strip()
     cliente_existente = (
-        db.query(Clientes).filter(Clientes.ID_Cliente == id_cliente).first()
+        db.query(Clientes).filter(Clientes.ID_Cliente == id_str).first()
     )
     if not cliente_existente:
         return False

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database.database import Base
 
@@ -8,8 +8,8 @@ class DetalleFacturas(Base):
 
     ID_Detalle_Factura = Column(Integer, primary_key=True, autoincrement=True)
     Cantidad = Column(Integer, nullable=False)
-    Precio_unitario = Column(Float, nullable=False)
-    Subtotal = Column(Float, nullable=False)
+    Precio_unitario = Column(Numeric(12, 2, asdecimal=False), nullable=False)
+    Subtotal = Column(Numeric(12, 2, asdecimal=False), nullable=False)
 
     ID_Producto = Column(Integer, ForeignKey("PRODUCTOS.ID_Producto"))
     ID_Factura = Column(Integer, ForeignKey("FACTURA.ID_Factura"))
