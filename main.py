@@ -79,6 +79,14 @@ class MainWindow(QMainWindow):
         self.Login.BtnLogin.clicked.connect(self.iniciar_sesion)
         self.Login.InputPassword.returnPressed.connect(self.iniciar_sesion)
 
+        # Reproductor de inicio (suena al arrancar la aplicación)
+        self.player_inicio = QMediaPlayer()
+        self.audio_inicio = QAudioOutput()
+        self.player_inicio.setAudioOutput(self.audio_inicio)
+        self.audio_inicio.setVolume(1.0)
+        self.player_inicio.setSource(QUrl.fromLocalFile(os.path.abspath("assets/sonidos/Start.mp3")))
+        self.player_inicio.play()
+
         # Flujo de inicio: validar configuración existente
         self.verificar_o_iniciar_configuracion()
 
@@ -115,14 +123,6 @@ class MainWindow(QMainWindow):
     def abrir_asistente_configuracion(self):
         """Permite abrir el asistente desde cualquier parte del sistema (ej. ajustes)."""
         self.stacked_widget.setCurrentWidget(self.SetupWizard)
-
-        # Reproductor de inicio
-        self.player_inicio = QMediaPlayer()
-        self.audio_inicio = QAudioOutput()
-        self.player_inicio.setAudioOutput(self.audio_inicio)
-        self.audio_inicio.setVolume(1.0)
-        self.player_inicio.setSource(QUrl.fromLocalFile(os.path.abspath("assets/sonidos/Start.mp3")))
-        self.player_inicio.play()
 
     def crear_mainapp(self):
         if self.MainApp is not None:

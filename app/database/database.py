@@ -357,6 +357,70 @@ def poblar_datos_iniciales(target_engine=None):
                     except Exception:
                         pass
 
+            # 8. PRODUCTOS INICIALES — gestionado fuera con ORM (ver bloque siguiente)
+
         logger.info("Datos iniciales requeridos verificados/poblados con éxito.")
     except Exception as e:
         logger.error(f"Error al poblar datos iniciales: {e}")
+
+    # 8. PRODUCTOS INICIALES — usando ORM fuera del bloque with conn
+    try:
+        inspector2 = inspect(current_engine)
+        if "PRODUCTOS" in inspector2.get_table_names():
+            with current_engine.connect() as chk:
+                count_prod = chk.execute(text('SELECT COUNT(*) FROM "PRODUCTOS"')).scalar() or 0
+            if count_prod == 0:
+                logger.info("Insertando 20 productos iniciales con ORM...")
+                from app.controllers.producto_crud import crear_producto
+                productos_seed = [
+                    (1,  "Esmalte rojo",          2500,  6500),
+                    (2,  "Esmalte nude",           2500,  6500),
+                    (3,  "Esmalte base",           2800,  7000),
+                    (4,  "Esmalte brillo",         2800,  7000),
+                    (5,  "Removedor de esmalte",   4000,  9000),
+                    (6,  "Algodon paquete",        3000,  7000),
+                    (7,  "Lima de unas",           1200,  3500),
+                    (8,  "Lima pulidora",          1800,  4500),
+                    (9,  "Cortaunas",              3500,  8000),
+                    (10, "Empujador de cuticula",  2500,  6000),
+                    (11, "Aceite de cuticula",     5000, 11000),
+                    (12, "Crema para manos",       6500, 14000),
+                    (13, "Guantes desechables",    4500,  9500),
+                    (14, "Tapabocas paquete",      5000, 11000),
+                    (15, "Toallas desechables",    3500,  8000),
+                    (16, "Gel constructor",       12000, 25000),
+                    (17, "Primer para unas",       7000, 15000),
+                    (18, "Lampara UV",            45000, 85000),
+                    (19, "Brocha para gel",        3000,  7500),
+                    (20, "Decoracion para unas",   4000, 10000),
+                ]
+                db_seed = SessionLocal()
+                try:
+                    for (id_p, nombre, costo, pv1) in productos_seed:
+                        pv2 = round(pv1 * 0.9)
+                        pv3 = round(pv1 * 0.85)
+                        pv4 = round(pv1 * 0.8)
+                        try:
+                            crear_producto(
+                                db=db_seed,
+                                id_producto=id_p,
+                                nombre=nombre,
+                                precio_costo=costo,
+                                stock_actual=20,
+                                stock_min=5,
+                                precio_venta_1=pv1,
+                                precio_venta_2=pv2,
+                                precio_venta_3=pv3,
+                                precio_venta_4=pv4,
+                                id_marca=1,
+                                id_categoria=1,
+                            )
+                        except Exception as ep:
+                            logger.warning(f"Producto {id_p} ({nombre}) omitido: {ep}")
+                            db_seed.rollback()
+                    logger.info("20 productos iniciales insertados exitosamente.")
+                finally:
+                    db_seed.close()
+    except Exception as e:
+        logger.error(f"Error al insertar productos iniciales: {e}")
+
