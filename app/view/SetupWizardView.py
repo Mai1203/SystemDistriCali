@@ -248,7 +248,7 @@ class SetupWizardView(QWidget):
             QMessageBox.warning(self, "Contraseña requerida", "Por favor ingrese la contraseña del usuario 'postgres'.")
             return
 
-        self.lbl_srv_estado.setText("⏳ Configurando base de datos y usuario de red...")
+        self.lbl_srv_estado.setText("⏳ Configurando base de datos, reglas de red y Firewall de Windows...")
         self.lbl_srv_estado.setStyleSheet("color: #5C2454;")
 
         ok, msg = provision_database(
@@ -290,9 +290,14 @@ class SetupWizardView(QWidget):
                 if not ok_mig:
                     QMessageBox.warning(self, "Aviso de migración", f"Base creada pero ocurrió un detalle: {msg_mig}")
 
-        self.lbl_srv_estado.setText("✅ Servidor PostgreSQL configurado y tablas inicializadas con éxito.")
+        self.lbl_srv_estado.setText("✅ Servidor PostgreSQL, Firewall y reglas de red listos para recibir terminales.")
         self.lbl_srv_estado.setStyleSheet("color: #2E7D32; font-weight: bold;")
-        QMessageBox.information(self, "Éxito", "El servidor ha sido configurado y está listo para recibir terminales.")
+        QMessageBox.information(
+            self,
+            "Servidor Configurado Exitosamente",
+            "El servidor PostgreSQL, la regla del Firewall de Windows (puerto 5432) y las reglas de red (pg_hba) han sido configuradas automáticamente.\n\n"
+            f"Las terminales pueden conectarse usando la IP: {get_local_ip()}"
+        )
 
     # ─────────────────────────────────────────────────────────────
     # VISTA TERMINAL

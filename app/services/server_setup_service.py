@@ -69,6 +69,119 @@ def is_postgresql_service_running() -> bool:
             return False
 
 
+def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri - PostgreSQL 5432") -> Tuple[bool, str]:
+    """
+    Crea o verifica la regla en el Firewall de Windows para permitir conexiones entrantes en el puerto de PostgreSQL.
+    """
+    try:
+        # Verificar si la regla ya existe
+        check_cmd = f'netsh advfirewall firewall show rule name="{rule_name}"'
+        res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
+        if res.returncode == 0 and "Rule Name:" in res.stdout or "Nombre de regla:" in res.stdout:
+            logger.info(f"Regla de Firewall '{rule_name}' ya existe.")
+            return True, f"Regla de firewall '{rule_name}' ya configurada."
+
+        # Crear la regla
+        add_cmd = (
+            f'netsh advfirewall firewall add rule name="{rule_name}" '
+            f'dir=in action=allow protocol=TCP localport={port} profile=any'
+        )
+        add_res = subprocess.run(add_cmd, shell=True, capture_output=True, text=True)
+        if add_res.returncode == 0:
+            logger.info(f"Regla de Firewall para puerto {port} creada exitosamente.")
+            return True, f"Regla de Firewall para puerto {port} creada con éxito."
+        else:
+            err = add_res.stderr.strip() or add_res.stdout.strip()
+            logger.warning(f"No se pudo crear regla de firewall automáticamente: {err}")
+            return False, f"Aviso de firewall: {err}"
+    except Exception as e:
+        logger.warning(f"Excepción creando regla de firewall: {e}")
+        return False, str(e)
+
+
+def restart_postgresql_service() -> bool:
+    """Intenta reiniciar el servicio de PostgreSQL en Windows."""
+    try:
+        # Buscar el nombre exacto del servicio postgresql
+        output = subprocess.check_output("sc query state= all", shell=True, text=True, errors="ignore")
+        service_name = None
+        for line in output.splitlines():
+            line_clean = line.strip()
+            if line_clean.lower().startswith("service_name:") and "postgres" in line_clean.lower():
+                service_name = line_clean.split(":", 1)[1].strip()
+                break
+        
+        if service_name:
+            logger.info(f"Reiniciando servicio '{service_name}'...")
+            subprocess.run(f"net stop {service_name}", shell=True, capture_output=True)
+            res = subprocess.run(f"net start {service_name}", shell=True, capture_output=True)
+            return res.returncode == 0
+    except Exception as e:
+        logger.warning(f"No se pudo reiniciar el servicio de PostgreSQL automáticamente: {e}")
+    return False
+
+
+def configure_remote_access_in_postgresql(conn) -> Tuple[bool, str]:
+    """
+    Configura listen_addresses = '*' y añade reglas de acceso remoto en pg_hba.conf automáticamente.
+    """
+    try:
+        # 1. Configurar listen_addresses = '*'
+        try:
+            conn.execute(text("ALTER SYSTEM SET listen_addresses = '*'"))
+            logger.info("Configurado listen_addresses = '*' mediante ALTER SYSTEM.")
+        except Exception as e:
+            logger.warning(f"Aviso al configurar listen_addresses: {e}")
+
+        # 2. Localizar pg_hba.conf
+        hba_path_raw = conn.execute(text("SHOW hba_file")).scalar()
+        if hba_path_raw:
+            hba_file = Path(hba_path_raw)
+            if hba_file.exists():
+                contenido = ""
+                try:
+                    contenido = hba_file.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    try:
+                        contenido = hba_file.read_text(encoding="latin-1")
+                    except Exception:
+                        pass
+
+                # Verificar si ya existe regla para 0.0.0.0/0 o similar
+                regla_ipv4 = "host    all             all             0.0.0.0/0               scram-sha-256"
+                regla_ipv6 = "host    all             all             ::/0                    scram-sha-256"
+                
+                necesita_actualizar = False
+                lineas_nuevas = []
+                
+                if "0.0.0.0/0" not in contenido and "all             all             all" not in contenido:
+                    lineas_nuevas.append(regla_ipv4)
+                    necesita_actualizar = True
+                
+                if "::/0" not in contenido and "all             all             all" not in contenido:
+                    lineas_nuevas.append(regla_ipv6)
+                    necesita_actualizar = True
+
+                if necesita_actualizar:
+                    logger.info(f"Añadiendo reglas de acceso LAN a {hba_file}...")
+                    texto_a_anadir = "\n# Reglas de red añadidas automaticamente por SystemDistri\n" + "\n".join(lineas_nuevas) + "\n"
+                    with open(hba_file, "a", encoding="utf-8") as f:
+                        f.write(texto_a_anadir)
+                    logger.info("pg_hba.conf actualizado con éxito.")
+
+        # 3. Recargar configuración de PostgreSQL
+        try:
+            conn.execute(text("SELECT pg_reload_conf()"))
+            logger.info("PostgreSQL config reloaded via pg_reload_conf().")
+        except Exception as e:
+            logger.warning(f"Aviso al recargar config: {e}")
+
+        return True, "Reglas de acceso remoto de PostgreSQL configuradas."
+    except Exception as e:
+        logger.warning(f"Error configurando acceso remoto en PostgreSQL: {e}")
+        return False, str(e)
+
+
 def provision_database(
     admin_user: str = "postgres",
     admin_password: str = "",
@@ -83,6 +196,8 @@ def provision_database(
     1. Crear el usuario de aplicación si no existe.
     2. Crear la base de datos si no existe.
     3. Asignar permisos al usuario de aplicación sobre la base de datos y esquema public.
+    4. Configurar pg_hba.conf y listen_addresses para permitir acceso a las terminales.
+    5. Crear regla de Firewall en Windows para el puerto de PostgreSQL.
     """
     enc_admin_user = urllib.parse.quote_plus(admin_user)
     enc_admin_pass = urllib.parse.quote_plus(admin_password)
@@ -118,9 +233,12 @@ def provision_database(
                 logger.info(f"Base de datos '{db_name}' ya existe.")
                 conn.execute(text(f'ALTER DATABASE "{db_name}" OWNER TO "{app_user}"'))
 
+            # 3. Configurar pg_hba.conf y listen_addresses para admitir terminales
+            configure_remote_access_in_postgresql(conn)
+
         admin_engine.dispose()
 
-        # 3. Conectarse a la nueva base de datos para otorgar permisos en schema public
+        # 4. Conectarse a la nueva base de datos para otorgar permisos en schema public
         target_db_url = f"postgresql+psycopg2://{enc_admin_user}:{enc_admin_pass}@{host}:{port}/{db_name}?client_encoding=utf8"
         target_engine = create_engine(target_db_url, isolation_level="AUTOCOMMIT", connect_args={"connect_timeout": 5})
         with target_engine.connect() as conn:
@@ -131,8 +249,12 @@ def provision_database(
             conn.execute(text(f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO "{app_user}"'))
         target_engine.dispose()
 
-        logger.info("Base de datos y usuario de aplicación configurados exitosamente.")
-        return True, "Base de datos y usuario configurados correctamente."
+        # 5. Configurar regla de Firewall en Windows automáticamente
+        fw_ok, fw_msg = configure_windows_firewall(port=port)
+        logger.info(f"Estado de regla de firewall: {fw_msg}")
+
+        logger.info("Base de datos, permisos, red y firewall configurados exitosamente.")
+        return True, "Base de datos, permisos, acceso de red y Firewall configurados correctamente."
     except Exception as e:
         logger.error(f"Error durante el provisionamiento de PostgreSQL: {e}")
         return False, f"Error al aprovisionar PostgreSQL: {str(e)}"
