@@ -48,7 +48,7 @@ def detect_postgresql_installation() -> Tuple[bool, str]:
             return True, "Encontrado en PATH"
     except Exception:
         pass
-
+        
     return False, "No detectado en rutas estándar"
 
 
@@ -67,6 +67,110 @@ def is_postgresql_service_running() -> bool:
             return result == 0
         except Exception:
             return False
+
+def find_bundled_postgres_installer() -> Optional[Path]:
+    """
+    Busca el instalador de PostgreSQL 15 empaquetado junto a la aplicación o en la carpeta prerequisites.
+    """
+    import sys
+    rutas_busqueda = []
+    
+    # 1. Si está congelado por PyInstaller
+    if getattr(sys, "frozen", False):
+        base_dir = Path(sys.executable).parent
+        rutas_busqueda.append(base_dir / "prerequisites")
+        rutas_busqueda.append(base_dir / "installer")
+        rutas_busqueda.append(base_dir)
+        if hasattr(sys, "_MEIPASS"):
+            rutas_busqueda.append(Path(sys._MEIPASS) / "prerequisites")
+            rutas_busqueda.append(Path(sys._MEIPASS))
+    else:
+        # Modo desarrollo
+        app_root = Path(__file__).resolve().parent.parent.parent
+        rutas_busqueda.append(app_root / "prerequisites")
+        rutas_busqueda.append(app_root / "installer")
+        rutas_busqueda.append(app_root)
+
+    for ruta in rutas_busqueda:
+        if ruta.exists():
+            # Buscar cualquier instalador postgresql-*.exe
+            for exe in ruta.glob("postgresql*.exe"):
+                if exe.is_file():
+                    logger.info(f"Instalador de PostgreSQL encontrado en: {exe}")
+                    return exe
+
+    return None
+
+
+def wait_for_postgresql_service(port: int = 5432, timeout_seconds: int = 75) -> bool:
+    """Espera activamente a que el servicio de PostgreSQL esté levantado y respondiendo en el puerto."""
+    import time
+    inicio = time.time()
+    logger.info(f"Esperando inicio del servicio PostgreSQL en puerto {port} (máx {timeout_seconds}s)...")
+    while time.time() - inicio < timeout_seconds:
+        if is_postgresql_service_running():
+            logger.info("Servicio PostgreSQL verificado en estado RUNNING.")
+            return True
+        time.sleep(2)
+    return False
+
+
+def install_postgresql_silent(
+    installer_path: Path,
+    admin_password: str = "postgres",
+    port: int = 5432,
+    install_dir: str = r"C:\Program Files\PostgreSQL\15",
+    data_dir: str = r"C:\Program Files\PostgreSQL\15\data"
+) -> Tuple[bool, str]:
+    """
+    Ejecuta la instalación desatendida/silenciosa de PostgreSQL 15 (EDB).
+    Instala únicamente el servidor y herramientas de comandos (sin pgAdmin ni StackBuilder).
+    """
+    if not installer_path or not installer_path.exists():
+        return False, f"El archivo instalador no existe en: {installer_path}"
+
+    logger.info(f"Iniciando instalación desatendida de PostgreSQL 15 desde {installer_path}...")
+
+    # Parámetros para EnterpriseDB installer
+    args_list = (
+        f'--mode unattended '
+        f'--unattendedmodeui none '
+        f'--superpassword "{admin_password}" '
+        f'--servicepassword "{admin_password}" '
+        f'--serverport {port} '
+        f'--prefix "{install_dir}" '
+        f'--datadir "{data_dir}" '
+        f'--locale "C" '
+        f'--enable-components server,commandlinetools '
+        f'--disable-components pgAdmin,stackbuilder'
+    )
+
+    try:
+        # Ejecutar solicitando elevación de Administrador mediante PowerShell
+        escaped_installer = str(installer_path.resolve())
+        ps_cmd = (
+            f'Start-Process -FilePath "{escaped_installer}" '
+            f'-ArgumentList \'{args_list}\' '
+            f'-Verb RunAs -Wait -WindowStyle Hidden'
+        )
+
+        logger.info("Ejecutando instalador con permisos de Administrador...")
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True)
+
+        # Esperar a que el servicio arranque
+        if wait_for_postgresql_service(port=port, timeout_seconds=90):
+            logger.info("PostgreSQL 15 instalado y servicio iniciado con éxito.")
+            return True, "PostgreSQL 15 instalado y servicio en ejecución correctamente."
+        else:
+            # Comprobar si se instalaron los archivos aunque el servicio tarde
+            installed, path_det = detect_postgresql_installation()
+            if installed:
+                return True, f"PostgreSQL instalado en {path_det}. Iniciando servicio..."
+            return False, "La instalación terminó pero el servicio de PostgreSQL no respondió a tiempo."
+
+    except Exception as e:
+        logger.error(f"Error durante la instalación silenciosa de PostgreSQL: {e}")
+        return False, f"Fallo en la instalación: {str(e)}"
 
 
 def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri - PostgreSQL 5432") -> Tuple[bool, str]:

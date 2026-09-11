@@ -27,6 +27,8 @@ from app.services.server_setup_service import (
     detect_postgresql_installation,
     is_postgresql_service_running,
     provision_database,
+    find_bundled_postgres_installer,
+    install_postgresql_silent,
 )
 from app.services.migration_service import migrate_sqlite_to_postgres
 from app.utils.logger import logger
@@ -270,6 +272,7 @@ class SetupWizardView(QWidget):
     def cambiar_pestana(self):
         if self.rb_servidor.isChecked():
             self.stacked_widget.setCurrentWidget(self.vista_servidor)
+            self.actualizar_deteccion_postgresql()
         elif self.rb_terminal.isChecked():
             self.stacked_widget.setCurrentWidget(self.vista_terminal)
         elif self.rb_local.isChecked():
@@ -291,6 +294,35 @@ class SetupWizardView(QWidget):
         info_layout.addWidget(self.lbl_ip_info)
         layout.addWidget(grupo_info)
 
+        # Panel de Estado / Instalación de PostgreSQL
+        self.grupo_pg_estado = QGroupBox("Estado del Motor PostgreSQL")
+        pg_estado_layout = QVBoxLayout(self.grupo_pg_estado)
+
+        self.lbl_pg_detectado = QLabel("🔍 Verificando instalación de PostgreSQL...")
+        self.lbl_pg_detectado.setStyleSheet("font-size: 13px; font-weight: bold;")
+        pg_estado_layout.addWidget(self.lbl_pg_detectado)
+
+        self.btn_instalar_pg = QPushButton("🚀 Instalar PostgreSQL 15 en Segundo Plano")
+        self.btn_instalar_pg.setObjectName("btnSecundario")
+        self.btn_instalar_pg.setStyleSheet("""
+            QPushButton#btnSecundario {
+                background-color: #2E7D32;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton#btnSecundario:hover {
+                background-color: #388E3C;
+            }
+        """)
+        self.btn_instalar_pg.clicked.connect(self.instalar_postgresql_servidor)
+        self.btn_instalar_pg.setVisible(False)
+        pg_estado_layout.addWidget(self.btn_instalar_pg)
+
+        layout.addWidget(self.grupo_pg_estado)
+
         grupo_db = QGroupBox("Parámetros de Base de Datos PostgreSQL")
         db_layout = QVBoxLayout(grupo_db)
 
@@ -298,7 +330,7 @@ class SetupWizardView(QWidget):
         db_layout.addWidget(QLabel("Contraseña de Administrador PostgreSQL ('postgres'):"))
         self.input_srv_admin_pass = QLineEdit()
         self.input_srv_admin_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_srv_admin_pass.setPlaceholderText("Contraseña del usuario postgres instalada en este equipo")
+        self.input_srv_admin_pass.setPlaceholderText("Contraseña del usuario postgres (por defecto: postgres o la elegida)")
         db_layout.addWidget(self.input_srv_admin_pass)
 
         # Contraseña de la app
@@ -322,7 +354,82 @@ class SetupWizardView(QWidget):
 
         layout.addWidget(grupo_db)
         layout.addStretch()
+
+        self.actualizar_deteccion_postgresql()
         return widget
+
+    def actualizar_deteccion_postgresql(self):
+        """Verifica si PostgreSQL está instalado en el equipo y actualiza la UI."""
+        instalado, ruta = detect_postgresql_installation()
+        if instalado:
+            self.lbl_pg_detectado.setText(f"🟢 PostgreSQL detectado en el equipo ({ruta})")
+            self.lbl_pg_detectado.setStyleSheet("color: #2E7D32; font-size: 13px; font-weight: bold;")
+            self.btn_instalar_pg.setVisible(False)
+        else:
+            self.lbl_pg_detectado.setText("🟠 PostgreSQL no está instalado en este equipo.")
+            self.lbl_pg_detectado.setStyleSheet("color: #D84315; font-size: 13px; font-weight: bold;")
+            self.btn_instalar_pg.setVisible(True)
+
+    def instalar_postgresql_servidor(self):
+        """Inicia la instalación silenciosa de PostgreSQL 15 en segundo plano."""
+        installer_path = find_bundled_postgres_installer()
+        if not installer_path:
+            QMessageBox.warning(
+                self,
+                "Instalador no encontrado",
+                "No se encontró el instalador de PostgreSQL 15 en la carpeta 'prerequisites/'.\n\n"
+                "Por favor asegúrese de colocar el archivo 'postgresql-15.x-windows-x64.exe' en la carpeta de la aplicación."
+            )
+            return
+
+        admin_pass = self.input_srv_admin_pass.text().strip() or "postgres"
+        self.input_srv_admin_pass.setText(admin_pass)
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirmar Instalación de PostgreSQL 15",
+            "El sistema instalará el motor de PostgreSQL 15 como servicio de Windows en segundo plano.\n\n"
+            f"• Contraseña de 'postgres': {admin_pass}\n"
+            "• Puerto: 5432\n\n"
+            "¿Desea iniciar la instalación ahora?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        self.set_loading(True, "⏳ Instalando servicio PostgreSQL 15 en segundo plano (puede demorar aprox. 1 minuto)...")
+        self.lbl_srv_estado.setText("⏳ Instalando PostgreSQL 15 en segundo plano... Por favor acepte el diálogo de permisos de Windows.")
+        self.lbl_srv_estado.setStyleSheet("color: #5C2454; font-weight: bold;")
+
+        def _task():
+            ok_inst, msg_inst = install_postgresql_silent(
+                installer_path=installer_path,
+                admin_password=admin_pass,
+                port=5432
+            )
+            return ok_inst, msg_inst
+
+        self._worker = WorkerThread(_task)
+        self._worker.finished_signal.connect(self._on_instalacion_pg_finalizada)
+        self._worker.error_signal.connect(self._on_aprovisionar_error)
+        self._worker.start()
+
+    def _on_instalacion_pg_finalizada(self, result):
+        self.set_loading(False)
+        ok_inst, msg_inst = result
+        self.actualizar_deteccion_postgresql()
+
+        if not ok_inst:
+            self.lbl_srv_estado.setText(f"❌ {msg_inst}")
+            self.lbl_srv_estado.setStyleSheet("color: #B00020; font-weight: bold;")
+            QMessageBox.critical(self, "Error en Instalación", msg_inst)
+            return
+
+        self.lbl_srv_estado.setText("✅ PostgreSQL 15 instalado. Procediendo a configurar base de datos y Firewall...")
+        self.lbl_srv_estado.setStyleSheet("color: #2E7D32; font-weight: bold;")
+
+        # Aprovisionar inmediatamente de forma automática
+        self.aprovisionar_servidor()
 
     def aprovisionar_servidor(self):
         admin_pass = self.input_srv_admin_pass.text().strip()
