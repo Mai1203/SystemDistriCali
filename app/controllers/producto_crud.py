@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from sqlalchemy import or_
+from sqlalchemy import func, or_, cast, String
 from app.models.productos import Productos
 from app.models.productos import Marcas
 from app.models.productos import Categorias
@@ -217,7 +216,7 @@ def buscar_productos(db: Session, busqueda: str):
         .filter(
             or_(
                 Productos.Nombre.like(f"%{busqueda}%"),
-                Productos.ID_Producto.like(f"%{busqueda}%"),
+                cast(Productos.ID_Producto, String).like(f"%{busqueda}%"),
                 Marcas.Nombre.like(f"%{busqueda}%"),
                 Categorias.Nombre.like(f"%{busqueda}%"),
             )

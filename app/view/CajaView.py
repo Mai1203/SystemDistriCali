@@ -584,6 +584,9 @@ class Caja_View(QWidget, Ui_Caja):
                 buscar=buscar
             )
 
+            self.limpiar_tabla()
+
+
             self.actualizar_tabla(
                 caja=caja
             )

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, cast, String
 from datetime import datetime
 from app.models.venta_credito import (
     VentaCredito,
@@ -167,9 +167,9 @@ def buscar_ventas_credito(db: Session, busqueda: str):
             and_(
                 TipoFactura.Nombre == "FAC-CREDITO",
                 or_(
-                VentaCredito.ID_Venta_Credito.like(f"%{busqueda}%"),
-                Facturas.ID_Factura.like(f"%{busqueda}%"),
-                VentaCredito.Fecha_Registro.like(f"%{busqueda}%"),
+                cast(VentaCredito.ID_Venta_Credito, String).like(f"%{busqueda}%"),
+                cast(Facturas.ID_Factura, String).like(f"%{busqueda}%"),
+                cast(VentaCredito.Fecha_Registro, String).like(f"%{busqueda}%"),
                 Clientes.Nombre.like(f"%{busqueda}%"),
                 ),
             )

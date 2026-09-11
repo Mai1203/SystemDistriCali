@@ -21,6 +21,32 @@ def field_style():
             color: {TEXT}; font: 13px {FONT}; min-height: 28px;
         }}
         QLineEdit:focus, QComboBox:focus {{ border: 2px solid {PRIMARY}; }}
+        QComboBox::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 24px;
+            border-left: 1px solid {DIVIDER};
+        }}
+        QComboBox::down-arrow {{
+            image: none; /* Can be customized if needed */
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {CARD};
+            border: 1px solid {DIVIDER};
+            selection-background-color: #FBEFF7;
+            selection-color: {PRIMARY};
+            border-radius: 4px;
+            outline: none;
+        }}
+        QComboBox QAbstractItemView::item {{
+            min-height: 28px;
+            padding: 4px;
+            color: {TEXT};
+        }}
+        QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selected {{
+            background-color: #FBEFF7;
+            color: {PRIMARY};
+        }}
     """
 
 

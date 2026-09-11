@@ -59,6 +59,7 @@ class Productos_View(QWidget, Ui_Productos):
             "Buscar por código, Nombre, Marca o Categoria"
         )
         self.InputBuscador.textChanged.connect(self.buscar_productos)
+        self.ComboOrden.currentIndexChanged.connect(self.cambiar_orden)
 
         self.db = SessionLocal()
 
@@ -223,9 +224,15 @@ class Productos_View(QWidget, Ui_Productos):
         self.Contenido.setCurrentWidget(self.PanelListado)
         self.InputBuscador.clear()
         self.limpiar_tabla_productos()
+        self.ComboOrden.setCurrentIndex(0)
         self.mostrar_productos()
         self.limpiar_formulario()
         self.InputBuscador.setFocus()
+
+    def cambiar_orden(self):
+        orden = self.ComboOrden.currentText()
+        reverse = orden == "ID Mayor a Menor"
+        self.mostrar_productos(reverse=reverse)
 
     def agregar_placeholder(self):
         """Muestra precios sugeridos (20%, 25%, 30%, 35% de margen) como placeholder."""
@@ -297,12 +304,18 @@ class Productos_View(QWidget, Ui_Productos):
         self.actualizar_tabla_productos(productos)
         self.db.close()
 
-    def actualizar_tabla_productos(self, productos):
+    def actualizar_tabla_productos(self, productos, reverse=True):
         """Rellena la QTableWidget con la lista de productos."""
         if not productos:
             self.TablaProductos.setRowCount(0)
             self.LabelTotalCp.setText("$0.00")
             return
+
+        # Ordenar según ComboOrden
+        try:
+            productos = sorted(productos, key=lambda x: x.ID_Producto, reverse=reverse)
+        except Exception:
+            pass
 
         COLS = [
             "Código","Nombre","Marca","Categoria","Stock","CMin",
@@ -403,10 +416,10 @@ class Productos_View(QWidget, Ui_Productos):
         self.Contenido.setCurrentWidget(self.PanelFormulario)
         self.FormularioScroll.verticalScrollBar().setValue(0)
 
-    def mostrar_productos(self):
+    def mostrar_productos(self, reverse=True):
         self.db = SessionLocal()
         rows = obtener_productos(self.db)
-        self.actualizar_tabla_productos(rows)
+        self.actualizar_tabla_productos(rows, reverse=reverse)
         self.db.close()
 
     def limpiar_tabla_productos(self):

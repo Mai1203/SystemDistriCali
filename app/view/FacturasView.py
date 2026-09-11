@@ -47,6 +47,7 @@ class Facturas_View(QWidget, Ui_Facturas):
         self.BtnEditarFactura.clicked.connect(self.editar_factura)
         self.BtnVerCancelarVenta.clicked.connect(self.cancelar_venta)
         self.BtnImprimirTicket.clicked.connect(self.imprimir_ticket)
+        self.ComboOrden.currentIndexChanged.connect(self.cambiar_orden)
 
         # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
         QTimer.singleShot(50, self._adapt_current)
@@ -66,6 +67,12 @@ class Facturas_View(QWidget, Ui_Facturas):
         self.limpiar_tabla_facturas()
         self.mostrar_facturas()
         self.InputBuscador.clear()
+        self.ComboOrden.setCurrentIndex(0)
+
+    def cambiar_orden(self):
+        orden = self.ComboOrden.currentText()
+        reverse = orden == "ID Mayor a Menor"
+        self.mostrar_facturas(reverse=reverse)
                         
     
     def cancelar_venta(self):
@@ -107,12 +114,12 @@ class Facturas_View(QWidget, Ui_Facturas):
         self.mostrar_facturas()
         enviar_notificacion("Éxito", "Factura(s) cancelada(s) correctamente.")
         
-    def mostrar_facturas(self):
+    def mostrar_facturas(self, reverse=True):
         # Obtener datos de la tabla
         self.db = SessionLocal()
         rows = obtener_facturas(self.db)
 
-        self.actualizar_tabla_facturas(rows)
+        self.actualizar_tabla_facturas(rows, reverse=reverse)
         print("Mostrar facturas en la tabla")
 
         # Cerrar la conexión a la base de datos
@@ -121,7 +128,7 @@ class Facturas_View(QWidget, Ui_Facturas):
     def limpiar_tabla_facturas(self):
         self.TablaFacturas.setRowCount(0)
 
-    def actualizar_tabla_facturas(self, rows):
+    def actualizar_tabla_facturas(self, rows, reverse=True):
         if not rows:
             print("No hay filas para mostrar.")
             self.TablaFacturas.setRowCount(0)
@@ -130,8 +137,8 @@ class Facturas_View(QWidget, Ui_Facturas):
         try:
             self.TablaFacturas.setRowCount(0)
 
-             # Ordenar filas por ID en orden descendente (de mayor a menor)
-            rows.sort(key=lambda x: x.ID_Factura, reverse=False)
+            # Ordenar según la selección del ComboOrden
+            rows.sort(key=lambda x: x.ID_Factura, reverse=reverse)
             # Iterar sobre las filas
             for row_idx, row in enumerate(rows):
                 # Datos de la fila

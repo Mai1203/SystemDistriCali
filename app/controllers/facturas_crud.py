@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, cast, String
 from sqlalchemy import func, case
 from app.models.facturas import Facturas, MetodoPago, TipoFactura
 from app.models.detalle_facturas import DetalleFacturas
@@ -215,12 +215,12 @@ def buscar_facturas(db: Session, busqueda: str):
             and_(
                 TipoFactura.Nombre.in_(("FAC-01", "FAC-02", "FAC-03", "FAC-04")),
                 or_(
-                Facturas.ID_Factura.like(f"%{busqueda}%"),
-                Facturas.Fecha_Factura.like(f"%{busqueda}%"),
+                cast(Facturas.ID_Factura, String).like(f"%{busqueda}%"),
+                cast(Facturas.Fecha_Factura, String).like(f"%{busqueda}%"),
                 TipoFactura.Nombre.like(f"%{busqueda}%"),
                 Clientes.Nombre.like(f"%{busqueda}%"),
                 MetodoPago.Nombre.like(f"%{busqueda}%"),
-                Facturas.Estado.like(f"%{busqueda}%"),
+                cast(Facturas.Estado, String).like(f"%{busqueda}%"),
                 ),
             )
         )

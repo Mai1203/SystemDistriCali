@@ -51,21 +51,45 @@ def _sp_hfix(w: QtWidgets.QWidget):
 #  Hojas de estilo (QSS)
 # ─────────────────────────────────────────────────────────────────
 _INPUT_QSS = f"""
-    QLineEdit {{
+    QLineEdit, QComboBox {{
         background-color: {_CARD_BG};
         border: 1px solid {_BORDER};
         border-radius: 8px;
-        padding: 0px 12px 0px 36px;
+        padding: 0px 12px;
         font-size: 13px;
         color: {_TEXT};
         font-family: {_FONT};
     }}
-    QLineEdit:focus {{
+    QLineEdit:focus, QComboBox:focus {{
         border: 1.5px solid {_PRIMARY};
         background-color: {_FOCUS_BG};
     }}
-    QLineEdit:hover {{
+    QLineEdit:hover, QComboBox:hover {{
         border-color: {_BORDER_H};
+    }}
+    QComboBox::drop-down {{
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 24px;
+        border-left: 1px solid {_DIVIDER};
+    }}
+    QComboBox QAbstractItemView {{
+        background-color: {_CARD_BG};
+        border: 1px solid {_DIVIDER};
+        selection-background-color: #FBEFF7;
+        selection-color: {_PRIMARY};
+        border-radius: 4px;
+        outline: none;
+    }}
+    QComboBox QAbstractItemView::item {{
+        min-height: 28px;
+        padding: 4px 8px;
+        color: {_TEXT};
+    }}
+    QComboBox QAbstractItemView::item:hover,
+    QComboBox QAbstractItemView::item:selected {{
+        background-color: #FBEFF7;
+        color: {_PRIMARY};
     }}
 """
 
@@ -300,6 +324,23 @@ class Ui_Facturas(object):
         self.InputBuscador.setStyleSheet(_INPUT_QSS)
         self.InputBuscador.setClearButtonEnabled(True)
         searchRow.addWidget(self.InputBuscador, 1)
+
+        icon_sort = qta.icon("fa5s.sort", color=_PRIMARY).pixmap(16, 16)
+        self.label_sort = QtWidgets.QLabel(parent=self.frame_header)
+        self.label_sort.setObjectName("label_sort")
+        self.label_sort.setFixedSize(20, 20)
+        self.label_sort.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.label_sort.setPixmap(icon_sort)
+        self.label_sort.setScaledContents(True)
+        searchRow.addWidget(self.label_sort)
+
+        self.ComboOrden = QtWidgets.QComboBox(parent=self.frame_header)
+        self.ComboOrden.setObjectName("ComboOrden")
+        _sp_hfix(self.ComboOrden)
+        self.ComboOrden.setMinimumHeight(_CTRL_MIN_H)
+        self.ComboOrden.setStyleSheet(_INPUT_QSS)
+        self.ComboOrden.addItems(["ID Mayor a Menor", "ID Menor a Mayor"])
+        searchRow.addWidget(self.ComboOrden, 0)
 
         header_layout.addLayout(searchRow, 1, 0, 1, 1)
 

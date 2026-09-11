@@ -61,21 +61,48 @@ def _sp_hfix(w: QtWidgets.QWidget):
 #  Hojas de estilo (QSS)
 # ─────────────────────────────────────────────────────────────────
 _INPUT_QSS = f"""
-    QLineEdit {{
+    QLineEdit, QComboBox {{
         background-color: {_CARD_BG};
         border: 1px solid {_BORDER};
         border-radius: 8px;
-        padding: 0px 12px 0px 36px;
+        padding: 0px 12px 0px 12px;
         font-size: 13px;
         color: {_TEXT};
         font-family: {_FONT};
     }}
-    QLineEdit:focus {{
+    QLineEdit:focus, QComboBox:focus {{
         border: 1.5px solid {_PRIMARY};
         background-color: {_FOCUS_BG};
     }}
-    QLineEdit:hover {{
+    QLineEdit:hover, QComboBox:hover {{
         border-color: {_BORDER_H};
+    }}
+    QComboBox::drop-down {{
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 24px;
+        border-left: 1px solid {_DIVIDER};
+    }}
+    QComboBox QAbstractItemView {{
+        background-color: {_CARD_BG};
+        border: 1px solid {_DIVIDER};
+        selection-background-color: #FBEFF7;
+        selection-color: {_PRIMARY};
+        border-radius: 4px;
+        outline: none;
+    }}
+    QComboBox QAbstractItemView::item {{
+        min-height: 28px;
+        padding: 4px;
+        color: {_TEXT};
+    }}
+    QComboBox QAbstractItemView::item:hover {{
+        background-color: #FBEFF7;
+        color: {_PRIMARY};
+    }}
+    QComboBox QAbstractItemView::item:selected {{
+        background-color: #FBEFF7;
+        color: {_PRIMARY};
     }}
 """
 

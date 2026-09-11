@@ -440,6 +440,62 @@ class Ui_Productos(object):
         tf_layout.addWidget(self.LabelTotalCp)
 
         search_row.addWidget(search_frame, stretch=3)
+
+        # ComboOrden — filtro de ordenamiento
+        sort_frame = QtWidgets.QFrame(parent=search_container)
+        sort_frame.setObjectName("Card")
+        sort_frame.setFixedHeight(44)
+        so_layout = QtWidgets.QHBoxLayout(sort_frame)
+        so_layout.setContentsMargins(10, 0, 10, 0)
+        so_layout.setSpacing(6)
+
+        sort_icon_lbl = QtWidgets.QLabel(parent=sort_frame)
+        sort_icon_lbl.setPixmap(qta.icon("fa5s.sort", color=_PRIMARY).pixmap(14, 14))
+        sort_icon_lbl.setFixedSize(16, 16)
+
+        self.ComboOrden = QtWidgets.QComboBox(parent=sort_frame)
+        self.ComboOrden.setObjectName("ComboOrden")
+        self.ComboOrden.addItems(["ID Mayor a Menor", "ID Menor a Mayor"])
+        self.ComboOrden.setStyleSheet(
+            f"""
+            QComboBox {{
+                border: none; background: transparent;
+                font-size: 13px; color: {_TEXT};
+                font-family: 'Segoe UI';
+                padding: 0px;
+            }}
+            QComboBox::drop-down {{
+                width: 18px; border: none;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {_CARD_BG};
+                border: 1px solid {_BORDER};
+                selection-background-color: #FBEFF7;
+                selection-color: {_PRIMARY};
+                border-radius: 6px;
+                outline: none;
+            }}
+            QComboBox QAbstractItemView::item {{
+                min-height: 28px; padding: 4px 8px;
+                color: {_TEXT};
+            }}
+            QComboBox QAbstractItemView::item:hover,
+            QComboBox QAbstractItemView::item:selected {{
+                background-color: #FBEFF7;
+                color: {_PRIMARY};
+            }}
+            """
+        )
+
+        so_layout.addWidget(sort_icon_lbl)
+        so_layout.addWidget(self.ComboOrden)
+        sort_frame.setStyleSheet(
+            f"QFrame#Card {{ background: {_CARD_BG}; border: 1.5px solid {_BORDER}; "
+            f"border-radius: 10px; }}"
+            f"QFrame#Card:focus-within {{ border-color: {_BORDER_FOCUS}; }}"
+        )
+
+        search_row.addWidget(sort_frame)
         search_row.addStretch()
         search_row.addWidget(total_frame)
         listado.addWidget(search_container)

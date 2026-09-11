@@ -85,13 +85,58 @@ class ControlUsuario_View(
 
 
         self.comboPermisos.setMinimumHeight(
-            28
+            34
         )
-
 
         self.comboPermisos.setPlaceholderText(
             "Seleccione los permisos"
         )
+
+        self.comboPermisos.setStyleSheet("""
+            QComboBox {
+                background: #FFFFFF;
+                border: 1px solid #D8C8D5;
+                border-radius: 8px;
+                padding: 7px 10px;
+                color: #201A24;
+                font: 13px 'Segoe UI', Arial, sans-serif;
+                min-height: 34px;
+            }
+            QComboBox:focus {
+                border: 2px solid #862D6D;
+            }
+            QComboBox:hover {
+                border-color: #A97099;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 28px;
+                border-left: 1px solid #D8C8D5;
+                border-radius: 0 8px 8px 0;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #D8C8D5;
+                selection-background-color: #FBEFF7;
+                selection-color: #862D6D;
+                border-radius: 4px;
+                outline: none;
+            }
+            QComboBox QAbstractItemView::item {
+                min-height: 30px;
+                padding: 4px 8px;
+                color: #201A24;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #FBEFF7;
+                color: #862D6D;
+            }
+            QComboBox QAbstractItemView::item:selected {
+                background-color: #FBEFF7;
+                color: #862D6D;
+            }
+        """)
 
 
         # ============================================================

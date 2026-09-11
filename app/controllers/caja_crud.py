@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, cast, String
 from datetime import datetime
 
 from app.models.caja import Caja
@@ -93,8 +93,8 @@ def buscar_cajas(db: Session, buscar: str):
         .filter(
             or_(
                 Usuarios.Nombre.like(f"%{buscar}%"),
-                Caja.ID_Caja.like(f"%{buscar}%"),
-                Caja.Fecha_Apertura.like(f"%{buscar}%"),
+                cast(Caja.ID_Caja, String).like(f"%{buscar}%"),
+                cast(Caja.Fecha_Apertura, String).like(f"%{buscar}%"),
             )
         )
         .all()
