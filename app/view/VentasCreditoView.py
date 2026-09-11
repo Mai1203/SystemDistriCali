@@ -383,22 +383,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         return fecha_futura.replace(microsecond=0)
 
     def generar_venta(self):
-        # Verificar que haya una caja abierta
-        try:
-            _db = SessionLocal()
-            cajas = obtener_cajas(db=_db)
-            _db.close()
-            caja_abierta = any(c.Estado is True for c in cajas)
-        except Exception:
-            caja_abierta = False
-        if not caja_abierta:
-            QMessageBox.critical(
-                self, "⚠️ Caja cerrada",
-                "No puedes realizar ventas si la caja no está abierta.\n"
-                "Por favor abre la caja antes de continuar."
-            )
-            return
-
         if self.TablaVentasCredito.rowCount() == 0:
             QMessageBox.warning(self, "Error", "No hay productos en la venta.")
             self.InputCodigo.setFocus()
@@ -794,6 +778,24 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             return 0.0
 
     def procesar_codigo(self):
+        # Verificar que haya una caja abierta
+        try:
+            _db = SessionLocal()
+            cajas = obtener_cajas(db=_db)
+            _db.close()
+            caja_abierta = any(c.Estado is True for c in cajas)
+        except Exception:
+            caja_abierta = False
+        if not caja_abierta:
+            QMessageBox.critical(
+                self, "⚠️ Caja cerrada",
+                "No puedes realizar ventas si la caja no está abierta.\n"
+                "Por favor abre la caja antes de continuar."
+            )
+            self.InputCodigo.clear()
+            self.InputNombre.clear()
+            return
+
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
         idx_precio = self.comboBoxPrecio.currentIndex()
