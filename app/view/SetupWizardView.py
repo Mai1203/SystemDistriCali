@@ -12,10 +12,11 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QCheckBox,
     QProgressBar,
+    QApplication,
 )
 from pathlib import Path
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtGui import QFont, QIcon, QCursor
 
 from app.database.config import DatabaseConfig, save_config, load_config, DEFAULT_SQLITE_PATH
 from app.database.engine import reset_engine
@@ -31,11 +32,32 @@ from app.services.migration_service import migrate_sqlite_to_postgres
 from app.utils.logger import logger
 
 
+class WorkerThread(QThread):
+    """Hilo genérico de fondo para operaciones que puedan bloquear la interfaz."""
+    finished_signal = pyqtSignal(object)
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, func, *args, **kwargs):
+        super().__init__()
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        try:
+            res = self.func(*self.args, **self.kwargs)
+            self.finished_signal.emit(res)
+        except Exception as e:
+            logger.exception(f"Error en WorkerThread: {e}")
+            self.error_signal.emit(str(e))
+
+
 class SetupWizardView(QWidget):
     configuracion_finalizada = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._worker = None
         self.setWindowTitle("Asistente de Configuración - System Distri Magik")
         self.resize(750, 600)
         self.setStyleSheet("""
@@ -68,6 +90,10 @@ class SetupWizardView(QWidget):
             QLineEdit:focus {
                 border: 2px solid #5C2454;
             }
+            QLineEdit:disabled {
+                background-color: #F4EFF3;
+                color: #888888;
+            }
             QPushButton {
                 background-color: #5C2454;
                 color: white;
@@ -82,6 +108,10 @@ class SetupWizardView(QWidget):
             QPushButton:pressed {
                 background-color: #42193C;
             }
+            QPushButton:disabled {
+                background-color: #A38C9E;
+                color: #EFEAEF;
+            }
             QPushButton#btnSecundario {
                 background-color: #ECE5EB;
                 color: #5C2454;
@@ -89,6 +119,11 @@ class SetupWizardView(QWidget):
             }
             QPushButton#btnSecundario:hover {
                 background-color: #DFD4DE;
+            }
+            QPushButton#btnSecundario:disabled {
+                background-color: #F5F0F4;
+                color: #B0A2AD;
+                border: 1px solid #E0D8DF;
             }
             QRadioButton {
                 font-size: 14px;
@@ -98,6 +133,20 @@ class SetupWizardView(QWidget):
             QRadioButton::indicator {
                 width: 18px;
                 height: 18px;
+            }
+            QProgressBar {
+                border: 1px solid #D0C2CE;
+                border-radius: 6px;
+                text-align: center;
+                height: 18px;
+                background-color: #F3EBF1;
+                color: #5C2454;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5C2454, stop:1 #9E3E91);
+                border-radius: 5px;
             }
         """)
 
@@ -150,22 +199,23 @@ class SetupWizardView(QWidget):
         self.stacked_widget.addWidget(self.vista_local)
         main_layout.addWidget(self.stacked_widget, 1)
 
-        # Barra de progreso para migraciones o aprovisionamiento
+        # Barra de progreso y estado de carga
+        self.contenedor_carga = QWidget()
+        layout_carga = QVBoxLayout(self.contenedor_carga)
+        layout_carga.setContentsMargins(0, 0, 0, 0)
+        layout_carga.setSpacing(4)
+
+        self.lbl_estado_carga = QLabel("")
+        self.lbl_estado_carga.setStyleSheet("color: #5C2454; font-size: 12px; font-weight: bold;")
+        self.lbl_estado_carga.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self.progreso = QProgressBar()
-        self.progreso.setVisible(False)
-        self.progreso.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #D0C2CE;
-                border-radius: 5px;
-                text-align: center;
-                height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #5C2454;
-                border-radius: 4px;
-            }
-        """)
-        main_layout.addWidget(self.progreso)
+        self.progreso.setTextVisible(False)
+
+        layout_carga.addWidget(self.lbl_estado_carga)
+        layout_carga.addWidget(self.progreso)
+        self.contenedor_carga.setVisible(False)
+        main_layout.addWidget(self.contenedor_carga)
 
         # Botones de acción inferiores
         btn_layout = QHBoxLayout()
@@ -183,6 +233,39 @@ class SetupWizardView(QWidget):
             self.rb_terminal.setChecked(True)
         else:
             self.rb_local.setChecked(True)
+
+    def set_loading(self, is_loading: bool, message: str = ""):
+        """Activa o desactiva los indicadores visuales de carga en la interfaz."""
+        if is_loading:
+            self.contenedor_carga.setVisible(True)
+            self.lbl_estado_carga.setText(message)
+            self.progreso.setRange(0, 0)  # Modo indeterminado / animado continuo
+            QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+        else:
+            self.contenedor_carga.setVisible(False)
+            self.lbl_estado_carga.setText("")
+            self.progreso.setRange(0, 100)
+            self.progreso.setValue(0)
+            QApplication.restoreOverrideCursor()
+
+        # Deshabilitar/habilitar controles para prevenir doble envío
+        self.btn_guardar.setEnabled(not is_loading)
+        self.rb_servidor.setEnabled(not is_loading)
+        self.rb_terminal.setEnabled(not is_loading)
+        self.rb_local.setEnabled(not is_loading)
+
+        if hasattr(self, 'btn_srv_probar'):
+            self.btn_srv_probar.setEnabled(not is_loading)
+            self.input_srv_admin_pass.setEnabled(not is_loading)
+            self.input_srv_app_pass.setEnabled(not is_loading)
+            self.chk_migrar_sqlite.setEnabled(not is_loading)
+
+        if hasattr(self, 'btn_term_test'):
+            self.btn_term_test.setEnabled(not is_loading)
+            self.input_term_ip.setEnabled(not is_loading)
+            self.input_term_port.setEnabled(not is_loading)
+            self.input_term_user.setEnabled(not is_loading)
+            self.input_term_pass.setEnabled(not is_loading)
 
     def cambiar_pestana(self):
         if self.rb_servidor.isChecked():
@@ -228,12 +311,13 @@ class SetupWizardView(QWidget):
         self.chk_migrar_sqlite.setChecked(True)
         db_layout.addWidget(self.chk_migrar_sqlite)
 
-        btn_srv_probar = QPushButton("Configurar / Inicializar Servidor")
-        btn_srv_probar.setObjectName("btnSecundario")
-        btn_srv_probar.clicked.connect(self.aprovisionar_servidor)
-        db_layout.addWidget(btn_srv_probar)
+        self.btn_srv_probar = QPushButton("Configurar / Inicializar Servidor")
+        self.btn_srv_probar.setObjectName("btnSecundario")
+        self.btn_srv_probar.clicked.connect(self.aprovisionar_servidor)
+        db_layout.addWidget(self.btn_srv_probar)
 
         self.lbl_srv_estado = QLabel("")
+        self.lbl_srv_estado.setWordWrap(True)
         db_layout.addWidget(self.lbl_srv_estado)
 
         layout.addWidget(grupo_db)
@@ -243,52 +327,71 @@ class SetupWizardView(QWidget):
     def aprovisionar_servidor(self):
         admin_pass = self.input_srv_admin_pass.text().strip()
         app_pass = self.input_srv_app_pass.text().strip() or "DistriMagik2026*"
+        migrar_sqlite = self.chk_migrar_sqlite.isChecked()
 
         if not admin_pass:
             QMessageBox.warning(self, "Contraseña requerida", "Por favor ingrese la contraseña del usuario 'postgres'.")
             return
 
         self.lbl_srv_estado.setText("⏳ Configurando base de datos, reglas de red y Firewall de Windows...")
-        self.lbl_srv_estado.setStyleSheet("color: #5C2454;")
+        self.lbl_srv_estado.setStyleSheet("color: #5C2454; font-weight: bold;")
+        self.btn_srv_probar.setText("⏳ Configurando Servidor...")
+        self.set_loading(True, "⏳ Configurando base de datos, reglas de red y Firewall de Windows...")
 
-        ok, msg = provision_database(
-            admin_user="postgres",
-            admin_password=admin_pass,
-            host="localhost",
-            port=5432,
-            db_name="systemdistrimagik",
-            app_user="distri_app",
-            app_password=app_pass,
-        )
+        def _task():
+            ok, msg = provision_database(
+                admin_user="postgres",
+                admin_password=admin_pass,
+                host="localhost",
+                port=5432,
+                db_name="systemdistrimagik",
+                app_user="distri_app",
+                app_password=app_pass,
+            )
+            if not ok:
+                return False, msg, None
+
+            # Inicializar tablas
+            temp_config = DatabaseConfig(
+                mode="server",
+                engine_type="postgresql",
+                host="localhost",
+                port=5432,
+                database="systemdistrimagik",
+                user="distri_app",
+                password=app_pass,
+                configured=True,
+            )
+            reset_engine(temp_config)
+            init_db()
+
+            # Migración opcional si seleccionada
+            mig_msg = None
+            if migrar_sqlite and Path(DEFAULT_SQLITE_PATH).exists():
+                ok_mig, msg_mig = migrate_sqlite_to_postgres(DEFAULT_SQLITE_PATH, temp_config)
+                if not ok_mig:
+                    mig_msg = msg_mig
+
+            return True, "Servidor configurado correctamente.", mig_msg
+
+        self._worker = WorkerThread(_task)
+        self._worker.finished_signal.connect(self._on_aprovisionar_finalizado)
+        self._worker.error_signal.connect(self._on_aprovisionar_error)
+        self._worker.start()
+
+    def _on_aprovisionar_finalizado(self, result):
+        self.set_loading(False)
+        self.btn_srv_probar.setText("Configurar / Inicializar Servidor")
+        ok, msg, mig_msg = result
 
         if not ok:
             self.lbl_srv_estado.setText(f"❌ {msg}")
-            self.lbl_srv_estado.setStyleSheet("color: #B00020;")
+            self.lbl_srv_estado.setStyleSheet("color: #B00020; font-weight: bold;")
             QMessageBox.critical(self, "Error de Configuración", msg)
             return
 
-        # Inicializar tablas
-        temp_config = DatabaseConfig(
-            mode="server",
-            engine_type="postgresql",
-            host="localhost",
-            port=5432,
-            database="systemdistrimagik",
-            user="distri_app",
-            password=app_pass,
-            configured=True,
-        )
-        reset_engine(temp_config)
-        init_db()
-
-        # Migración opcional si seleccionada
-        if self.chk_migrar_sqlite.isChecked():
-            from app.database.config import DEFAULT_SQLITE_PATH
-            if Path(DEFAULT_SQLITE_PATH).exists():
-                self.lbl_srv_estado.setText("⏳ Migrando datos históricos de SQLite a PostgreSQL...")
-                ok_mig, msg_mig = migrate_sqlite_to_postgres(DEFAULT_SQLITE_PATH, temp_config)
-                if not ok_mig:
-                    QMessageBox.warning(self, "Aviso de migración", f"Base creada pero ocurrió un detalle: {msg_mig}")
+        if mig_msg:
+            QMessageBox.warning(self, "Aviso de migración", f"Base creada pero ocurrió un detalle con los datos existentes: {mig_msg}")
 
         self.lbl_srv_estado.setText("✅ Servidor PostgreSQL, Firewall y reglas de red listos para recibir terminales.")
         self.lbl_srv_estado.setStyleSheet("color: #2E7D32; font-weight: bold;")
@@ -298,6 +401,13 @@ class SetupWizardView(QWidget):
             "El servidor PostgreSQL, la regla del Firewall de Windows (puerto 5432) y las reglas de red (pg_hba) han sido configuradas automáticamente.\n\n"
             f"Las terminales pueden conectarse usando la IP: {get_local_ip()}"
         )
+
+    def _on_aprovisionar_error(self, err_msg):
+        self.set_loading(False)
+        self.btn_srv_probar.setText("Configurar / Inicializar Servidor")
+        self.lbl_srv_estado.setText(f"❌ Error inesperado: {err_msg}")
+        self.lbl_srv_estado.setStyleSheet("color: #B00020; font-weight: bold;")
+        QMessageBox.critical(self, "Error de Configuración", f"Ocurrió un error inesperado al configurar el servidor:\n{err_msg}")
 
     # ─────────────────────────────────────────────────────────────
     # VISTA TERMINAL
@@ -328,10 +438,10 @@ class SetupWizardView(QWidget):
         self.input_term_pass.setEchoMode(QLineEdit.EchoMode.Password)
         term_layout.addWidget(self.input_term_pass)
 
-        btn_term_test = QPushButton("Probar Conexión con el Servidor")
-        btn_term_test.setObjectName("btnSecundario")
-        btn_term_test.clicked.connect(self.probar_conexion_terminal)
-        term_layout.addWidget(btn_term_test)
+        self.btn_term_test = QPushButton("Probar Conexión con el Servidor")
+        self.btn_term_test.setObjectName("btnSecundario")
+        self.btn_term_test.clicked.connect(self.probar_conexion_terminal)
+        term_layout.addWidget(self.btn_term_test)
 
         self.lbl_term_estado = QLabel("")
         self.lbl_term_estado.setWordWrap(True)
@@ -343,7 +453,13 @@ class SetupWizardView(QWidget):
 
     def probar_conexion_terminal(self):
         host = self.input_term_ip.text().strip()
-        port = int(self.input_term_port.text().strip() or 5432)
+        port_text = self.input_term_port.text().strip() or "5432"
+        try:
+            port = int(port_text)
+        except ValueError:
+            QMessageBox.warning(self, "Puerto Inválido", "El puerto debe ser un número entero válido.")
+            return
+
         user = self.input_term_user.text().strip() or "distri_app"
         password = self.input_term_pass.text().strip()
 
@@ -351,8 +467,10 @@ class SetupWizardView(QWidget):
             QMessageBox.warning(self, "IP Requerida", "Por favor ingrese la IP del servidor.")
             return
 
-        self.lbl_term_estado.setText("⏳ Probando conexión...")
-        self.lbl_term_estado.setStyleSheet("color: #5C2454;")
+        self.lbl_term_estado.setText(f"⏳ Conectando con {host}:{port}... Por favor espere...")
+        self.lbl_term_estado.setStyleSheet("color: #5C2454; font-weight: bold;")
+        self.btn_term_test.setText("⏳ Probando Conexión...")
+        self.set_loading(True, f"⏳ Probando conexión con el servidor en {host}:{port}...")
 
         test_cfg = DatabaseConfig(
             mode="terminal",
@@ -364,13 +482,30 @@ class SetupWizardView(QWidget):
             password=password,
         )
 
-        ok, msg = test_connection(test_cfg)
+        def _task():
+            return test_connection(test_cfg)
+
+        self._worker = WorkerThread(_task)
+        self._worker.finished_signal.connect(self._on_probar_conexion_finalizado)
+        self._worker.error_signal.connect(self._on_probar_conexion_error)
+        self._worker.start()
+
+    def _on_probar_conexion_finalizado(self, result):
+        self.set_loading(False)
+        self.btn_term_test.setText("Probar Conexión con el Servidor")
+        ok, msg = result
         if ok:
             self.lbl_term_estado.setText(f"✅ {msg}")
             self.lbl_term_estado.setStyleSheet("color: #2E7D32; font-weight: bold;")
         else:
             self.lbl_term_estado.setText(f"❌ {msg}")
-            self.lbl_term_estado.setStyleSheet("color: #B00020;")
+            self.lbl_term_estado.setStyleSheet("color: #B00020; font-weight: bold;")
+
+    def _on_probar_conexion_error(self, err_msg):
+        self.set_loading(False)
+        self.btn_term_test.setText("Probar Conexión con el Servidor")
+        self.lbl_term_estado.setText(f"❌ Error inesperado: {err_msg}")
+        self.lbl_term_estado.setStyleSheet("color: #B00020; font-weight: bold;")
 
     # ─────────────────────────────────────────────────────────────
     # VISTA LOCAL
@@ -410,19 +545,40 @@ class SetupWizardView(QWidget):
                 password=app_pass,
                 configured=True,
             )
-            # Probar conexión antes de guardar
-            ok, msg = test_connection(config)
-            if not ok:
-                QMessageBox.warning(
-                    self,
-                    "Servidor no verificado",
-                    "No se pudo conectar a la base local PostgreSQL. Asegúrese de haber hecho clic en 'Configurar / Inicializar Servidor' primero.\n\n" + msg
-                )
-                return
+
+            self.btn_guardar.setText("⏳ Verificando Servidor...")
+            self.set_loading(True, "⏳ Verificando conexión local con el servidor PostgreSQL...")
+
+            def _test_srv():
+                return test_connection(config)
+
+            def _on_done(result):
+                self.set_loading(False)
+                self.btn_guardar.setText("Guardar y Continuar")
+                ok, msg = result
+                if not ok:
+                    QMessageBox.warning(
+                        self,
+                        "Servidor no verificado",
+                        "No se pudo conectar a la base local PostgreSQL. Asegúrese de haber hecho clic en 'Configurar / Inicializar Servidor' primero.\n\n" + msg
+                    )
+                    return
+                self._persistir_configuracion(config)
+
+            self._worker = WorkerThread(_test_srv)
+            self._worker.finished_signal.connect(_on_done)
+            self._worker.error_signal.connect(lambda err: (self.set_loading(False), self.btn_guardar.setText("Guardar y Continuar"), QMessageBox.critical(self, "Error", f"Error al verificar: {err}")))
+            self._worker.start()
 
         elif self.rb_terminal.isChecked():
             host = self.input_term_ip.text().strip()
-            port = int(self.input_term_port.text().strip() or 5432)
+            port_text = self.input_term_port.text().strip() or "5432"
+            try:
+                port = int(port_text)
+            except ValueError:
+                QMessageBox.warning(self, "Puerto Inválido", "El puerto debe ser un número entero válido.")
+                return
+
             user = self.input_term_user.text().strip() or "distri_app"
             password = self.input_term_pass.text().strip()
 
@@ -440,16 +596,32 @@ class SetupWizardView(QWidget):
                 password=password,
                 configured=True,
             )
-            ok, msg = test_connection(config)
-            if not ok:
-                resp = QMessageBox.question(
-                    self,
-                    "Conexión no verificada",
-                    f"La prueba de conexión falló con el siguiente error:\n\n{msg}\n\n¿Desea guardar la configuración de todas formas?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
-                if resp != QMessageBox.StandardButton.Yes:
-                    return
+
+            self.btn_guardar.setText("⏳ Verificando Conexión...")
+            self.set_loading(True, f"⏳ Verificando conexión con el servidor en {host}:{port}...")
+
+            def _test_term():
+                return test_connection(config)
+
+            def _on_done_term(result):
+                self.set_loading(False)
+                self.btn_guardar.setText("Guardar y Continuar")
+                ok, msg = result
+                if not ok:
+                    resp = QMessageBox.question(
+                        self,
+                        "Conexión no verificada",
+                        f"La prueba de conexión falló con el siguiente error:\n\n{msg}\n\n¿Desea guardar la configuración de todas formas?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                    )
+                    if resp != QMessageBox.StandardButton.Yes:
+                        return
+                self._persistir_configuracion(config)
+
+            self._worker = WorkerThread(_test_term)
+            self._worker.finished_signal.connect(_on_done_term)
+            self._worker.error_signal.connect(lambda err: (self.set_loading(False), self.btn_guardar.setText("Guardar y Continuar"), QMessageBox.critical(self, "Error", f"Error al verificar: {err}")))
+            self._worker.start()
 
         else:  # Modo local
             config = DatabaseConfig(
@@ -458,7 +630,9 @@ class SetupWizardView(QWidget):
                 sqlite_path=DEFAULT_SQLITE_PATH,
                 configured=True,
             )
+            self._persistir_configuracion(config)
 
+    def _persistir_configuracion(self, config: DatabaseConfig):
         # Guardar en config.json
         if save_config(config):
             reset_engine(config)
@@ -468,3 +642,4 @@ class SetupWizardView(QWidget):
             self.configuracion_finalizada.emit()
         else:
             QMessageBox.critical(self, "Error", "No se pudo guardar el archivo de configuración.")
+
