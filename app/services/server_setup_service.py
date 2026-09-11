@@ -72,35 +72,49 @@ def is_postgresql_service_running() -> bool:
 def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri - PostgreSQL 5432") -> Tuple[bool, str]:
     """
     Crea o verifica la regla en el Firewall de Windows para permitir conexiones entrantes en el puerto de PostgreSQL.
+    Si se requieren permisos de Administrador, solicita elevación mediante el diálogo de UAC de Windows.
     """
     try:
-        # Verificar si la regla ya existe
+        # 1. Verificar si la regla ya existe
         check_cmd = f'netsh advfirewall firewall show rule name="{rule_name}"'
-        res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
-        if res.returncode == 0 and "Rule Name:" in res.stdout or "Nombre de regla:" in res.stdout:
+        res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
+        if res.returncode == 0 and ("Rule Name:" in res.stdout or "Nombre de regla:" in res.stdout):
             logger.info(f"Regla de Firewall '{rule_name}' ya existe.")
             return True, f"Regla de firewall '{rule_name}' ya configurada."
 
-        # Crear la regla
+        # 2. Intentar crear directamente
         add_cmd = (
             f'netsh advfirewall firewall add rule name="{rule_name}" '
             f'dir=in action=allow protocol=TCP localport={port} profile=any'
         )
-        add_res = subprocess.run(add_cmd, shell=True, capture_output=True, text=True)
+        add_res = subprocess.run(add_cmd, shell=True, capture_output=True, text=True, errors="ignore")
         if add_res.returncode == 0:
             logger.info(f"Regla de Firewall para puerto {port} creada exitosamente.")
             return True, f"Regla de Firewall para puerto {port} creada con éxito."
+
+        # 3. Si falló por falta de elevación, solicitar UAC mediante PowerShell Start-Process -Verb RunAs
+        logger.info("Solicitando permisos de Administrador (UAC) para crear la regla en el Firewall de Windows...")
+        ps_script = (
+            f'Start-Process netsh -ArgumentList \'advfirewall firewall add rule name="{rule_name}" dir=in action=allow protocol=TCP localport={port} profile=any\' -Verb RunAs -Wait -WindowStyle Hidden'
+        )
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], capture_output=True, text=True, errors="ignore")
+
+        # 4. Verificar si la regla fue creada tras el diálogo UAC
+        verify_res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
+        if verify_res.returncode == 0 and ("Rule Name:" in verify_res.stdout or "Nombre de regla:" in verify_res.stdout):
+            logger.info(f"Regla de Firewall '{rule_name}' creada exitosamente con permisos elevados.")
+            return True, f"Regla de Firewall creada con éxito para el puerto {port}."
         else:
             err = add_res.stderr.strip() or add_res.stdout.strip()
-            logger.warning(f"No se pudo crear regla de firewall automáticamente: {err}")
-            return False, f"Aviso de firewall: {err}"
+            logger.warning(f"No se pudo crear regla de firewall tras solicitud de elevación: {err}")
+            return False, f"Aviso de firewall: No se autorizaron permisos de Administrador para abrir el puerto {port}."
     except Exception as e:
         logger.warning(f"Excepción creando regla de firewall: {e}")
         return False, str(e)
 
 
 def restart_postgresql_service() -> bool:
-    """Intenta reiniciar el servicio de PostgreSQL en Windows."""
+    """Intenta reiniciar el servicio de PostgreSQL en Windows (con elevación si es necesario)."""
     try:
         # Buscar el nombre exacto del servicio postgresql
         output = subprocess.check_output("sc query state= all", shell=True, text=True, errors="ignore")
@@ -113,9 +127,14 @@ def restart_postgresql_service() -> bool:
         
         if service_name:
             logger.info(f"Reiniciando servicio '{service_name}'...")
-            subprocess.run(f"net stop {service_name}", shell=True, capture_output=True)
-            res = subprocess.run(f"net start {service_name}", shell=True, capture_output=True)
-            return res.returncode == 0
+            res_stop = subprocess.run(f"net stop {service_name}", shell=True, capture_output=True, text=True)
+            if res_stop.returncode != 0:
+                # Intentar con elevación
+                ps_restart = f'Start-Process powershell -ArgumentList \'-NoProfile -Command "Restart-Service {service_name}"\' -Verb RunAs -Wait -WindowStyle Hidden'
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_restart], capture_output=True, text=True, errors="ignore")
+                return True
+            res_start = subprocess.run(f"net start {service_name}", shell=True, capture_output=True)
+            return res_start.returncode == 0
     except Exception as e:
         logger.warning(f"No se pudo reiniciar el servicio de PostgreSQL automáticamente: {e}")
     return False
