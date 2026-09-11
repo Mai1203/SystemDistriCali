@@ -107,14 +107,20 @@ class Reportes_View(QWidget, Ui_Reportes):
                     meses_dict[clave_mes]["egresos"] += monto
 
             if len(meses_dict) < 2:
-                # Datos demostrativos para completar la visualización si hay pocos registros históricos
-                meses_dict = {
-                    "May 2026": {"ingresos": 1250000.0, "egresos": 420000.0},
-                    "Jun 2026": {"ingresos": 1820000.0, "egresos": 510000.0},
-                    "Jul 2026": {"ingresos": 2100000.0, "egresos": 680000.0},
-                    "Ago 2026": {"ingresos": 2450000.0, "egresos": 730000.0},
-                    "Sep 2026": {"ingresos": 1950000.0, "egresos": 490000.0},
-                }
+                # Sin datos reales suficientes → mostrar canvas vacío con mensaje
+                fig = self.canvas_graficas.fig
+                fig.clear()
+                ax = fig.add_subplot(111)
+                ax.set_axis_off()
+                ax.text(
+                    0.5, 0.5,
+                    "Sin datos disponibles.\nRegistra ventas o egresos\npara ver las gráficas.",
+                    ha="center", va="center", fontsize=11,
+                    color="#7B737F", transform=ax.transAxes
+                )
+                fig.tight_layout()
+                self.canvas_graficas.draw()
+                return
 
             labels = list(meses_dict.keys())[-6:]
             ingresos_vals = [meses_dict[m]["ingresos"] for m in labels]
