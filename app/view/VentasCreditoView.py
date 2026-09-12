@@ -366,16 +366,42 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.en_edicion = False
         self.comboBoxPrecio.setEnabled(True)
         self.LabelVentasA.setText("Ventas a Crédito")
-        configurar_autocompletado(
-            self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
-        )
-        configurar_autocompletado(
-            self.InputNombreCli,
-            obtener_cliente_nombre_apellido,
-            "NombreCompleto",
-            self.db,
-            self.insertar_cliente,
-        )
+
+        # Verificar y reconectar self.db si la conexión previa fue cerrada por restauración/reinicio de BD
+        try:
+            self.db.rollback()
+        except Exception:
+            try:
+                self.db.close()
+            except Exception:
+                pass
+            self.db = SessionLocal()
+
+        try:
+            configurar_autocompletado(
+                self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
+            )
+            configurar_autocompletado(
+                self.InputNombreCli,
+                obtener_cliente_nombre_apellido,
+                "NombreCompleto",
+                self.db,
+                self.insertar_cliente,
+            )
+        except Exception as e:
+            from app.utils.logger import logger
+            logger.warning(f"Re-inicializando sesión db en VentasCredito por riconexión: {e}")
+            self.db = SessionLocal()
+            configurar_autocompletado(
+                self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo
+            )
+            configurar_autocompletado(
+                self.InputNombreCli,
+                obtener_cliente_nombre_apellido,
+                "NombreCompleto",
+                self.db,
+                self.insertar_cliente,
+            )
 
     def calcular_fecha_futura(self, dias):
         fecha_actual = datetime.now()

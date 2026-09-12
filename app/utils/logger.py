@@ -37,7 +37,8 @@ def setup_logger(name: str = "SystemDistri") -> logging.Logger:
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
-    logger.addHandler(console_handler)
+    # Silenciar advertencias internas de sqlalchemy.pool por reseteo de sockets reciclados
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.ERROR)
 
     return logger
 

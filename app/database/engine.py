@@ -39,16 +39,21 @@ def get_engine() -> Engine:
     return _current_engine
 
 
-def reset_engine(new_config: Optional[DatabaseConfig] = None) -> Engine:
-    """Cierra el engine actual y crea uno nuevo (útil al cambiar de servidor/configuración)."""
+def close_engine():
+    """Cierra y libera el engine actual sin recrear uno nuevo inmediatamente."""
     global _current_engine
     if _current_engine is not None:
         try:
             _current_engine.dispose()
-            logger.info("Engine anterior liberado exitosamente.")
+            logger.info("Engine liberado exitosamente.")
         except Exception as e:
-            logger.warning(f"Error al liberar engine anterior: {e}")
-    
+            logger.warning(f"Error al liberar engine: {e}")
+        _current_engine = None
+
+
+def reset_engine(new_config: Optional[DatabaseConfig] = None) -> Engine:
+    """Cierra el engine actual y crea uno nuevo (útil al cambiar de servidor/configuración)."""
+    close_engine()
     config = new_config or load_config()
     _current_engine = get_engine_for_config(config)
     return _current_engine

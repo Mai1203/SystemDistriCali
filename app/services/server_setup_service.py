@@ -26,6 +26,22 @@ def get_local_ip() -> str:
             return "127.0.0.1"
 
 
+# Flag para ocultar cualquier ventana de consola en Windows (CREATE_NO_WINDOW)
+CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+
+def _run_hidden(cmd, **kwargs):
+    """Ejecuta un comando de consola en Windows garantizando que no se abra ninguna ventana negra."""
+    flags = kwargs.pop("creationflags", 0) | CREATE_NO_WINDOW
+    return subprocess.run(cmd, creationflags=flags, **kwargs)
+
+
+def _check_output_hidden(cmd, **kwargs):
+    """Ejecuta un comando y obtiene su salida sin mostrar ventana de consola."""
+    flags = kwargs.pop("creationflags", 0) | CREATE_NO_WINDOW
+    return subprocess.check_output(cmd, creationflags=flags, **kwargs)
+
+
 def detect_postgresql_installation() -> Tuple[bool, str]:
     """Detecta si PostgreSQL está instalado en las rutas estándar de Windows."""
     rutas_comunes = [
@@ -43,19 +59,19 @@ def detect_postgresql_installation() -> Tuple[bool, str]:
 
     # Verificar si psql está en el PATH
     try:
-        res = subprocess.run(["psql", "--version"], capture_output=True, text=True, timeout=3)
+        res = _run_hidden(["psql", "--version"], capture_output=True, text=True, timeout=3)
         if res.returncode == 0:
             return True, "Encontrado en PATH"
     except Exception:
         pass
-
+        
     return False, "No detectado en rutas estándar"
 
 
 def is_postgresql_service_running() -> bool:
     """Verifica si el servicio de PostgreSQL en Windows está activo."""
     try:
-        output = subprocess.check_output("sc query state= all", shell=True, text=True, errors="ignore")
+        output = _check_output_hidden("sc query state= all", shell=True, text=True, errors="ignore")
         return "SERVICE_NAME: postgresql" in output.lower() and "STATE              : 4  RUNNING" in output
     except Exception:
         # Intento de conexión socket rápida al puerto 5432
@@ -68,16 +84,120 @@ def is_postgresql_service_running() -> bool:
         except Exception:
             return False
 
+def find_bundled_postgres_installer() -> Optional[Path]:
+    """
+    Busca el instalador de PostgreSQL 15 empaquetado junto a la aplicación o en la carpeta prerequisites.
+    """
+    import sys
+    rutas_busqueda = []
+    
+    # 1. Si está congelado por PyInstaller
+    if getattr(sys, "frozen", False):
+        base_dir = Path(sys.executable).parent
+        rutas_busqueda.append(base_dir / "prerequisites")
+        rutas_busqueda.append(base_dir / "installer")
+        rutas_busqueda.append(base_dir)
+        if hasattr(sys, "_MEIPASS"):
+            rutas_busqueda.append(Path(sys._MEIPASS) / "prerequisites")
+            rutas_busqueda.append(Path(sys._MEIPASS))
+    else:
+        # Modo desarrollo
+        app_root = Path(__file__).resolve().parent.parent.parent
+        rutas_busqueda.append(app_root / "prerequisites")
+        rutas_busqueda.append(app_root / "installer")
+        rutas_busqueda.append(app_root)
+
+    for ruta in rutas_busqueda:
+        if ruta.exists():
+            # Buscar cualquier instalador postgresql-*.exe
+            for exe in ruta.glob("postgresql*.exe"):
+                if exe.is_file():
+                    logger.info(f"Instalador de PostgreSQL encontrado en: {exe}")
+                    return exe
+
+    return None
+
+
+def wait_for_postgresql_service(port: int = 5432, timeout_seconds: int = 75) -> bool:
+    """Espera activamente a que el servicio de PostgreSQL esté levantado y respondiendo en el puerto."""
+    import time
+    inicio = time.time()
+    logger.info(f"Esperando inicio del servicio PostgreSQL en puerto {port} (máx {timeout_seconds}s)...")
+    while time.time() - inicio < timeout_seconds:
+        if is_postgresql_service_running():
+            logger.info("Servicio PostgreSQL verificado en estado RUNNING.")
+            return True
+        time.sleep(2)
+    return False
+
+
+def install_postgresql_silent(
+    installer_path: Path,
+    admin_password: str = "postgres",
+    port: int = 5432,
+    install_dir: str = r"C:\Program Files\PostgreSQL\15",
+    data_dir: str = r"C:\Program Files\PostgreSQL\15\data"
+) -> Tuple[bool, str]:
+    """
+    Ejecuta la instalación desatendida/silenciosa de PostgreSQL 15 (EDB).
+    Instala únicamente el servidor y herramientas de comandos (sin pgAdmin ni StackBuilder).
+    """
+    if not installer_path or not installer_path.exists():
+        return False, f"El archivo instalador no existe en: {installer_path}"
+
+    logger.info(f"Iniciando instalación desatendida de PostgreSQL 15 desde {installer_path}...")
+
+    # Parámetros para EnterpriseDB installer
+    args_list = (
+        f'--mode unattended '
+        f'--unattendedmodeui none '
+        f'--superpassword "{admin_password}" '
+        f'--servicepassword "{admin_password}" '
+        f'--serverport {port} '
+        f'--prefix "{install_dir}" '
+        f'--datadir "{data_dir}" '
+        f'--locale "C" '
+        f'--enable-components server,commandlinetools '
+        f'--disable-components pgAdmin,stackbuilder'
+    )
+
+    try:
+        # Ejecutar solicitando elevación de Administrador mediante PowerShell oculto
+        escaped_installer = str(installer_path.resolve())
+        ps_cmd = (
+            f'Start-Process -FilePath "{escaped_installer}" '
+            f'-ArgumentList \'{args_list}\' '
+            f'-Verb RunAs -Wait -WindowStyle Hidden'
+        )
+
+        logger.info("Ejecutando instalador con permisos de Administrador...")
+        res = _run_hidden(["powershell", "-WindowStyle", "Hidden", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True)
+
+        # Esperar a que el servicio arranque
+        if wait_for_postgresql_service(port=port, timeout_seconds=90):
+            logger.info("PostgreSQL 15 instalado y servicio iniciado con éxito.")
+            return True, "PostgreSQL 15 instalado y servicio en ejecución correctamente."
+        else:
+            # Comprobar si se instalaron los archivos aunque el servicio tarde
+            installed, path_det = detect_postgresql_installation()
+            if installed:
+                return True, f"PostgreSQL instalado en {path_det}. Iniciando servicio..."
+            return False, "La instalación terminó pero el servicio de PostgreSQL no respondió a tiempo."
+
+    except Exception as e:
+        logger.error(f"Error durante la instalación silenciosa de PostgreSQL: {e}")
+        return False, f"Fallo en la instalación: {str(e)}"
+
 
 def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri - PostgreSQL 5432") -> Tuple[bool, str]:
     """
     Crea o verifica la regla en el Firewall de Windows para permitir conexiones entrantes en el puerto de PostgreSQL.
-    Si se requieren permisos de Administrador, solicita elevación mediante el diálogo de UAC de Windows.
+    Si se requieren permisos de Administrador, solicita elevación mediante el diálogo de UAC de Windows sin abrir consolas negras.
     """
     try:
         # 1. Verificar si la regla ya existe
         check_cmd = f'netsh advfirewall firewall show rule name="{rule_name}"'
-        res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
+        res = _run_hidden(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
         if res.returncode == 0 and ("Rule Name:" in res.stdout or "Nombre de regla:" in res.stdout):
             logger.info(f"Regla de Firewall '{rule_name}' ya existe.")
             return True, f"Regla de firewall '{rule_name}' ya configurada."
@@ -87,20 +207,20 @@ def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri 
             f'netsh advfirewall firewall add rule name="{rule_name}" '
             f'dir=in action=allow protocol=TCP localport={port} profile=any'
         )
-        add_res = subprocess.run(add_cmd, shell=True, capture_output=True, text=True, errors="ignore")
+        add_res = _run_hidden(add_cmd, shell=True, capture_output=True, text=True, errors="ignore")
         if add_res.returncode == 0:
             logger.info(f"Regla de Firewall para puerto {port} creada exitosamente.")
             return True, f"Regla de Firewall para puerto {port} creada con éxito."
 
-        # 3. Si falló por falta de elevación, solicitar UAC mediante PowerShell Start-Process -Verb RunAs
+        # 3. Si falló por falta de elevación, solicitar UAC mediante PowerShell Start-Process -Verb RunAs (oculto)
         logger.info("Solicitando permisos de Administrador (UAC) para crear la regla en el Firewall de Windows...")
         ps_script = (
             f'Start-Process netsh -ArgumentList \'advfirewall firewall add rule name="{rule_name}" dir=in action=allow protocol=TCP localport={port} profile=any\' -Verb RunAs -Wait -WindowStyle Hidden'
         )
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], capture_output=True, text=True, errors="ignore")
+        _run_hidden(["powershell", "-WindowStyle", "Hidden", "-NoProfile", "-Command", ps_script], capture_output=True, text=True, errors="ignore")
 
         # 4. Verificar si la regla fue creada tras el diálogo UAC
-        verify_res = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
+        verify_res = _run_hidden(check_cmd, shell=True, capture_output=True, text=True, errors="ignore")
         if verify_res.returncode == 0 and ("Rule Name:" in verify_res.stdout or "Nombre de regla:" in verify_res.stdout):
             logger.info(f"Regla de Firewall '{rule_name}' creada exitosamente con permisos elevados.")
             return True, f"Regla de Firewall creada con éxito para el puerto {port}."
@@ -114,10 +234,10 @@ def configure_windows_firewall(port: int = 5432, rule_name: str = "SystemDistri 
 
 
 def restart_postgresql_service() -> bool:
-    """Intenta reiniciar el servicio de PostgreSQL en Windows (con elevación si es necesario)."""
+    """Intenta reiniciar el servicio de PostgreSQL en Windows (con elevación si es necesario y sin consola negra)."""
     try:
         # Buscar el nombre exacto del servicio postgresql
-        output = subprocess.check_output("sc query state= all", shell=True, text=True, errors="ignore")
+        output = _check_output_hidden("sc query state= all", shell=True, text=True, errors="ignore")
         service_name = None
         for line in output.splitlines():
             line_clean = line.strip()
@@ -127,13 +247,13 @@ def restart_postgresql_service() -> bool:
         
         if service_name:
             logger.info(f"Reiniciando servicio '{service_name}'...")
-            res_stop = subprocess.run(f"net stop {service_name}", shell=True, capture_output=True, text=True)
+            res_stop = _run_hidden(f"net stop {service_name}", shell=True, capture_output=True, text=True)
             if res_stop.returncode != 0:
                 # Intentar con elevación
                 ps_restart = f'Start-Process powershell -ArgumentList \'-NoProfile -Command "Restart-Service {service_name}"\' -Verb RunAs -Wait -WindowStyle Hidden'
-                subprocess.run(["powershell", "-NoProfile", "-Command", ps_restart], capture_output=True, text=True, errors="ignore")
+                _run_hidden(["powershell", "-WindowStyle", "Hidden", "-NoProfile", "-Command", ps_restart], capture_output=True, text=True)
                 return True
-            res_start = subprocess.run(f"net start {service_name}", shell=True, capture_output=True)
+            res_start = _run_hidden(f"net start {service_name}", shell=True, capture_output=True)
             return res_start.returncode == 0
     except Exception as e:
         logger.warning(f"No se pudo reiniciar el servicio de PostgreSQL automáticamente: {e}")
