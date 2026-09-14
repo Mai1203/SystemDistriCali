@@ -603,3 +603,11 @@ class Cliente_View(QWidget, Ui_ControlCliente):
         finally:
             self.db.close()
 
+    def al_recibir_notificacion_clientes(self, payload=None):
+        """Actualiza la lista de clientes cuando se recibe una notificación en tiempo real."""
+        try:
+            self.mostrar_clientes()
+        except Exception as e:
+            print(f"Error al actualizar clientes en tiempo real: {e}")
+
+

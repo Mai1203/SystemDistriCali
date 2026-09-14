@@ -234,6 +234,24 @@ class Productos_View(QWidget, Ui_Productos):
         reverse = orden == "ID Mayor a Menor"
         self.mostrar_productos(reverse=reverse)
 
+    def al_recibir_notificacion_productos(self, payload=None):
+        """
+        Slot reactivo para actualizar la tabla de productos en tiempo real cuando llega un evento de PostgreSQL.
+        Solo refresca si el usuario está en la vista de listado y no está en medio de editar un formulario.
+        """
+        try:
+            if hasattr(self, "Contenido") and hasattr(self, "PanelListado"):
+                if self.Contenido.currentWidget() == self.PanelListado:
+                    busqueda = self.InputBuscador.text().strip()
+                    if busqueda:
+                        self.buscar_productos()
+                    else:
+                        orden = self.ComboOrden.currentText()
+                        reverse = (orden == "ID Mayor a Menor")
+                        self.mostrar_productos(reverse=reverse)
+        except Exception as e:
+            print(f"Error en al_recibir_notificacion_productos: {e}")
+
     def agregar_placeholder(self):
         """Muestra precios sugeridos (20%, 25%, 30%, 35% de margen) como placeholder."""
         precio_compra = self.InputPrecioCompra.text().strip()

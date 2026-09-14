@@ -133,6 +133,8 @@ class MainWindow(QMainWindow):
         self.MainApp.navbar.BtnCerrarSesion.clicked.connect(self.cerrar_sesion)
 
     def cerrar_sesion(self):
+        if self.MainApp is not None:
+            self.MainApp.detener_listener()
         enviar_notificacion("Sesión cerrada", "Puedes iniciar sesión nuevamente")
         self.stacked_widget.setCurrentWidget(self.Login)
         self.limpiar_campos()
@@ -149,6 +151,8 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if respuesta == QMessageBox.StandardButton.Yes:
+            if self.MainApp is not None:
+                self.MainApp.detener_listener()
             event.accept()
         else:
             event.ignore()
@@ -176,6 +180,8 @@ class MainWindow(QMainWindow):
 
             self.usuario_actual_id = usuario_autenticado.ID_Usuario
             self.crear_mainapp()
+            if self.MainApp.realtime_listener is None:
+                self.MainApp._iniciar_realtime_listener()
             self.MainApp.ventas.usuario_actual_id = usuario_autenticado.ID_Usuario
             self.MainApp.ventasCredito.usuario_actual_id = usuario_autenticado.ID_Usuario
             self.MainApp.pagoCredito.usuario_actual_id = usuario_autenticado.ID_Usuario

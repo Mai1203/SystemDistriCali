@@ -416,3 +416,11 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
         finally:
             db.close()
 
+    def al_recibir_notificacion_ventas_credito(self, payload=None):
+        """Actualiza las ventas a crédito cuando se recibe una notificación en tiempo real."""
+        try:
+            self.mostrar_ventasCredito()
+        except Exception as e:
+            print(f"Error al actualizar CrediFactura en tiempo real: {e}")
+
+

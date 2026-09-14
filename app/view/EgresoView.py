@@ -697,3 +697,11 @@ class Egreso_View(QWidget, Ui_Egreso):
 
         self.TablaEgreso.setRowCount(0)
 
+    def al_recibir_notificacion_egresos(self, payload=None):
+        """Actualiza la tabla de egresos cuando se recibe una notificación en tiempo real."""
+        try:
+            self.cargar_egresos()
+        except Exception as e:
+            print(f"Error al actualizar egresos en tiempo real: {e}")
+
+

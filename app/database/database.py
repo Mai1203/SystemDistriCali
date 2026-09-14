@@ -71,6 +71,10 @@ def init_db():
     # Poblar datos iniciales indispensables (roles, métodos de pago, usuario admin, etc.)
     poblar_datos_iniciales(current_engine)
 
+    # Instalar disparadores (triggers) de tiempo real si el motor es PostgreSQL
+    from app.database.triggers import instalar_triggers_postgresql
+    instalar_triggers_postgresql(current_engine)
+
 
 def migrar_esquema(target_engine=None):
     """Añade los PV nuevos, lotes y actualiza los tipos de factura de forma segura según el motor."""

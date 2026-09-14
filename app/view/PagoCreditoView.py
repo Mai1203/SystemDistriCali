@@ -419,3 +419,12 @@ class PagoCredito_View(QWidget, Ui_PagoCredito):
         if self.db:
             self.db.close()
         super().closeEvent(event)
+
+    def al_recibir_notificacion_pagos_credito(self, payload=None):
+        """Actualiza la información de pagos cuando se recibe una notificación en tiempo real."""
+        try:
+            if hasattr(self, 'id_VentaCredito') and self.id_VentaCredito:
+                self.cargar_informacion(self.id_VentaCredito)
+        except Exception as e:
+            print(f"Error al actualizar pagos a crédito en tiempo real: {e}")
+

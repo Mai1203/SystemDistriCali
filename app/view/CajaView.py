@@ -601,3 +601,11 @@ class Caja_View(QWidget, Ui_Caja):
 
         finally:
             self.db.close()
+
+    def al_recibir_notificacion_caja(self, payload=None):
+        """Actualiza la tabla de caja cuando se recibe una notificación en tiempo real."""
+        try:
+            self.mostrar_tabla()
+        except Exception as e:
+            print(f"Error al actualizar caja en tiempo real: {e}")
+

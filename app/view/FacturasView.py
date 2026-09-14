@@ -73,6 +73,22 @@ class Facturas_View(QWidget, Ui_Facturas):
         orden = self.ComboOrden.currentText()
         reverse = orden == "ID Mayor a Menor"
         self.mostrar_facturas(reverse=reverse)
+
+    def al_recibir_notificacion_facturas(self, payload=None):
+        """
+        Slot reactivo ejecutado cuando se recibe una notificación PostgreSQL de cambio en FACTURA.
+        Actualiza automáticamente la tabla de facturas en tiempo real sin requerir cambiar de pestaña.
+        """
+        try:
+            busqueda = self.InputBuscador.text().strip()
+            if busqueda:
+                self.buscar_facturas()
+            else:
+                orden = self.ComboOrden.currentText()
+                reverse = (orden != "ID Menor a Mayor")
+                self.mostrar_facturas(reverse=reverse)
+        except Exception as e:
+            print(f"Error en al_recibir_notificacion_facturas: {e}")
                         
     
     def cancelar_venta(self):

@@ -119,6 +119,41 @@ class MainApp(QWidget):
         self.crediFactura.enviar_facturas_Credito.connect(self.cambiar_a_ventasCredito)
         self.crediFactura.enviar_ventaCredito.connect(self.cambiar_a_pagoCredito)
 
+        # Inicializar Listener de eventos en tiempo real (PostgreSQL LISTEN/NOTIFY)
+        self.realtime_listener = None
+        self._iniciar_realtime_listener()
+
+    def _iniciar_realtime_listener(self):
+        """Inicia el hilo de escucha en tiempo real si el sistema está configurado con PostgreSQL."""
+        try:
+            from app.database.config import load_config
+            from app.services.realtime_listener import RealtimeListener
+
+            config = load_config()
+            if config.mode != "local" and config.engine_type == "postgresql":
+                self.realtime_listener = RealtimeListener(config=config)
+                self.realtime_listener.facturas_cambiadas.connect(self.facturas.al_recibir_notificacion_facturas)
+                self.realtime_listener.productos_cambiados.connect(self.productos.al_recibir_notificacion_productos)
+                self.realtime_listener.caja_cambiada.connect(self.caja.al_recibir_notificacion_caja)
+                self.realtime_listener.egresos_cambiados.connect(self.egreso.al_recibir_notificacion_egresos)
+                self.realtime_listener.ventas_credito_cambiadas.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
+                self.realtime_listener.pagos_credito_cambiados.connect(self.pagoCredito.al_recibir_notificacion_pagos_credito)
+                self.realtime_listener.pagos_credito_cambiados.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
+                self.realtime_listener.clientes_cambiados.connect(self.Clientes.al_recibir_notificacion_clientes)
+                self.realtime_listener.start()
+
+        except Exception as e:
+            print(f"Error al iniciar RealtimeListener: {e}")
+
+    def detener_listener(self):
+        """Detiene de forma segura el listener en tiempo real al cerrar sesión o salir."""
+        if self.realtime_listener is not None:
+            try:
+                self.realtime_listener.stop()
+            except Exception as e:
+                print(f"Error al detener RealtimeListener: {e}")
+            self.realtime_listener = None
+
     def cambiar_tipo_venta(self, indice):
         if (
             self.ventas.en_edicion
