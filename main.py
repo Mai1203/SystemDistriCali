@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, QThread, pyqtSignal
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6 import QtWidgets  # Para poder reasignar QMessageBox si es necesario
 
@@ -42,11 +42,33 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_distrimagik_2026")
 
 
+class StartupWorker(QThread):
+    finished_signal = pyqtSignal(object)
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, config, parent=None):
+        super().__init__(parent)
+        self.config = config
+
+    def run(self):
+        try:
+            print("[DEBUG] Probando conexion en el arranque...", flush=True)
+            ok, msg = test_connection(self.config, timeout_seconds=3)
+            print(f"[DEBUG] Resultado test_connection: {ok}, {msg}", flush=True)
+            if not ok:
+                self.finished_signal.emit((False, msg))
+            else:
+                self.finished_signal.emit((True, "OK"))
+        except Exception as e:
+            self.error_signal.emit(str(e))
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.usuario_actual_id = None
+        self._startup_worker = None
         self.setWindowTitle("System Distri Magik")
         self.setWindowIcon(QIcon("assets/Favicon.ico"))
         
@@ -97,32 +119,10 @@ class MainWindow(QMainWindow):
             self.stacked_widget.setCurrentWidget(self.SetupWizard)
             return
 
-        # Ejecutar la verificación de conexión en un hilo de fondo
-        from PyQt6.QtCore import QThread, pyqtSignal
-        
-        class StartupWorker(QThread):
-            finished_signal = pyqtSignal(object)
-            error_signal = pyqtSignal(str)
-            def run(self):
-                try:
-                    res = _verificar()
-                    self.finished_signal.emit(res)
-                except Exception as e:
-                    self.error_signal.emit(str(e))
-
-        def _verificar():
-            print("[DEBUG] Probando conexion en el arranque...", flush=True)
-            ok, msg = test_connection(config, timeout_seconds=3)
-            print(f"[DEBUG] Resultado test_connection: {ok}, {msg}", flush=True)
-            if not ok:
-                return False, msg
-            # NOTA: Ya no llamamos a init_db() en cada arranque. 
-            # Eso solo se hace al configurar el servidor por primera vez.
-            return True, "OK"
-
-        self._startup_worker = StartupWorker()
+        self._startup_worker = StartupWorker(config, parent=self)
         self._startup_worker.finished_signal.connect(self._on_verificacion_inicial_completada)
         self._startup_worker.error_signal.connect(self._on_verificacion_inicial_error)
+        self._startup_worker.finished.connect(self._startup_worker.deleteLater)
         print("[DEBUG] Arrancando WorkerThread...", flush=True)
         self._startup_worker.start()
 
@@ -179,6 +179,9 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if respuesta == QMessageBox.StandardButton.Yes:
+            if hasattr(self, '_startup_worker') and self._startup_worker is not None and self._startup_worker.isRunning():
+                self._startup_worker.quit()
+                self._startup_worker.wait(2000)
             if self.MainApp is not None:
                 self.MainApp.detener_listener()
             event.accept()

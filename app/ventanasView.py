@@ -149,10 +149,12 @@ class MainApp(QWidget):
         """Detiene de forma segura el listener en tiempo real al cerrar sesión o salir."""
         if self.realtime_listener is not None:
             try:
-                self.realtime_listener.stop()
+                if self.realtime_listener.isRunning():
+                    self.realtime_listener.stop()
             except Exception as e:
                 print(f"Error al detener RealtimeListener: {e}")
-            self.realtime_listener = None
+            finally:
+                self.realtime_listener = None
 
     def cambiar_tipo_venta(self, indice):
         if (

@@ -130,5 +130,8 @@ class RealtimeListener(QThread):
     def stop(self):
         """Detiene de forma segura el bucle de escucha y cierra la conexión."""
         self._is_running = False
-        self.wait(1500)
         self._cerrar_conexion()
+        self.wait(3000)
+        if self.isRunning():
+            self.terminate()
+            self.wait(1000)
