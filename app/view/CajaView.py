@@ -327,6 +327,7 @@ class Caja_View(QWidget, Ui_Caja):
         # ==============================
 
         try:
+            self.TablaCaja.setRowCount(0)
             if caja:
 
                 caja.sort(
@@ -606,6 +607,7 @@ class Caja_View(QWidget, Ui_Caja):
         """Actualiza la tabla de caja cuando se recibe una notificación en tiempo real."""
         try:
             self.mostrar_tabla()
+            self.seleccionar_caja_abierta()
         except Exception as e:
             print(f"Error al actualizar caja en tiempo real: {e}")
 
