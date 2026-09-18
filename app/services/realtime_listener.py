@@ -34,11 +34,6 @@ class RealtimeListener(QThread):
         self._conn = None
 
     def run(self):
-        # Si el motor es SQLite o local, el listener se desactiva sin error
-        if self.config.mode == "local" or self.config.engine_type == "sqlite":
-            logger.info("RealtimeListener inactivo: la base de datos está en modo SQLite local.")
-            return
-
         try:
             import psycopg2
             import psycopg2.extensions

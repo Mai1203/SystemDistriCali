@@ -329,14 +329,15 @@ def provision_database(
     db_name: str = "systemdistrimagik",
     app_user: str = "distri_app",
     app_password: str = "DistriMagik2026*",
+    expose_network: bool = False,
 ) -> Tuple[bool, str]:
     """
     Se conecta como administrador de PostgreSQL para:
     1. Crear el usuario de aplicación si no existe.
     2. Crear la base de datos si no existe.
     3. Asignar permisos al usuario de aplicación sobre la base de datos y esquema public.
-    4. Configurar pg_hba.conf y listen_addresses para permitir acceso a las terminales.
-    5. Crear regla de Firewall en Windows para el puerto de PostgreSQL.
+    4. Configurar pg_hba.conf y listen_addresses (solo si expose_network=True).
+    5. Crear regla de Firewall en Windows para el puerto (solo si expose_network=True).
     """
     enc_admin_user = urllib.parse.quote_plus(admin_user)
     enc_admin_pass = urllib.parse.quote_plus(admin_password)
@@ -353,7 +354,6 @@ def provision_database(
 
             if not user_exists:
                 logger.info(f"Creando usuario de aplicación '{app_user}'...")
-                # SQL seguro con comillas para evitar inyecciones
                 conn.execute(text(f'CREATE USER "{app_user}" WITH PASSWORD :password'), {"password": app_password})
             else:
                 logger.info(f"Usuario '{app_user}' ya existe. Actualizando contraseña...")
@@ -372,8 +372,17 @@ def provision_database(
                 logger.info(f"Base de datos '{db_name}' ya existe.")
                 conn.execute(text(f'ALTER DATABASE "{db_name}" OWNER TO "{app_user}"'))
 
-            # 3. Configurar pg_hba.conf y listen_addresses para admitir terminales
-            configure_remote_access_in_postgresql(conn)
+            # 3. Configurar pg_hba.conf y listen_addresses solo si expose_network=True
+            if expose_network:
+                configure_remote_access_in_postgresql(conn)
+            else:
+                # Modo local: asegurar listen_addresses = 'localhost' (solo conexiones locales)
+                try:
+                    conn.execute(text("ALTER SYSTEM SET listen_addresses = 'localhost'"))
+                    conn.execute(text("SELECT pg_reload_conf()"))
+                    logger.info("Modo local: listen_addresses = 'localhost' configurado.")
+                except Exception as e:
+                    logger.warning(f"Aviso al configurar listen_addresses local: {e}")
 
         admin_engine.dispose()
 
@@ -388,12 +397,15 @@ def provision_database(
             conn.execute(text(f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO "{app_user}"'))
         target_engine.dispose()
 
-        # 5. Configurar regla de Firewall en Windows automáticamente
-        fw_ok, fw_msg = configure_windows_firewall(port=port)
-        logger.info(f"Estado de regla de firewall: {fw_msg}")
+        # 5. Configurar regla de Firewall en Windows solo si expose_network=True
+        if expose_network:
+            fw_ok, fw_msg = configure_windows_firewall(port=port)
+            logger.info(f"Estado de regla de firewall: {fw_msg}")
+        else:
+            logger.info("Modo local: sin regla de firewall (solo localhost).")
 
-        logger.info("Base de datos, permisos, red y firewall configurados exitosamente.")
-        return True, "Base de datos, permisos, acceso de red y Firewall configurados correctamente."
+        logger.info("Base de datos, permisos y configuración de red aplicados.")
+        return True, "Base de datos y permisos configurados correctamente."
     except Exception as e:
         logger.error(f"Error durante el provisionamiento de PostgreSQL: {e}")
         return False, f"Error al aprovisionar PostgreSQL: {str(e)}"

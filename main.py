@@ -97,24 +97,52 @@ class MainWindow(QMainWindow):
             self.stacked_widget.setCurrentWidget(self.SetupWizard)
             return
 
-        # Probar conexión
-        ok, msg = test_connection(config, timeout_seconds=3)
+        # Ejecutar la verificación de conexión en un hilo de fondo
+        from PyQt6.QtCore import QThread, pyqtSignal
+        
+        class StartupWorker(QThread):
+            finished_signal = pyqtSignal(object)
+            error_signal = pyqtSignal(str)
+            def run(self):
+                try:
+                    res = _verificar()
+                    self.finished_signal.emit(res)
+                except Exception as e:
+                    self.error_signal.emit(str(e))
+
+        def _verificar():
+            print("[DEBUG] Probando conexion en el arranque...", flush=True)
+            ok, msg = test_connection(config, timeout_seconds=3)
+            print(f"[DEBUG] Resultado test_connection: {ok}, {msg}", flush=True)
+            if not ok:
+                return False, msg
+            # NOTA: Ya no llamamos a init_db() en cada arranque. 
+            # Eso solo se hace al configurar el servidor por primera vez.
+            return True, "OK"
+
+        self._startup_worker = StartupWorker()
+        self._startup_worker.finished_signal.connect(self._on_verificacion_inicial_completada)
+        self._startup_worker.error_signal.connect(self._on_verificacion_inicial_error)
+        print("[DEBUG] Arrancando WorkerThread...", flush=True)
+        self._startup_worker.start()
+
+    def _on_verificacion_inicial_completada(self, result):
+        ok, msg = result
         if not ok:
             logger.warning(f"Conexión inicial falló: {msg}. Redirigiendo al Asistente de Configuración.")
             QMessageBox.warning(
                 self,
                 "Configuración de Conexión Requerida",
-                f"No se pudo conectar a la base de datos configurada ({config.mode}):\n\n{msg}\n\nPor favor revise los datos en el Asistente.",
+                f"No se pudo conectar a la base de datos configurada:\n\n{msg}\n\nPor favor revise los datos en el Asistente.",
             )
             self.stacked_widget.setCurrentWidget(self.SetupWizard)
         else:
-            logger.info("Conexión inicial verificada con éxito. Inicializando esquema si es necesario...")
-            try:
-                init_db()
-                self.stacked_widget.setCurrentWidget(self.Login)
-            except Exception as e:
-                logger.error(f"Error al inicializar esquema: {e}")
-                self.stacked_widget.setCurrentWidget(self.SetupWizard)
+            logger.info("Conexión inicial verificada con éxito.")
+            self.stacked_widget.setCurrentWidget(self.Login)
+
+    def _on_verificacion_inicial_error(self, err_msg):
+        logger.error(f"Error al inicializar esquema: {err_msg}")
+        self.stacked_widget.setCurrentWidget(self.SetupWizard)
 
     def al_finalizar_configuracion(self):
         logger.info("Asistente de configuración completado. Cambiando a vista de Login...")
@@ -222,7 +250,17 @@ class MainWindow(QMainWindow):
     def configurar_accesos_por_usuario(self, usuario):
         navbar = self.MainApp.navbar
         nombres_permitidos = obtener_permisos_usuario(usuario)
-        es_admin = usuario.rol and usuario.rol.Nombre == "ADMINISTRADOR"
+        
+        # Determinar si es admin usando ID_Rol (evita lazy loading en objeto detached)
+        es_admin = False
+        if isinstance(usuario, tuple):
+            # Tupla de obtener_usuario_por_id: rol está en posición 6
+            es_admin = len(usuario) > 6 and usuario[6] == "ADMINISTRADOR"
+        else:
+            # Objeto ORM: usar ID_Rol
+            id_rol = getattr(usuario, 'ID_Rol', None)
+            if id_rol == 1:  # ADMINISTRADOR tiene ID_Rol = 1
+                es_admin = True
 
         permisos = {
             "Ventas": navbar.comboVentas,

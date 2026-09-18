@@ -14,7 +14,6 @@ def _safe_error_message(e: Exception) -> str:
         pass
 
     try:
-        # Intentar extraer args como bytes o representaciones
         parts = []
         for arg in getattr(e, "args", []):
             if isinstance(arg, bytes):
@@ -33,24 +32,12 @@ def _safe_error_message(e: Exception) -> str:
 
 def test_connection(config: DatabaseConfig, timeout_seconds: int = 4) -> Tuple[bool, str]:
     """
-    Prueba la conexión a la base de datos según la configuración provista.
+    Prueba la conexión a PostgreSQL según la configuración provista.
     Retorna (éxito: bool, mensaje: str).
     """
     url = config.get_connection_url()
     
-    if config.mode == "local" or config.engine_type == "sqlite":
-        try:
-            test_engine = create_engine(url, connect_args={"check_same_thread": False})
-            with test_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            test_engine.dispose()
-            return True, "Conexión a SQLite local verificada correctamente."
-        except Exception as e:
-            err_str = _safe_error_message(e)
-            logger.error(f"Error probando conexión SQLite: {err_str}")
-            return False, f"Error al abrir la base de datos local: {err_str}"
-    
-    # PostgreSQL
+    # PostgreSQL (todos los modos: local, server, terminal)
     try:
         test_engine = create_engine(
             url,
@@ -60,7 +47,7 @@ def test_connection(config: DatabaseConfig, timeout_seconds: int = 4) -> Tuple[b
         with test_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         test_engine.dispose()
-        return True, "¡Conexión exitosa con el servidor PostgreSQL!"
+        return True, "¡Conexión exitosa con PostgreSQL!"
     except Exception as e:
         error_msg = _safe_error_message(e)
         logger.error(f"Fallo de conexión a PostgreSQL ({config.host}:{config.port}): {error_msg}")

@@ -3,14 +3,11 @@ backup_service.py
 =================
 Servicio unificado de respaldos para SystemDistriCali.
 
-Soporta dos motores según la configuración en config.json:
-  - SQLite     → copia del archivo .db con shutil
+Solo soporta PostgreSQL (todos los modos: local, server, terminal).
   - PostgreSQL → volcado SQL con pg_dump / restauración con psql
 """
 
 import os
-import shutil
-import sqlite3
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -93,21 +90,13 @@ def find_psql() -> Optional[str]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_extension_respaldo(config: Optional[DatabaseConfig] = None) -> str:
-    """Retorna '.db' para SQLite o '.sql' para PostgreSQL."""
-    if config is None:
-        config = load_config()
-    if config.engine_type == "postgresql" and config.mode != "local":
-        return ".sql"
-    return ".db"
+    """Retorna '.sql' para PostgreSQL."""
+    return ".sql"
 
 
 def get_filtro_dialogo(config: Optional[DatabaseConfig] = None) -> str:
-    """Retorna el filtro de extensión para QFileDialog según el motor."""
-    if config is None:
-        config = load_config()
-    if config.engine_type == "postgresql" and config.mode != "local":
-        return "Respaldo SQL (*.sql)"
-    return "Archivos de Base de Datos (*.db)"
+    """Retorna el filtro de extensión para QFileDialog (PostgreSQL)."""
+    return "Respaldo SQL (*.sql)"
 
 
 def nombre_respaldo_automatico(
@@ -116,7 +105,7 @@ def nombre_respaldo_automatico(
 ) -> str:
     """
     Genera el nombre de archivo para el respaldo automático del día.
-    Ejemplo: Backup_2026-09-12.db  /  Backup_2026-09-12.sql
+    Ejemplo: Backup_2026-09-12.sql
     """
     if fecha is None:
         fecha = datetime.now().strftime("%Y-%m-%d")
@@ -133,9 +122,8 @@ def crear_respaldo(
     config: Optional[DatabaseConfig] = None,
 ) -> Tuple[bool, str]:
     """
-    Crea un respaldo de la base de datos en *ruta_destino*.
+    Crea un respaldo de la base de datos PostgreSQL en *ruta_destino*.
 
-    - SQLite     → copia simple del archivo .db
     - PostgreSQL → pg_dump --file=ruta_destino --format=plain (.sql)
 
     Retorna (éxito: bool, mensaje: str).
@@ -143,26 +131,7 @@ def crear_respaldo(
     if config is None:
         config = load_config()
 
-    es_postgres = (config.engine_type == "postgresql" and config.mode != "local")
-    if es_postgres:
-        return _backup_postgresql(config, ruta_destino)
-    return _backup_sqlite(config, ruta_destino)
-
-
-def _backup_sqlite(config: DatabaseConfig, ruta_destino: str) -> Tuple[bool, str]:
-    """Respaldo SQLite: copia el archivo .db."""
-    ruta_db = Path(config.sqlite_path)
-    if not ruta_db.exists():
-        msg = f"No se encontró el archivo de base de datos en: {ruta_db}"
-        logger.error(msg)
-        return False, msg
-    try:
-        shutil.copy(str(ruta_db), ruta_destino)
-        logger.info(f"Respaldo SQLite creado: {ruta_destino}")
-        return True, f"Respaldo creado correctamente en:\n{ruta_destino}"
-    except Exception as e:
-        logger.error(f"Error al crear respaldo SQLite: {e}")
-        return False, f"Error al crear el respaldo: {str(e)}"
+    return _backup_postgresql(config, ruta_destino)
 
 
 def _backup_postgresql(config: DatabaseConfig, ruta_destino: str) -> Tuple[bool, str]:
@@ -232,9 +201,9 @@ def _backup_postgresql(config: DatabaseConfig, ruta_destino: str) -> Tuple[bool,
 
 def restaurar_respaldo(ruta_origen: str, config: Optional[DatabaseConfig] = None) -> Tuple[bool, str]:
     """
-    Restaura la base de datos según el motor configurado.
-    - SQLite: borra los datos actuales de cada tabla y los reinserta (DELETE+INSERT).
-    - PostgreSQL: limpia el esquema 'public' y ejecuta el script .sql mediante psql.
+    Restaura la base de datos PostgreSQL desde un archivo .sql.
+    - Limpia el esquema 'public' (DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;).
+    - Ejecuta el script .sql mediante psql.
     Retorna (éxito: bool, mensaje: str).
     """
     if config is None:
@@ -250,11 +219,7 @@ def restaurar_respaldo(ruta_origen: str, config: Optional[DatabaseConfig] = None
     except Exception as e:
         logger.warning(f"Aviso al liberar engine antes de la restauración: {e}")
 
-    es_postgres = (config.engine_type == "postgresql" and config.mode != "local")
-    if es_postgres:
-        res, msg = _restaurar_postgresql(config, ruta_origen)
-    else:
-        res, msg = _restaurar_sqlite(config, ruta_origen)
+    res, msg = _restaurar_postgresql(config, ruta_origen)
 
     # Re-inicializar / verificar el engine y la BD tras la restauración
     try:
@@ -266,87 +231,6 @@ def restaurar_respaldo(ruta_origen: str, config: Optional[DatabaseConfig] = None
         logger.warning(f"Aviso al re-inicializar BD tras restauración: {e}")
 
     return res, msg
-
-
-def _restaurar_sqlite(config: DatabaseConfig, ruta_origen: str) -> Tuple[bool, str]:
-    """
-    Restauración SQLite: borra todos los registros de cada tabla y los reinserta
-    desde el respaldo. Evita duplicados y conflictos de clave primaria.
-    Opera dentro de una transacción única; si algo falla se hace rollback completo.
-    """
-    ruta_db = Path(config.sqlite_path)
-    if not ruta_db.exists():
-        return False, f"No se encontró la base de datos activa en: {ruta_db}"
-
-    nueva_conn = None
-    antigua_conn = None
-    try:
-        nueva_conn = sqlite3.connect(str(ruta_db))
-        nueva_cursor = nueva_conn.cursor()
-
-        antigua_conn = sqlite3.connect(ruta_origen)
-        antigua_cursor = antigua_conn.cursor()
-
-        antigua_cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tablas = [fila[0] for fila in antigua_cursor.fetchall()]
-
-        # Desactivar foreign keys para poder borrar sin restricciones de orden
-        nueva_cursor.execute("PRAGMA foreign_keys = OFF")
-        nueva_conn.execute("BEGIN")
-
-        tablas_migradas = 0
-        for tabla in tablas:
-            if tabla == "sqlite_sequence":
-                continue
-
-            # Verificar que la tabla existe en la base actual
-            nueva_cursor.execute(f"PRAGMA table_info({tabla})")
-            columnas_nuevas_info = nueva_cursor.fetchall()
-            if not columnas_nuevas_info:
-                logger.warning(f"Tabla '{tabla}' no existe en la BD actual, se omite.")
-                continue
-
-            antigua_cursor.execute(f"PRAGMA table_info({tabla})")
-            columnas_antiguas = [col[1] for col in antigua_cursor.fetchall()]
-            columnas_nuevas = [col[1] for col in columnas_nuevas_info]
-
-            columnas_comunes = [c for c in columnas_antiguas if c in columnas_nuevas]
-            if not columnas_comunes:
-                continue
-
-            antigua_cursor.execute(f"SELECT * FROM {tabla}")
-            filas = antigua_cursor.fetchall()
-
-            # ── BORRAR todo antes de reinsertar ──────────────────────────
-            nueva_cursor.execute(f"DELETE FROM {tabla}")
-
-            columnas_str = ", ".join(columnas_comunes)
-            placeholders = ", ".join("?" for _ in columnas_comunes)
-
-            for fila in filas:
-                datos = [fila[columnas_antiguas.index(col)] for col in columnas_comunes]
-                nueva_cursor.execute(
-                    f"INSERT INTO {tabla} ({columnas_str}) VALUES ({placeholders})",
-                    datos,
-                )
-            tablas_migradas += 1
-
-        nueva_conn.commit()
-        nueva_cursor.execute("PRAGMA foreign_keys = ON")
-        logger.info(f"Restauración SQLite completada: {tablas_migradas} tabla(s) restaurada(s).")
-        return True, f"Datos restaurados correctamente ({tablas_migradas} tabla(s) procesada(s))."
-
-    except Exception as e:
-        if nueva_conn:
-            nueva_conn.rollback()
-        logger.error(f"Error al restaurar desde SQLite: {e}")
-        return False, f"Error durante la restauración:\n{str(e)}"
-    finally:
-        if nueva_conn:
-            nueva_cursor.execute("PRAGMA foreign_keys = ON")
-            nueva_conn.close()
-        if antigua_conn:
-            antigua_conn.close()
 
 
 def _restaurar_postgresql(config: DatabaseConfig, ruta_origen: str) -> Tuple[bool, str]:
@@ -403,7 +287,7 @@ def _restaurar_postgresql(config: DatabaseConfig, ruta_origen: str) -> Tuple[boo
     except Exception as e:
         logger.warning(f"No se pudo limpiar el esquema public antes de la importación: {e}")
 
-    # Paso 2: Ejecutar el archivo de respaldo .sql
+    # Paso 3: Ejecutar el archivo de respaldo .sql
     cmd = [
         psql,
         "--host", config.host,

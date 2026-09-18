@@ -49,27 +49,16 @@ class _RestoreWorker(QThread):
         self.terminado.emit(exito, mensaje)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-
 class Respaldo_View(QWidget, Ui_Respaldo):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-
-        # Cargar configuración desde config.json (SQLite o PostgreSQL)
-        self.config = load_config()
-
-        # Carpeta destino de respaldos automáticos
+        # Configuración inicial
         self.ruta_carpeta_respaldos = os.path.join(
             os.path.expanduser("~"), "Desktop", "Respaldos"
         )
-        self.intentos_respaldo = 0        # Contador de intentos de respaldo en el día
+        self.intentos_respaldo = 0  # Contador de intentos de respaldo en el día
         self.ultima_fecha_respaldo = None  # Última fecha de respaldo registrado
-
-        # Referencias a workers activos (evita que el GC los destruya antes de terminar)
-        self._worker_backup: _BackupWorker | None = None
-        self._worker_restore: _RestoreWorker | None = None
-        self._progress: QProgressDialog | None = None
 
         self.BtnRespaldoExportar.clicked.connect(self.exportar_base_datos)
         self.BtnRespaldoImportar.clicked.connect(self.importar_base_datos)
@@ -77,11 +66,10 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         # Responsividad del Sistema de Diseño (resizeEvent → adapt_to_size)
         QTimer.singleShot(50, self._adapt_current)
 
-         # Temporizador de respaldo automático (verifica inmediatamente tras 5 minutos y luego cada hora)
-        QTimer.singleShot(5*60*1000, self.respaldo_automatico)
+        # Configuración del temporizador (verifica cada hora)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.respaldo_automatico)
-        self.timer.start(60 * 60 * 1000)  # Cada 60 minutos
+        self.timer.start(1 * 60 * 1000)  # Verificar cada hora (60 minutos)
 
     # ── Responsividad ──────────────────────────────────────────────
     def resizeEvent(self, event):
@@ -93,46 +81,24 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         if w > 0 and h > 0:
             self.adapt_to_size(w, h)
 
-    # ── Helpers de progreso ────────────────────────────────────────
-    def _mostrar_progreso(self, titulo: str, mensaje: str):
-        """Muestra un diálogo de progreso indeterminado y bloquea el botón que lo lanzó."""
-        self._progress = QProgressDialog(mensaje, None, 0, 0, self)
-        self._progress.setWindowTitle(titulo)
-        self._progress.setWindowModality(Qt.WindowModality.WindowModal)
-        self._progress.setMinimumDuration(0)
-        self._progress.setCancelButton(None)
-        self._progress.show()
-        self.BtnRespaldoExportar.setEnabled(False)
-        self.BtnRespaldoImportar.setEnabled(False)
-
-    def _cerrar_progreso(self):
-        """Cierra el diálogo de progreso y re-habilita los botones."""
-        if self._progress:
-            self._progress.close()
-            self._progress = None
-        self.BtnRespaldoExportar.setEnabled(True)
-        self.BtnRespaldoImportar.setEnabled(True)
-
     # ─────────────────────────────────────────────────────────────
     def exportar_base_datos(self):
-        """Exporta la base de datos activa (SQLite o PostgreSQL) a un archivo de respaldo."""
+        """Exporta la base de datos PostgreSQL a un archivo de respaldo .sql."""
         self.config = load_config()
 
         ext = get_extension_respaldo(self.config)
         filtro = get_filtro_dialogo(self.config)
-        es_postgres = (self.config.engine_type == "postgresql" and self.config.mode != "local")
 
-        # Para PostgreSQL verificar herramientas antes de continuar
-        if es_postgres:
-            ok, msg_tools = verificar_herramientas_postgres()
-            if not ok:
-                QMessageBox.warning(
-                    self,
-                    "Herramientas no encontradas",
-                    f"{msg_tools}\n\nInstala PostgreSQL y asegúrate de que la "
-                    f"carpeta 'bin' esté en el PATH del sistema.",
-                )
-                return
+        # Verificar herramientas de PostgreSQL
+        ok, msg_tools = verificar_herramientas_postgres()
+        if not ok:
+            QMessageBox.warning(
+                self,
+                "Herramientas no encontradas",
+                f"{msg_tools}\n\nInstala PostgreSQL y asegúrate de que la "
+                f"carpeta 'bin' esté en el PATH del sistema.",
+            )
+            return
 
         msg = QMessageBox(self)
         msg.setWindowTitle("Exportar base de datos")
@@ -140,25 +106,20 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         msg.setIcon(QMessageBox.Icon.Question)
 
         btn_todo = msg.addButton("Exportar toda la base de datos", QMessageBox.ButtonRole.ActionRole)
-
-        # Exportar tabla específica solo aplica a SQLite
-        btn_tabla = None
-        if not es_postgres:
-            btn_tabla = msg.addButton("Exportar tabla específica", QMessageBox.ButtonRole.ActionRole)
-
+        btn_tabla = msg.addButton("Exportar tabla específica", QMessageBox.ButtonRole.ActionRole)
         msg.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+
         msg.exec()
 
-        clicked = msg.clickedButton()
-        if clicked == btn_todo:
+        if msg.clickedButton() == btn_todo:
             self._exportar_todo(ext, filtro)
-        elif btn_tabla and clicked == btn_tabla:
-            self._exportar_tabla_sqlite(ext, filtro)
+        elif msg.clickedButton() == btn_tabla:
+            self._exportar_tabla(ext, filtro)
 
     def _exportar_todo(self, ext: str, filtro: str):
         """Exporta la base de datos completa en un hilo secundario."""
         fecha_actual = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        nombre_archivo = f"SystemDistriCali_{fecha_actual}{ext}"
+        nombre_archivo = f"SystemDistriMagik_{fecha_actual}{ext}"
 
         ruta_exportar, _ = QFileDialog.getSaveFileName(
             self, "Exportar Base de Datos", nombre_archivo, filtro,
@@ -172,8 +133,8 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         self._worker_backup.terminado.connect(self._on_exportacion_terminada)
         self._worker_backup.start()
 
-    def _exportar_tabla_sqlite(self, ext: str, filtro: str):
-        """Exporta una tabla específica de SQLite (copia toda la BD con el nombre de la tabla)."""
+    def _exportar_tabla(self, ext: str, filtro: str):
+        """Exporta una tabla específica (para PostgreSQL se exporta toda la BD con el nombre de la tabla)."""
         tabla, ok_tabla = QInputDialog.getText(
             self, "Exportar tabla", "Ingrese el nombre de la tabla a exportar:"
         )
@@ -208,10 +169,9 @@ class Respaldo_View(QWidget, Ui_Respaldo):
 
     # ─────────────────────────────────────────────────────────────
     def importar_base_datos(self):
-        """Importa/restaura la base de datos desde un archivo de respaldo en un hilo secundario."""
+        """Importa/restaura la base de datos PostgreSQL desde un archivo de respaldo en un hilo secundario."""
         self.config = load_config()
         filtro = get_filtro_dialogo(self.config)
-        es_postgres = (self.config.engine_type == "postgresql" and self.config.mode != "local")
 
         filtro_completo = f"{filtro};;Todos los archivos (*.*)"
 
@@ -225,21 +185,12 @@ class Respaldo_View(QWidget, Ui_Respaldo):
             QMessageBox.warning(self, "Error", "El archivo seleccionado no existe.")
             return
 
-        # Confirmación con aviso diferenciado por motor
-        if es_postgres:
-            aviso = (
-                "Esto restaurará la base de datos PostgreSQL desde el respaldo.\n\n"
-                "⚠️ TODOS los datos actuales serán reemplazados por los del respaldo.\n"
-                "La operación es atómica: si algo falla, los datos actuales se conservan.\n\n"
-                "¿Deseas continuar?"
-            )
-        else:
-            aviso = (
-                "Esto restaurará la base de datos desde el respaldo.\n\n"
-                "⚠️ TODOS los datos actuales serán borrados y reemplazados\n"
-                "por los del respaldo seleccionado.\n\n"
-                "¿Deseas continuar?"
-            )
+        aviso = (
+            "Esto restaurará la base de datos PostgreSQL desde el respaldo.\n\n"
+            "⚠️ TODOS los datos actuales serán reemplazados por los del respaldo.\n"
+            "La operación es atómica: si algo falla, los datos actuales se conservan.\n\n"
+            "¿Deseas continuar?"
+        )
 
         respuesta = QMessageBox.question(
             self,
@@ -271,7 +222,7 @@ class Respaldo_View(QWidget, Ui_Respaldo):
     def respaldo_automatico(self):
         """
         Verifica si ya se realizó un respaldo hoy y lo realiza si no existe.
-        Máximo 2 intentos por día. Funciona para SQLite y PostgreSQL.
+        Máximo 2 intentos por día. Funciona para PostgreSQL.
         El respaldo automático corre en hilo secundario para no bloquear la UI.
         """
         self.config = load_config()
@@ -308,11 +259,27 @@ class Respaldo_View(QWidget, Ui_Respaldo):
                     f"Respaldo automático fallido "
                     f"(intento {self.intentos_respaldo + 1}): {mensaje}"
                 )
-            self.intentos_respaldo += 1
+                self.intentos_respaldo += 1
 
         worker.terminado.connect(_on_auto_backup_done)
-        # Guardamos referencia para que el GC no destruya el worker
-        self._worker_backup = worker
         worker.start()
 
+    # ─────────────────────────────────────────────────────────────
+    # Helpers de UI para progreso
+    # ─────────────────────────────────────────────────────────────
+    def _mostrar_progreso(self, titulo: str, mensaje: str):
+        if hasattr(self, '_progreso_dialog') and self._progreso_dialog is not None:
+            self._progreso_dialog.close()
+        self._progreso_dialog = QProgressDialog(mensaje, None, 0, 0, self)
+        self._progreso_dialog.setWindowTitle(titulo)
+        self._progreso_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self._progreso_dialog.setMinimumDuration(0)
+        self._progreso_dialog.setCancelButton(None)
+        self._progreso_dialog.setAutoClose(False)
+        self._progreso_dialog.setAutoReset(False)
+        self._progreso_dialog.show()
 
+    def _cerrar_progreso(self):
+        if hasattr(self, '_progreso_dialog') and self._progreso_dialog is not None:
+            self._progreso_dialog.close()
+            self._progreso_dialog = None

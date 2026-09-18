@@ -1,22 +1,15 @@
 from contextlib import contextmanager
 from typing import Generator
-from sqlalchemy.orm import sessionmaker, Session, declarative_base
-from app.database.engine import get_engine
+from sqlalchemy.orm import Session, declarative_base
+from app.database.manager import db_manager
 from app.utils.logger import logger
 
 Base = declarative_base()
 
 
-def get_session_factory():
-    """Genera una fábrica de sesiones vinculada al engine actual."""
-    engine = get_engine()
-    return sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
 def SessionLocal() -> Session:
-    """Instancia una nueva sesión vinculada al engine activo."""
-    factory = get_session_factory()
-    return factory()
+    """Instancia una nueva sesión vinculada al engine activo a través del DatabaseManager."""
+    return db_manager.get_session()
 
 
 @contextmanager
@@ -36,3 +29,4 @@ def session_scope() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+        db_manager.remove_session()

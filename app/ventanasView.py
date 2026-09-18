@@ -124,23 +124,23 @@ class MainApp(QWidget):
         self._iniciar_realtime_listener()
 
     def _iniciar_realtime_listener(self):
-        """Inicia el hilo de escucha en tiempo real si el sistema está configurado con PostgreSQL."""
+        """Inicia el hilo de escucha en tiempo real (PostgreSQL LISTEN/NOTIFY)."""
         try:
             from app.database.config import load_config
             from app.services.realtime_listener import RealtimeListener
 
             config = load_config()
-            if config.mode != "local" and config.engine_type == "postgresql":
-                self.realtime_listener = RealtimeListener(config=config)
-                self.realtime_listener.facturas_cambiadas.connect(self.facturas.al_recibir_notificacion_facturas)
-                self.realtime_listener.productos_cambiados.connect(self.productos.al_recibir_notificacion_productos)
-                self.realtime_listener.caja_cambiada.connect(self.caja.al_recibir_notificacion_caja)
-                self.realtime_listener.egresos_cambiados.connect(self.egreso.al_recibir_notificacion_egresos)
-                self.realtime_listener.ventas_credito_cambiadas.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
-                self.realtime_listener.pagos_credito_cambiados.connect(self.pagoCredito.al_recibir_notificacion_pagos_credito)
-                self.realtime_listener.pagos_credito_cambiados.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
-                self.realtime_listener.clientes_cambiados.connect(self.Clientes.al_recibir_notificacion_clientes)
-                self.realtime_listener.start()
+            # Todos los modos usan PostgreSQL ahora
+            self.realtime_listener = RealtimeListener(config=config)
+            self.realtime_listener.facturas_cambiadas.connect(self.facturas.al_recibir_notificacion_facturas)
+            self.realtime_listener.productos_cambiados.connect(self.productos.al_recibir_notificacion_productos)
+            self.realtime_listener.caja_cambiada.connect(self.caja.al_recibir_notificacion_caja)
+            self.realtime_listener.egresos_cambiados.connect(self.egreso.al_recibir_notificacion_egresos)
+            self.realtime_listener.ventas_credito_cambiadas.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
+            self.realtime_listener.pagos_credito_cambiados.connect(self.pagoCredito.al_recibir_notificacion_pagos_credito)
+            self.realtime_listener.pagos_credito_cambiados.connect(self.crediFactura.al_recibir_notificacion_ventas_credito)
+            self.realtime_listener.clientes_cambiados.connect(self.Clientes.al_recibir_notificacion_clientes)
+            self.realtime_listener.start()
 
         except Exception as e:
             print(f"Error al iniciar RealtimeListener: {e}")
