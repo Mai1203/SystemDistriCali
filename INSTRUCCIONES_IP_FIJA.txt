@@ -1,0 +1,111 @@
+===========================================================
+INSTRUCCIONES: IP FIJA PARA SERVIDOR + CONEXION TERMINAL
+===========================================================
+
+PROBLEMA: El servidor usa DHCP y su IP cambia al reiniciar.
+SOLUCION: Fijar IP estatica en Windows (sin tocar el router).
+
+-----------------------------------------------------------
+ARCHIVOS:
+-----------------------------------------------------------
+1. fijar_ip_servidor.bat  -> Ejecutar en el PC SERVIDOR como Administrador
+2. ESTE_ARCHIVO.txt       -> Estas instrucciones
+
+-----------------------------------------------------------
+PASO 1: EN EL PC SERVIDOR (donde corre PostgreSQL)
+-----------------------------------------------------------
+
+A. ANTES DE EJECUTAR - Ver tus valores actuales:
+   Abre CMD y ejecuta:  ipconfig
+   
+   Busca tu adaptador (Ethernet o Wi-Fi) y anota:
+   - Direccion IPv4 actual (ej: 192.168.1.XX)
+   - Mascara de subred (ej: 255.255.255.0)
+   - Puerta de enlace predeterminada (ej: 192.168.1.1)
+   - Servidores DNS (ej: 192.168.1.1 y 8.8.8.8)
+
+B. EDITAR EL .BAT SI ES NECESARIO:
+   Click derecho en fijar_ip_servidor.bat -> Editar
+   Cambia las variables segun TU red:
+   
+   set INTERFACE=Ethernet        (o "Wi-Fi" si usas inalambrico)
+   set IP=192.168.1.50           (elige una IP FIJA fuera del rango DHCP)
+   set MASK=255.255.255.0
+   set GATEWAY=192.168.1.1       (IP de tu router)
+   set DNS1=192.168.1.1          (DNS del router)
+   set DNS2=8.8.8.8              (DNS Google como respaldo)
+
+   COMO ELEGIR LA IP FIJA:
+   - Entra al router -> ver "DHCP Range" (ej: 192.168.1.100 - 192.168.1.200)
+   - Elige IP FUERA de ese rango (ej: 192.168.1.50, 192.168.1.10, etc.)
+   - La IP debe estar en la misma subred (primeros 3 octetos iguales)
+
+C. EJECUTAR COMO ADMINISTRADOR:
+   Click derecho en fijar_ip_servidor.bat -> "Ejecutar como administrador"
+   Presiona una tecla cuando pida confirmacion.
+   
+   Debera salir: "IP estatica configurada" y mostrar tu IP.
+
+D. VERIFICAR:
+   ipconfig
+   Debe mostrar tu IP fija en el adaptador.
+
+E. CONFIGURAR LA APP COMO SERVIDOR:
+   Abre la app -> Setup Wizard -> "Servidor (Principal)"
+   Pon contraseña postgres y app -> "Guardar y Continuar"
+   Al terminar veras: "Servidor listo en: IP: 192.168.1.50 Puerto: 5432"
+
+F. ABRIR PUERTO EN FIREWALL (si la terminal no conecta):
+   En CMD como Administrador en el SERVIDOR:
+   netsh advfirewall firewall add rule name="PostgreSQL 5432" dir=in action=allow protocol=TCP localport=5432
+
+-----------------------------------------------------------
+PASO 2: EN LA PC TERMINAL (puesto de venta)
+-----------------------------------------------------------
+
+A. VERIFICAR CONECTIVIDAD LAN:
+   En CMD de la terminal:  ping 192.168.1.50
+   (Debe responder. Si no -> revisa firewall paso 1.F)
+
+B. CONFIGURAR LA APP COMO TERMINAL:
+   Abre la app -> Setup Wizard -> "Terminal (Puesto de Venta)"
+   Completa:
+     Direccion IP del Servidor: 192.168.1.50
+     Puerto: 5432
+     Usuario de Aplicacion: distri_app
+     Contraseña de Aplicacion: DistriMagik2026*
+   Dale a "Guardar y Continuar" -> Probara la conexion.
+
+C. LISTO: La terminal ya conecta al servidor.
+
+-----------------------------------------------------------
+NOTAS IMPORTANTES
+-----------------------------------------------------------
+
+- Si usas Wi-Fi en el servidor: cambia INTERFACE=Wi-Fi en el .bat
+- El nombre exacto del adaptador lo ves con:  ipconfig
+- Si cambias de red (llevas la laptop a otra oficina), vuelve a DHCP:
+    netsh interface ip set address name="Ethernet" dhcp
+    netsh interface ip set dns name="Ethernet" dhcp
+- La IP 192.168.1.50 es SOLO EJEMPLO. Usa una IP valida en TU red.
+
+-----------------------------------------------------------
+COMANDOS UTILES (ejecutar en CMD como Admin en SERVIDOR)
+-----------------------------------------------------------
+
+Ver IP actual:          ipconfig
+Probar conexion:        ping 192.168.1.50
+Ver firewall:           netsh advfirewall firewall show rule name="PostgreSQL 5432"
+Borrar regla firewall:  netsh advfirewall firewall delete rule name="PostgreSQL 5432"
+Volver a DHCP:          netsh interface ip set address name="Ethernet" dhcp
+                        netsh interface ip set dns name="Ethernet" dhcp
+Ver estado Postgres:    sc query postgresql-x64-15
+
+-----------------------------------------------------------
+CONTACTO / SOPORTE
+-----------------------------------------------------------
+Si algo falla:
+1. Verifica que ambos PCs esten en la MISMA red (mismo router/switch)
+2. Ping desde terminal al servidor debe responder
+3. Firewall de Windows en servidor debe permitir puerto 5432
+4. PostgreSQL debe estar corriendo (services.msc -> postgresql-x64-15 -> Running)
