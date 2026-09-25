@@ -168,7 +168,7 @@ def obtener_facturas(db: Session):
             Usuarios.Usuario.label("usuario"),
             MetodoPago.Nombre.label("metodopago"),
             TipoFactura.Nombre.label("tipofactura"),
-            HistorialModificacion.Fecha_Modificacion.label("fecha_modificacion"),
+            func.max(HistorialModificacion.Fecha_Modificacion).label("fecha_modificacion"),
         )
         .join(Usuarios, Facturas.ID_Usuario == Usuarios.ID_Usuario)
         .join(MetodoPago, Facturas.ID_Metodo_Pago == MetodoPago.ID_Metodo_Pago)
@@ -176,6 +176,18 @@ def obtener_facturas(db: Session):
         .outerjoin(HistorialModificacion, Facturas.ID_Factura == HistorialModificacion.ID_Factura)
         .join(Clientes, Facturas.ID_Cliente == Clientes.ID_Cliente)
         .filter(TipoFactura.Nombre.in_(("FAC-01", "FAC-02", "FAC-03", "FAC-04")))
+        .group_by(
+            Facturas.ID_Factura,
+            Facturas.Fecha_Factura,
+            Facturas.Monto_efectivo,
+            Facturas.Monto_TRANSACCION,
+            Facturas.Estado,
+            Facturas.Domicilio,
+            Clientes.Nombre,
+            Usuarios.Usuario,
+            MetodoPago.Nombre,
+            TipoFactura.Nombre,
+        )
         .all()
     )
 
@@ -204,7 +216,7 @@ def buscar_facturas(db: Session, busqueda: str):
             Usuarios.Nombre.label("usuario"),
             MetodoPago.Nombre.label("metodopago"),
             TipoFactura.Nombre.label("tipofactura"),
-            HistorialModificacion.Fecha_Modificacion.label("fecha_modificacion"),
+            func.max(HistorialModificacion.Fecha_Modificacion).label("fecha_modificacion"),
         )
         .join(MetodoPago, Facturas.ID_Metodo_Pago == MetodoPago.ID_Metodo_Pago)
         .join(TipoFactura, Facturas.ID_Tipo_Factura == TipoFactura.ID_Tipo_Factura)
@@ -223,6 +235,18 @@ def buscar_facturas(db: Session, busqueda: str):
                 cast(Facturas.Estado, String).like(f"%{busqueda}%"),
                 ),
             )
+        )
+        .group_by(
+            Facturas.ID_Factura,
+            Facturas.Fecha_Factura,
+            Facturas.Monto_efectivo,
+            Facturas.Monto_TRANSACCION,
+            Facturas.Estado,
+            Facturas.Domicilio,
+            Clientes.Nombre,
+            Usuarios.Nombre,
+            MetodoPago.Nombre,
+            TipoFactura.Nombre,
         )
         .all()
     )
