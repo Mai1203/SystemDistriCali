@@ -5,12 +5,14 @@ from PyQt6.QtWidgets import (
 )
 from ..utils.enviar_notifi import Mensajes as QMessageBox
 from PyQt6 import QtWidgets, QtCore, QtGui
+import qtawesome as qta
 from ..utils import *
 from ..utils.autocomplementado import configurar_autocompletado
 from ..database.database import SessionLocal
 from ..controllers.producto_crud import *
 from ..controllers.marca_crud import *
 from ..controllers.categorias_crud import *
+from ..controllers.lote_crud import obtener_lotes_por_producto
 from ..ui import Ui_Productos
 from PyQt6.QtCore import Qt
 
@@ -117,23 +119,167 @@ class Productos_View(QWidget, Ui_Productos):
         self.BtnLimpiar.clicked.connect(self.volver_al_listado)
         self.BtnVolver.clicked.connect(self.volver_al_listado)
 
+        # Banner informativo para productos con múltiples lotes
+        self.BannerMultiplesLotes = QtWidgets.QFrame(parent=self.Card)
+        self.BannerMultiplesLotes.setObjectName("BannerMultiplesLotes")
+        self.BannerMultiplesLotes.setStyleSheet("""
+            QFrame#BannerMultiplesLotes {
+                background-color: #FDF2F9;
+                border: 1.5px solid #D8A4C6;
+                border-radius: 10px;
+                padding: 10px 14px;
+            }
+            QLabel#BannerTitulo {
+                font-family: 'Segoe UI';
+                font-size: 13px;
+                font-weight: 700;
+                color: #862D6D;
+            }
+            QLabel#BannerTexto {
+                font-family: 'Segoe UI';
+                font-size: 11px;
+                color: #551443;
+            }
+            QPushButton#BtnGestionarLotesForm {
+                background-color: #862D6D;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-family: 'Segoe UI';
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton#BtnGestionarLotesForm:hover {
+                background-color: #6E2259;
+            }
+        """)
+        banner_layout = QtWidgets.QHBoxLayout(self.BannerMultiplesLotes)
+        banner_layout.setContentsMargins(10, 8, 10, 8)
+        banner_layout.setSpacing(12)
+
+        icon_lbl = QtWidgets.QLabel(parent=self.BannerMultiplesLotes)
+        icon_lbl.setPixmap(qta.icon("fa5s.layer-group", color="#862D6D").pixmap(QtCore.QSize(28, 28)))
+        banner_layout.addWidget(icon_lbl)
+
+        txt_layout = QtWidgets.QVBoxLayout()
+        txt_layout.setSpacing(2)
+        self.LabelBannerTitulo = QtWidgets.QLabel("Producto con múltiples lotes", parent=self.BannerMultiplesLotes)
+        self.LabelBannerTitulo.setObjectName("BannerTitulo")
+        self.LabelBannerTexto = QtWidgets.QLabel(
+            "El stock, el precio de costo y los precios de venta están protegidos. Para modificarlos, gestione los lotes individualmente.",
+            parent=self.BannerMultiplesLotes
+        )
+        self.LabelBannerTexto.setObjectName("BannerTexto")
+        txt_layout.addWidget(self.LabelBannerTitulo)
+        txt_layout.addWidget(self.LabelBannerTexto)
+        banner_layout.addLayout(txt_layout)
+        banner_layout.addStretch()
+
+        self.BtnGestionarLotesForm = QtWidgets.QPushButton("  Gestión de Lotes", parent=self.BannerMultiplesLotes)
+        self.BtnGestionarLotesForm.setObjectName("BtnGestionarLotesForm")
+        self.BtnGestionarLotesForm.setIcon(qta.icon("fa5s.boxes", color="#FFFFFF"))
+        self.BtnGestionarLotesForm.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnGestionarLotesForm.clicked.connect(self._abrir_lotes_desde_formulario)
+        banner_layout.addWidget(self.BtnGestionarLotesForm)
+
+        self.Card.layout().insertWidget(0, self.BannerMultiplesLotes)
+        self.BannerMultiplesLotes.setVisible(False)
+
         # Estado inicial: modo NUEVO
         self._set_modo_nuevo()
 
-    def abrir_gestion_lotes(self):
-        """Abre el diálogo de gestión de lotes para el producto seleccionado."""
-        id_producto = self.obtener_id_producto()
-        if not id_producto:
-            return
+    def abrir_gestion_lotes_id(self, id_producto: int):
+        """Abre el diálogo de gestión de lotes para el id de producto indicado."""
         try:
             from .LotesDialog import LotesDialog
             dialog = LotesDialog(int(id_producto), self)
             dialog.exec()
-            # Al cerrar, refrescar la tabla de productos para reflejar el nuevo stock y precios
+            # Al cerrar, refrescar la tabla del listado de productos
             self.limpiar_tabla_productos()
             self.mostrar_productos()
+            # Si el formulario está mostrando este mismo producto, refrescar sus campos
+            if self.InputCodigo.text().strip() == str(id_producto):
+                self._recargar_datos_formulario(int(id_producto))
         except Exception as e:
             enviar_notificacion("Error", f"Error al abrir gestión de lotes: {e}")
+
+    def abrir_gestion_lotes(self):
+        """Abre el diálogo de gestión de lotes para el producto seleccionado en la tabla."""
+        id_producto = self.obtener_id_producto()
+        if not id_producto:
+            return
+        self.abrir_gestion_lotes_id(int(id_producto))
+
+    def _abrir_lotes_desde_formulario(self):
+        """Abre la gestión de lotes directamente desde el formulario de edición."""
+        codigo = self.InputCodigo.text().strip()
+        if not codigo:
+            return
+        self.abrir_gestion_lotes_id(int(codigo))
+
+    def _recargar_datos_formulario(self, id_producto: int):
+        """Recarga los datos actualizados del producto en el formulario tras gestionar lotes."""
+        db = SessionLocal()
+        try:
+            prod_rows = obtener_producto_por_id(db, id_producto)
+            if prod_rows:
+                row = prod_rows[0]
+                self.InputNombre.setText(str(row.Nombre or ""))
+                self.InputMarca.setText(str(row.marcas or ""))
+                self.InputCategoria.setText(str(row.categorias or ""))
+                self.InputCantidad.setText(str(row.Stock_actual if row.Stock_actual is not None else 0))
+                self.InputCantidadMin.setText(str(row.Stock_min if row.Stock_min is not None else 0))
+                self.InputPrecioCompra.setText(str(row.Precio_costo if row.Precio_costo is not None else 0))
+                self.InputPrecioVenta1.setText(str(row.Precio_venta_1 if row.Precio_venta_1 is not None else 0))
+                self.InputPrecioVenta2.setText(str(row.Precio_venta_2 if row.Precio_venta_2 is not None else 0))
+                self.InputPrecioVenta3.setText(str(row.Precio_venta_3 if row.Precio_venta_3 is not None else 0))
+                self.InputPrecioVenta4.setText(str(row.Precio_venta_4 if row.Precio_venta_4 is not None else 0))
+                self.InputGanancia1.setText(f"{row.Ganancia_1 or 0:,.0f}")
+                self.InputGanancia2.setText(f"{row.Ganancia_2 or 0:,.0f}")
+                self.InputGanancia3.setText(f"{row.Ganancia_3 or 0:,.0f}")
+                self.InputGanancia4.setText(f"{row.Ganancia_4 or 0:,.0f}")
+
+                lotes = obtener_lotes_por_producto(db, id_producto)
+                tiene_multiples = len(lotes) > 1
+                self._aplicar_bloqueo_multiples_lotes(tiene_multiples, len(lotes))
+        finally:
+            db.close()
+
+    def _aplicar_bloqueo_multiples_lotes(self, bloqueado: bool, num_lotes: int = 0):
+        """
+        Bloquea o desbloquea los campos de stock, precio de costo y precios de venta.
+        Cuando un producto tiene más de un lote, ninguno de estos campos se puede modificar.
+        """
+        tooltip = (
+            f"Este producto tiene {num_lotes} lotes registrados.\n"
+            "El stock, el precio de costo y los precios de venta están protegidos\n"
+            "y no se pueden cambiar directamente aquí.\n"
+            "Utilice el botón 'Gestión de Lotes' para modificarlos."
+        ) if bloqueado else ""
+
+        campos = [
+            self.InputCantidad,
+            self.InputPrecioCompra,
+            self.InputPrecioVenta1,
+            self.InputPrecioVenta2,
+            self.InputPrecioVenta3,
+            self.InputPrecioVenta4,
+        ]
+
+        for inp in campos:
+            inp.setReadOnly(bloqueado)
+            inp.setToolTip(tooltip)
+
+        if bloqueado:
+            self.LabelBannerTitulo.setText(f"Producto con múltiples lotes ({num_lotes} lotes)")
+            self.LabelBannerTexto.setText(
+                "El stock, el precio de costo y los precios de venta están bloqueados. "
+                "Para modificarlos, gestione cada lote individualmente."
+            )
+            self.BannerMultiplesLotes.setVisible(True)
+        else:
+            self.BannerMultiplesLotes.setVisible(False)
 
     # ─── Modo Nuevo / Modo Editar ────────────────────────────────────────────────
 
@@ -142,8 +288,7 @@ class Productos_View(QWidget, Ui_Productos):
         self.BtnIngresarProducto.setVisible(True)
         self.BtnActualizar.setVisible(False)
         self.InputCodigo.setReadOnly(False)
-        self.InputCantidad.setReadOnly(False)
-        self.InputCantidad.setToolTip("")
+        self._aplicar_bloqueo_multiples_lotes(False)
         self.LabelTituloFormulario.setText("Registrar producto")
         self.BadgeModo.setText("● NUEVO PRODUCTO")
         self.BadgeModo.setObjectName("BadgeNuevo")
@@ -162,23 +307,18 @@ class Productos_View(QWidget, Ui_Productos):
         self.BadgeModo.style().unpolish(self.BadgeModo)
         self.BadgeModo.style().polish(self.BadgeModo)
 
-        # Bloquear campo de cantidad si tiene > 1 lote
+        # Bloquear campos si tiene > 1 lote
         try:
-            from app.database.session import SessionLocal
-            from app.controllers.lote_crud import obtener_lotes_por_producto
             db = SessionLocal()
             try:
                 lotes = obtener_lotes_por_producto(db, int(codigo))
-                if len(lotes) > 1:
-                    self.InputCantidad.setReadOnly(True)
-                    self.InputCantidad.setToolTip("Este producto tiene múltiples lotes. Usa el botón 'Gestión de Lotes' para modificar el stock.")
-                else:
-                    self.InputCantidad.setReadOnly(False)
-                    self.InputCantidad.setToolTip("")
+                tiene_multiples = len(lotes) > 1
+                self._aplicar_bloqueo_multiples_lotes(tiene_multiples, len(lotes))
             finally:
                 db.close()
-        except Exception:
-            self.InputCantidad.setReadOnly(False)
+        except Exception as e:
+            print(f"Error verificando lotes del producto #{codigo}: {e}")
+            self._aplicar_bloqueo_multiples_lotes(False)
 
     def _doble_clic_editar(self, row, col):
         """Abre el formulario de edición para la fila seleccionada."""
@@ -247,30 +387,38 @@ class Productos_View(QWidget, Ui_Productos):
             db_sync = SessionLocal()
             from app.models.productos import Productos as _P
             from app.models.lotes import LoteProducto as _L
-            from sqlalchemy import func, desc
             
             productos_todos = db_sync.query(_P).all()
             for p in productos_todos:
-                stock_producto = p.Stock_actual or 0
-                total_lotes = db_sync.query(func.coalesce(func.sum(_L.Stock_actual), 0)).filter(_L.ID_Producto == p.ID_Producto).scalar()
-                
-                if stock_producto != total_lotes:
-                    diferencia = stock_producto - total_lotes
-                    lote_objetivo = db_sync.query(_L).filter(_L.ID_Producto == p.ID_Producto).order_by(desc(_L.ID_Lote)).first()
-                    if lote_objetivo:
-                        nuevo_stock = max(0, lote_objetivo.Stock_actual + diferencia)
-                        lote_objetivo.Stock_actual = nuevo_stock
-                        lote_objetivo.Estado = nuevo_stock > 0
-                    else:
-                        nuevo_lote = _L(
-                            ID_Producto=p.ID_Producto, Numero_Lote="LOTE-RECONCILIACION",
-                            Stock_inicial=stock_producto, Stock_actual=stock_producto,
-                            Precio_costo=p.Precio_costo or 0, Precio_venta_1=p.Precio_venta_1 or 0,
-                            Precio_venta_2=p.Precio_venta_2 or 0, Precio_venta_3=p.Precio_venta_3 or 0,
-                            Precio_venta_4=p.Precio_venta_4 or 0, Estado=stock_producto > 0,
-                            Proveedor="Ajuste automático", Notas="Lote creado para arreglar desincronización"
-                        )
-                        db_sync.add(nuevo_lote)
+                lotes_existentes = db_sync.query(_L).filter(_L.ID_Producto == p.ID_Producto).all()
+                if not lotes_existentes:
+                    # Si no tiene ningún lote, crear lote inicial con su stock actual
+                    stock_p = p.Stock_actual or 0
+                    nuevo_lote = _L(
+                        ID_Producto=p.ID_Producto,
+                        Numero_Lote="LOTE-001",
+                        Stock_inicial=stock_p,
+                        Stock_actual=stock_p,
+                        Precio_costo=p.Precio_costo or 0,
+                        Precio_venta_1=p.Precio_venta_1 or 0,
+                        Precio_venta_2=p.Precio_venta_2 or 0,
+                        Precio_venta_3=p.Precio_venta_3 or 0,
+                        Precio_venta_4=p.Precio_venta_4 or 0,
+                        Ganancia_1=p.Ganancia_1 or 0,
+                        Ganancia_2=p.Ganancia_2 or 0,
+                        Ganancia_3=p.Ganancia_3 or 0,
+                        Ganancia_4=p.Ganancia_4 or 0,
+                        Estado=stock_p > 0,
+                        Proveedor="Inventario Inicial",
+                        Notas="Lote generado automáticamente por reconciliación",
+                    )
+                    db_sync.add(nuevo_lote)
+                else:
+                    # Si tiene lotes, sincronizar el stock del producto con la suma de sus lotes (los lotes mandan)
+                    total_lotes = sum(l.Stock_actual or 0 for l in lotes_existentes)
+                    if p.Stock_actual != total_lotes:
+                        p.Stock_actual = total_lotes
+                        p.Estado = total_lotes > 0
             db_sync.commit()
             db_sync.close()
         except Exception as e:
