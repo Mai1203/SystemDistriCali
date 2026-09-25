@@ -39,7 +39,11 @@ class DatabaseManager:
                 pool_recycle=1800,
                 connect_args={
                     "connect_timeout": 5,
-                    "options": "-c lock_timeout=5s -c statement_timeout=60s",
+                    "options": "-c lock_timeout=5s -c statement_timeout=0",
+                    "keepalives": 1,
+                    "keepalives_idle": 30,
+                    "keepalives_interval": 10,
+                    "keepalives_count": 3,
                 },
                 echo=False
             )
