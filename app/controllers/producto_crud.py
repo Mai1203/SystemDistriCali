@@ -288,8 +288,64 @@ def actualizar_producto(
 
     if stock_actual is not None:
         producto_existente.Stock_actual = stock_actual
-        # Actualizar estado según el nuevo stock_actual
         producto_existente.Estado = cambiar_estado(stock_actual)
+
+        # Ajustar lote(s) para mantener coherencia entre stock general y lotes
+        from app.models.lotes import LoteProducto
+        from app.controllers.lote_crud import desc, sincronizar_producto_con_lotes
+
+        lotes = (
+            db.query(LoteProducto)
+            .filter(LoteProducto.ID_Producto == id_producto)
+            .order_by(desc(LoteProducto.ID_Lote))
+            .all()
+        )
+        if lotes:
+            sum_lotes = sum(l.Stock_actual for l in lotes)
+            diferencia = stock_actual - sum_lotes
+            if diferencia != 0:
+                ultimo_lote = lotes[0]
+                nuevo_stock_ultimo = ultimo_lote.Stock_actual + diferencia
+                if nuevo_stock_ultimo >= 0:
+                    ultimo_lote.Stock_actual = nuevo_stock_ultimo
+                    ultimo_lote.Estado = nuevo_stock_ultimo > 0
+                else:
+                    restante = abs(diferencia)
+                    for l in lotes:
+                        if l.Stock_actual >= restante:
+                            l.Stock_actual -= restante
+                            l.Estado = l.Stock_actual > 0
+                            restante = 0
+                            break
+                        else:
+                            restante -= l.Stock_actual
+                            l.Stock_actual = 0
+                            l.Estado = False
+            db.commit()
+            sincronizar_producto_con_lotes(db, id_producto)
+        else:
+            primer_lote = LoteProducto(
+                ID_Producto=id_producto,
+                Numero_Lote="LOTE-001",
+                Stock_inicial=stock_actual,
+                Stock_actual=stock_actual,
+                Precio_costo=producto_existente.Precio_costo or 0.0,
+                Precio_venta_1=producto_existente.Precio_venta_1 or 0.0,
+                Precio_venta_2=producto_existente.Precio_venta_2 or 0.0,
+                Precio_venta_3=producto_existente.Precio_venta_3 or 0.0,
+                Precio_venta_4=producto_existente.Precio_venta_4 or 0.0,
+                Ganancia_1=producto_existente.Ganancia_1 or 0.0,
+                Ganancia_2=producto_existente.Ganancia_2 or 0.0,
+                Ganancia_3=producto_existente.Ganancia_3 or 0.0,
+                Ganancia_4=producto_existente.Ganancia_4 or 0.0,
+                Estado=stock_actual > 0,
+                Proveedor="Ajuste de Stock",
+                Notas="Lote creado automáticamente por actualización de stock",
+            )
+            db.add(primer_lote)
+            db.commit()
+            sincronizar_producto_con_lotes(db, id_producto)
+
     if stock_min is not None:
         producto_existente.Stock_min = stock_min
 

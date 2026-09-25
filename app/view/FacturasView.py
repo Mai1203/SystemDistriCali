@@ -11,6 +11,7 @@ from ..database.database import SessionLocal
 from ..controllers.facturas_crud import *
 from ..controllers.venta_credito_crud import obtener_ventas_credito
 from ..controllers.pago_credito_crud import obtener_pagos_credito
+from ..controllers.lote_crud import restaurar_stock_lote
 from ..controllers.producto_crud import *
 from ..controllers.tipo_ingreso_crud import *
 from ..controllers.ingresos_crud import *
@@ -114,15 +115,19 @@ class Facturas_View(QWidget, Ui_Facturas):
             
             productos = factura_completa["Detalles"]
             
-            for producto in productos:
-                id_producto = producto["ID_Producto"]
-                cantidad = producto["Cantidad"]
+            for prod in productos:
+                id_producto = prod["ID_Producto"]
+                cantidad = prod["Cantidad"]
+                id_lote = prod.get("ID_Lote")
                 
-                producto = obtener_producto_por_id(self.db, id_producto)
-                
-                stock = producto[0].Stock_actual
-                cantidad = cantidad + stock
-                actualizar_producto(db=self.db, id_producto=id_producto, stock_actual=cantidad)
+                if id_lote:
+                    restaurar_stock_lote(self.db, id_lote, cantidad)
+                else:
+                    prod_info = obtener_producto_por_id(self.db, id_producto)
+                    if prod_info:
+                        stock = prod_info[0].Stock_actual
+                        cantidad_total = cantidad + stock
+                        actualizar_producto(db=self.db, id_producto=id_producto, stock_actual=cantidad_total)
                 
             eliminar_factura(self.db, id_factura)
             

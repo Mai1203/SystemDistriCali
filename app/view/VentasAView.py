@@ -635,42 +635,68 @@ class VentasA_View(QWidget, Ui_VentasA):
     ):
         detalles_actuales = db.query(DetalleFacturas).filter(DetalleFacturas.ID_Factura == id_factura).all()
         productos_actuales = {detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales}
-        productos_nuevos = {int(codigo): cantidad for codigo, cantidad, _, _ in produc_datos}
-        productos_eliminados = set(productos_actuales.keys()) - set(productos_nuevos.keys())
+        lotes_nuevos = {int(item[0]): (item[1], item[2], item[3] if len(item) > 3 else None) for item in produc_datos}
+        productos_eliminados = set(productos_actuales.keys()) - set(lotes_nuevos.keys())
 
         for id_producto in productos_eliminados:
             cantidad_vendida = productos_actuales[id_producto]
-            producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-            producto.Stock_actual += cantidad_vendida
-            db.delete(db.query(DetalleFacturas).filter(
+            detalle = db.query(DetalleFacturas).filter(
                 DetalleFacturas.ID_Factura == id_factura,
                 DetalleFacturas.ID_Producto == id_producto
-            ).first())
+            ).first()
+            if detalle:
+                if detalle.ID_Lote:
+                    restaurar_stock_lote(db, detalle.ID_Lote, cantidad_vendida)
+                else:
+                    producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
+                    if producto:
+                        actualizar_producto(db, id_producto=id_producto, stock_actual=producto.Stock_actual + cantidad_vendida)
+                db.delete(detalle)
 
-        for id_producto, nueva_cantidad in productos_nuevos.items():
+        for id_producto, (nueva_cantidad, precio, id_lote_nuevo) in lotes_nuevos.items():
             if id_producto in productos_actuales:
                 detalle = db.query(DetalleFacturas).filter(
                     DetalleFacturas.ID_Factura == id_factura,
                     DetalleFacturas.ID_Producto == id_producto
                 ).first()
-                diferencia_cantidad = nueva_cantidad - productos_actuales[id_producto]
-                detalle.Cantidad = nueva_cantidad
-                detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
-                producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-                producto.Stock_actual -= diferencia_cantidad
+                if detalle:
+                    diferencia_cantidad = nueva_cantidad - productos_actuales[id_producto]
+                    detalle.Cantidad = nueva_cantidad
+                    detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
+                    target_lote = detalle.ID_Lote or id_lote_nuevo
+                    if diferencia_cantidad > 0:
+                        if target_lote:
+                            descontar_stock_lote(db, target_lote, diferencia_cantidad)
+                        else:
+                            producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
+                            if producto:
+                                actualizar_producto(db, id_producto=id_producto, stock_actual=producto.Stock_actual - diferencia_cantidad)
+                    elif diferencia_cantidad < 0:
+                        cant_rest = abs(diferencia_cantidad)
+                        if target_lote:
+                            restaurar_stock_lote(db, target_lote, cant_rest)
+                        else:
+                            producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
+                            if producto:
+                                actualizar_producto(db, id_producto=id_producto, stock_actual=producto.Stock_actual + cant_rest)
             else:
                 producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-                precio_unitario = obtener_precio_producto(producto, self.tipo_venta)
+                precio_unitario = precio if precio is not None else obtener_precio_producto(producto, self.tipo_venta)
                 subtotal = nueva_cantidad * precio_unitario
                 nuevo_detalle = DetalleFacturas(
                     ID_Factura=id_factura,
                     ID_Producto=id_producto,
+                    ID_Lote=id_lote_nuevo,
                     Cantidad=nueva_cantidad,
                     Precio_unitario=precio_unitario,
                     Subtotal=subtotal,
                 )
                 db.add(nuevo_detalle)
-                producto.Stock_actual -= nueva_cantidad
+                if id_lote_nuevo:
+                    descontar_stock_lote(db, id_lote_nuevo, nueva_cantidad)
+                else:
+                    if producto:
+                        actualizar_producto(db, id_producto=id_producto, stock_actual=producto.Stock_actual - nueva_cantidad)
 
         id_metodo_pago = obtener_metodo_pago_por_nombre(db, payment_method)
 
