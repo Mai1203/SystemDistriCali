@@ -43,6 +43,7 @@ class SetupController(QObject):
         self._worker = StrategyWorker(strategy)
         self._worker.progress_signal.connect(self.on_progress.emit)
         self._worker.finished_signal.connect(self._handle_result)
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
 
     def _handle_result(self, ok: bool, msg: str, config):

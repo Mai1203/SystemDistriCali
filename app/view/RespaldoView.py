@@ -243,7 +243,7 @@ class Respaldo_View(QWidget, Ui_Respaldo):
 
         os.makedirs(self.ruta_carpeta_respaldos, exist_ok=True)
 
-        worker = _BackupWorker(ruta_respaldo_hoy, self.config)
+        self._auto_backup_worker = _BackupWorker(ruta_respaldo_hoy, self.config)
 
         # Capturamos fecha_actual en el closure para el callback
         _fecha = fecha_actual
@@ -261,8 +261,9 @@ class Respaldo_View(QWidget, Ui_Respaldo):
                 )
                 self.intentos_respaldo += 1
 
-        worker.terminado.connect(_on_auto_backup_done)
-        worker.start()
+        self._auto_backup_worker.terminado.connect(_on_auto_backup_done)
+        self._auto_backup_worker.finished.connect(self._auto_backup_worker.deleteLater)
+        self._auto_backup_worker.start()
 
     # ─────────────────────────────────────────────────────────────
     # Helpers de UI para progreso
