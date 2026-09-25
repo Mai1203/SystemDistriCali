@@ -1366,28 +1366,41 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     )
                     return
 
+                # Obtener cantidad actual en la fila (ya vendida/reservada en la factura que estamos editando)
+                cantidad_en_fila = 0
+                if self.en_edicion:
+                    item_cant_actual = self.TablaVentasCredito.item(row, 5)
+                    if item_cant_actual:
+                        try:
+                            cantidad_en_fila = int(item_cant_actual.text())
+                        except ValueError:
+                            cantidad_en_fila = 0
+
                 db = SessionLocal()
                 try:
                     if id_lote:
                         lote = obtener_lote_por_id(db, id_lote)
-                        if not lote or cantidad > lote.Stock_actual:
-                            disp = lote.Stock_actual if lote else 0
+                        # En edición, el stock disponible real = stock actual + lo que ya estaba reservado en esta fila
+                        stock_real = (lote.Stock_actual if lote else 0) + cantidad_en_fila
+                        if not lote or cantidad > stock_real:
+                            disp = stock_real
                             QMessageBox.warning(
                                 self,
                                 "Stock insuficiente",
-                                f"No hay suficiente stock en este lote. Solo quedan {disp} unidades.",
+                                f"No hay suficiente stock en este lote. Disponible: {disp} unidades.",
                             )
                             return
                     else:
                         productos = obtener_producto_por_id(db, int(codigo))
                         if productos:
                             producto = productos[0]
-                            stock_disponible = producto.Stock_actual
+                            # En edición, agregar de vuelta las unidades ya comprometidas en esta fila
+                            stock_disponible = producto.Stock_actual + cantidad_en_fila
                             if cantidad > stock_disponible:
                                 QMessageBox.warning(
                                     self,
                                     "Stock insuficiente",
-                                    f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.",
+                                    f"No hay suficiente stock para esta venta. Disponible: {stock_disponible} unidades.",
                                 )
                                 return
                         else:
