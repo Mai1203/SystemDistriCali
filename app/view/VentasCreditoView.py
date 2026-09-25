@@ -547,11 +547,16 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     if id_lote:
                         descontar_stock_lote(db, id_lote, quantity)
                     else:
-                        producto = obtener_producto_por_id(db, codigo)[0]
-                        stock_actual = producto.Stock_actual - quantity
-                        actualizar_producto(
-                            db, id_producto=int(codigo), stock_actual=stock_actual
-                        )
+                        lotes = obtener_lotes_por_producto(db, int(codigo), solo_disponibles=True)
+                        if lotes:
+                            descontar_stock_lote(db, lotes[0].ID_Lote, quantity)
+                        else:
+                            from app.models.productos import Productos as _P
+                            prod = db.query(_P).filter(_P.ID_Producto == int(codigo)).first()
+                            if prod:
+                                prod.Stock_actual = max(0, prod.Stock_actual - quantity)
+                                db.flush()
+                                sincronizar_producto_con_lotes(db, int(codigo))
 
                 id_factura = self.guardar_factura(
                     db,

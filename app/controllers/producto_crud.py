@@ -243,6 +243,9 @@ def actualizar_producto(
 ):
     """
     Actualiza un producto existente.
+    Si el producto tiene más de un lote registrado, NO se permite modificar el stock,
+    el precio de costo ni los precios de venta (estos se gestionan por cada lote en LotesDialog).
+    Si tiene un único lote (o ninguno), se sincroniza el lote con los nuevos valores.
     """
     producto_existente = (
         db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
@@ -250,95 +253,102 @@ def actualizar_producto(
     if not producto_existente:
         return None
 
-    # Actualizar valores si se proporcionan
+    from app.models.lotes import LoteProducto
+    lotes = db.query(LoteProducto).filter(LoteProducto.ID_Producto == id_producto).all()
+    tiene_multiples_lotes = len(lotes) > 1
+
+    # Actualizar metadatos si se proporcionan
     if nombre:
         producto_existente.Nombre = nombre
-    if precio_costo:
-        producto_existente.Precio_costo = precio_costo
+    if stock_min is not None:
+        producto_existente.Stock_min = stock_min
+    if id_marca:
+        producto_existente.ID_Marca = id_marca
+    if id_categoria:
+        producto_existente.ID_Categoria = id_categoria
 
-    if precio_venta_1 is not None:
-        producto_existente.Precio_venta_1 = precio_venta_1
-    if precio_venta_2 is not None:
-        producto_existente.Precio_venta_2 = precio_venta_2
-    if precio_venta_3 is not None:
-        producto_existente.Precio_venta_3 = precio_venta_3
-    if precio_venta_4 is not None:
-        producto_existente.Precio_venta_4 = precio_venta_4
+    if not tiene_multiples_lotes:
+        # Solo se permite actualizar stock, costo y precios de venta si NO tiene múltiples lotes
+        if precio_costo is not None:
+            producto_existente.Precio_costo = precio_costo
 
-    # Recalcular ganancias si precio_costo o precios de venta fueron actualizados
-    if precio_costo or precio_venta_1 is not None:
-        producto_existente.Ganancia_1 = calcular_ganancia(
-            producto_existente.Precio_venta_1, producto_existente.Precio_costo
-        )
-        
-    if precio_costo or precio_venta_2 is not None:
-        producto_existente.Ganancia_2 = calcular_ganancia(
-            producto_existente.Precio_venta_2, producto_existente.Precio_costo
-        )
+        if precio_venta_1 is not None:
+            producto_existente.Precio_venta_1 = precio_venta_1
+        if precio_venta_2 is not None:
+            producto_existente.Precio_venta_2 = precio_venta_2
+        if precio_venta_3 is not None:
+            producto_existente.Precio_venta_3 = precio_venta_3
+        if precio_venta_4 is not None:
+            producto_existente.Precio_venta_4 = precio_venta_4
 
-    if precio_costo or precio_venta_3 is not None:
-        producto_existente.Ganancia_3 = calcular_ganancia(
-            producto_existente.Precio_venta_3, producto_existente.Precio_costo
-        )
-        
-    if precio_costo or precio_venta_4 is not None:
-        producto_existente.Ganancia_4 = calcular_ganancia(
-            producto_existente.Precio_venta_4, producto_existente.Precio_costo
-        )
-
-    if stock_actual is not None:
-        # Propagar el cambio de stock al lote más reciente activo
-        from app.models.lotes import LoteProducto
-        stock_anterior = producto_existente.Stock_actual or 0
-        diferencia = stock_actual - stock_anterior
-
-        if diferencia != 0:
-            # Buscar el lote más reciente con stock > 0, o simplemente el último
-            lote_objetivo = (
-                db.query(LoteProducto)
-                .filter(LoteProducto.ID_Producto == id_producto, LoteProducto.Stock_actual > 0)
-                .order_by(desc(LoteProducto.ID_Lote))
-                .first()
+        # Recalcular ganancias si precio_costo o precios de venta fueron actualizados
+        if precio_costo is not None or precio_venta_1 is not None:
+            producto_existente.Ganancia_1 = calcular_ganancia(
+                producto_existente.Precio_venta_1 or 0, producto_existente.Precio_costo or 0
             )
-            if not lote_objetivo:
-                lote_objetivo = (
-                    db.query(LoteProducto)
-                    .filter(LoteProducto.ID_Producto == id_producto)
-                    .order_by(desc(LoteProducto.ID_Lote))
-                    .first()
-                )
+        if precio_costo is not None or precio_venta_2 is not None:
+            producto_existente.Ganancia_2 = calcular_ganancia(
+                producto_existente.Precio_venta_2 or 0, producto_existente.Precio_costo or 0
+            )
+        if precio_costo is not None or precio_venta_3 is not None:
+            producto_existente.Ganancia_3 = calcular_ganancia(
+                producto_existente.Precio_venta_3 or 0, producto_existente.Precio_costo or 0
+            )
+        if precio_costo is not None or precio_venta_4 is not None:
+            producto_existente.Ganancia_4 = calcular_ganancia(
+                producto_existente.Precio_venta_4 or 0, producto_existente.Precio_costo or 0
+            )
 
-            if lote_objetivo:
-                nuevo_stock_lote = max(0, lote_objetivo.Stock_actual + diferencia)
-                lote_objetivo.Stock_actual = nuevo_stock_lote
-                lote_objetivo.Estado = nuevo_stock_lote > 0
-            else:
-                # Si no hay lotes, crear uno automático con el stock nuevo
-                ganancia_1 = calcular_ganancia(producto_existente.Precio_venta_1 or 0, producto_existente.Precio_costo or 0)
-                ganancia_2 = calcular_ganancia(producto_existente.Precio_venta_2 or 0, producto_existente.Precio_costo or 0)
-                ganancia_3 = calcular_ganancia(producto_existente.Precio_venta_3 or 0, producto_existente.Precio_costo or 0)
-                ganancia_4 = calcular_ganancia(producto_existente.Precio_venta_4 or 0, producto_existente.Precio_costo or 0)
-                nuevo_lote = LoteProducto(
-                    ID_Producto=id_producto,
-                    Numero_Lote="LOTE-AUTO",
-                    Stock_inicial=stock_actual,
-                    Stock_actual=stock_actual,
-                    Precio_costo=producto_existente.Precio_costo or 0,
-                    Precio_venta_1=producto_existente.Precio_venta_1 or 0,
-                    Precio_venta_2=producto_existente.Precio_venta_2 or 0,
-                    Precio_venta_3=producto_existente.Precio_venta_3 or 0,
-                    Precio_venta_4=producto_existente.Precio_venta_4 or 0,
-                    Ganancia_1=ganancia_1,
-                    Ganancia_2=ganancia_2,
-                    Ganancia_3=ganancia_3,
-                    Ganancia_4=ganancia_4,
-                    Estado=stock_actual > 0,
-                    Proveedor="Ajuste manual",
-                    Notas="Lote creado automáticamente por ajuste de stock",
-                )
-                db.add(nuevo_lote)
+        if len(lotes) == 1:
+            lote_unico = lotes[0]
+            if precio_costo is not None:
+                lote_unico.Precio_costo = precio_costo
+            if precio_venta_1 is not None:
+                lote_unico.Precio_venta_1 = precio_venta_1
+            if precio_venta_2 is not None:
+                lote_unico.Precio_venta_2 = precio_venta_2
+            if precio_venta_3 is not None:
+                lote_unico.Precio_venta_3 = precio_venta_3
+            if precio_venta_4 is not None:
+                lote_unico.Precio_venta_4 = precio_venta_4
 
-        # Recalcular Producto.Stock_actual como suma de lotes
+            lote_unico.Ganancia_1 = producto_existente.Ganancia_1
+            lote_unico.Ganancia_2 = producto_existente.Ganancia_2
+            lote_unico.Ganancia_3 = producto_existente.Ganancia_3
+            lote_unico.Ganancia_4 = producto_existente.Ganancia_4
+
+            if stock_actual is not None:
+                lote_unico.Stock_actual = stock_actual
+                lote_unico.Estado = stock_actual > 0
+                producto_existente.Stock_actual = stock_actual
+                producto_existente.Estado = cambiar_estado(stock_actual)
+
+        elif len(lotes) == 0:
+            stk = stock_actual if stock_actual is not None else (producto_existente.Stock_actual or 0)
+            producto_existente.Stock_actual = stk
+            producto_existente.Estado = cambiar_estado(stk)
+            nuevo_lote = LoteProducto(
+                ID_Producto=id_producto,
+                Numero_Lote="LOTE-001",
+                Stock_inicial=stk,
+                Stock_actual=stk,
+                Precio_costo=producto_existente.Precio_costo or 0,
+                Precio_venta_1=producto_existente.Precio_venta_1 or 0,
+                Precio_venta_2=producto_existente.Precio_venta_2 or 0,
+                Precio_venta_3=producto_existente.Precio_venta_3 or 0,
+                Precio_venta_4=producto_existente.Precio_venta_4 or 0,
+                Ganancia_1=producto_existente.Ganancia_1 or 0,
+                Ganancia_2=producto_existente.Ganancia_2 or 0,
+                Ganancia_3=producto_existente.Ganancia_3 or 0,
+                Ganancia_4=producto_existente.Ganancia_4 or 0,
+                Estado=stk > 0,
+                Proveedor="Inventario Inicial",
+                Notas="Lote creado automáticamente por ajuste de producto",
+            )
+            db.add(nuevo_lote)
+    else:
+        # Tiene múltiples lotes: Stock, Precio de Costo y Precios de Venta están estrictamente protegidos.
+        # Aseguramos que el Stock_actual del producto sea exactamente la suma de todos sus lotes
         db.flush()
         total_lotes = (
             db.query(func.coalesce(func.sum(LoteProducto.Stock_actual), 0))
@@ -347,14 +357,6 @@ def actualizar_producto(
         )
         producto_existente.Stock_actual = total_lotes
         producto_existente.Estado = cambiar_estado(total_lotes)
-
-    if stock_min is not None:
-        producto_existente.Stock_min = stock_min
-
-    if id_marca:
-        producto_existente.ID_Marca = id_marca
-    if id_categoria:
-        producto_existente.ID_Categoria = id_categoria
 
     db.commit()
     db.refresh(producto_existente)
