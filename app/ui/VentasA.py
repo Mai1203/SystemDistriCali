@@ -140,12 +140,34 @@ class Ui_VentasA(object):
         )
         inputLayout.addWidget(self.CheckFacturaPagada, 3, 1)
 
-        self.BtnEliminar = QtWidgets.QPushButton(" Eliminar Seleccionado", self.inputCard)
+        btnActionContainer = QtWidgets.QWidget(self.inputCard)
+        btnActionLayout = QtWidgets.QHBoxLayout(btnActionContainer)
+        btnActionLayout.setContentsMargins(0, 0, 0, 0)
+        btnActionLayout.setSpacing(8)
+
+        self.BtnGuardarBorrador = QtWidgets.QPushButton(" Poner en Espera", self.inputCard)
+        self.BtnGuardarBorrador.setIcon(qta.icon('fa5s.bookmark', color='white'))
+        self.BtnGuardarBorrador.setMinimumHeight(40)
+        self.BtnGuardarBorrador.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnGuardarBorrador.setStyleSheet("background-color: #8B5CF6; color: white; border-radius: 8px; font-weight: 600; padding: 0 14px;")
+
+        self.BtnCargarBorrador = QtWidgets.QPushButton(" Ver Borradores", self.inputCard)
+        self.BtnCargarBorrador.setIcon(qta.icon('fa5s.folder-open', color='white'))
+        self.BtnCargarBorrador.setMinimumHeight(40)
+        self.BtnCargarBorrador.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnCargarBorrador.setStyleSheet("background-color: #0284C7; color: white; border-radius: 8px; font-weight: 600; padding: 0 14px;")
+
+        self.BtnEliminar = QtWidgets.QPushButton(" Eliminar", self.inputCard)
         self.BtnEliminar.setIcon(qta.icon('fa5s.trash-alt', color='white'))
         self.BtnEliminar.setMinimumHeight(40)
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        inputLayout.addWidget(self.BtnEliminar, 3, 6, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 14px; text-align: center;")
+
+        btnActionLayout.addWidget(self.BtnGuardarBorrador)
+        btnActionLayout.addWidget(self.BtnCargarBorrador)
+        btnActionLayout.addWidget(self.BtnEliminar)
+
+        inputLayout.addWidget(btnActionContainer, 3, 4, 1, 3, QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.rootLayout.addWidget(self.inputCard)
 

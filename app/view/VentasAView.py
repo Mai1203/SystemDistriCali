@@ -1,5 +1,5 @@
 # PyQt6 imports
-from PyQt6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QInputDialog
 from PyQt6.QtCore import QRegularExpression, QTimer, QUrl, Qt, pyqtSignal
 from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -23,11 +23,14 @@ from ..controllers.lote_crud import (
 )
 from ..ui import Ui_VentasA
 from .LoteSeleccionDialog import LoteSeleccionDialog
+from .BorradoresDialog import BorradoresDialog
 from ..configuracion import obtener_precio_producto, obtener_tipo_venta, obtener_precio_lote
 from ..services.ventas_service import calcular_total_venta, validar_pago
 from ..services.form_validation_service import validar_campos_requeridos
 from ..utils.formateador import formatear_numero
 from ..utils.autocomplementado import configurar_autocompletado
+from ..utils.borradores_manager import guardar_borrador, cargar_borradores, eliminar_borrador
+from ..utils.enviar_notifi import enviar_notificacion
 
 # Standard library imports
 import os
@@ -126,6 +129,10 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.BtnFacturaB.clicked.connect(self.cambiar_a_ventanab)
         self.BtnGenerarVenta.clicked.connect(self.generar_venta)
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
+        if hasattr(self, 'BtnGuardarBorrador'):
+            self.BtnGuardarBorrador.clicked.connect(self.guardar_borrador_venta)
+        if hasattr(self, 'BtnCargarBorrador'):
+            self.BtnCargarBorrador.clicked.connect(self.abrir_dialogo_borradores)
         self.BtnAgregar.clicked.connect(self.procesar_codigo)
         if hasattr(self, 'BtnCrearCliente'):
             self.BtnCrearCliente.clicked.connect(self.crear_cliente_rapido)
@@ -299,6 +306,7 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.en_edicion = False
         self.tipo_venta_original = None
         self.LabelVentasA.setText(obtener_tipo_venta(self.tipo_venta)["nombre"])
+        self.actualizar_contador_borradores()
         configurar_autocompletado(self.InputNombre, obtener_productos, "Nombre", self.db, self.procesar_codigo)
         configurar_autocompletado(self.InputNombreCli, obtener_cliente_nombre_apellido, "NombreCompleto", self.db, self.insertar_cliente)
 
@@ -1148,6 +1156,148 @@ class VentasA_View(QWidget, Ui_VentasA):
             self.limpiar_campos()
             self.actualizar_total()
             self.InputPago.clear()
+
+    def actualizar_contador_borradores(self):
+        if hasattr(self, 'BtnCargarBorrador'):
+            borradores = cargar_borradores(solo_credito=False)
+            n = len(borradores)
+            self.BtnCargarBorrador.setText(f" Ver Borradores ({n})" if n > 0 else " Ver Borradores")
+
+    def guardar_borrador_venta(self):
+        if self.tableWidget.rowCount() == 0:
+            QMessageBox.warning(self, "Atención", "No hay productos en la venta para poner en espera.")
+            return
+
+        ref, ok = QInputDialog.getText(
+            self,
+            "Poner Venta en Espera",
+            "Nombre o referencia para este pedido (ej: Nombre del cliente):",
+            text=self.InputNombreCli.text().strip() or ""
+        )
+        if not ok:
+            return
+
+        cliente_data = {
+            "cedula": self.InputCedula.text().strip(),
+            "nombre": self.InputNombreCli.text().strip(),
+            "direccion": self.InputDireccion.text().strip(),
+            "telefono": self.InputTelefonoCli.text().strip(),
+        }
+
+        items = []
+        for row in range(self.tableWidget.rowCount()):
+            item_cod = self.tableWidget.item(row, 0)
+            item_nom = self.tableWidget.item(row, 1)
+            item_mar = self.tableWidget.item(row, 2)
+            item_cat = self.tableWidget.item(row, 3)
+            item_lot = self.tableWidget.item(row, 4)
+            item_can = self.tableWidget.item(row, 5)
+            item_pre = self.tableWidget.item(row, 6)
+            item_tot = self.tableWidget.item(row, 7)
+
+            id_lote = item_lot.data(Qt.ItemDataRole.UserRole) if item_lot else None
+            items.append({
+                "codigo": item_cod.text() if item_cod else "",
+                "nombre": item_nom.text() if item_nom else "",
+                "marca": item_mar.text() if item_mar else "",
+                "categoria": item_cat.text() if item_cat else "",
+                "lote_nombre": item_lot.text() if item_lot else "",
+                "id_lote": id_lote,
+                "cantidad": int(item_can.text()) if item_can and item_can.text().isdigit() else 1,
+                "precio_unitario": float(item_pre.text()) if item_pre else 0.0,
+                "total": float(item_tot.text()) if item_tot else 0.0,
+            })
+
+        domicilio = self.obtener_valor_domicilio()
+        descuento = float(self.InputDescuento.text().strip()) if hasattr(self, 'InputDescuento') and self.InputDescuento.text() else 0.0
+
+        guardar_borrador(
+            referencia=ref.strip(),
+            cliente_data=cliente_data,
+            items=items,
+            domicilio=domicilio,
+            descuento=descuento,
+            tipo_venta=self.tipo_venta,
+        )
+
+        self.limpiar_tabla()
+        self.limpiar_campos()
+        self.limpiar_datos_cliente()
+        self.InputDomicilio.clear()
+        if hasattr(self, 'InputDescuento'):
+            self.InputDescuento.clear()
+        self.actualizar_total()
+        self.actualizar_contador_borradores()
+
+        enviar_notificacion("Venta en Espera", "La venta actual ha sido guardada en borradores.")
+
+    def abrir_dialogo_borradores(self):
+        dlg = BorradoresDialog(solo_credito=False, parent=self)
+        res = dlg.exec()
+        if res == BorradoresDialog.DialogCode.Accepted:
+            borrador = dlg.borrador_seleccionado
+            if borrador:
+                if self.tableWidget.rowCount() > 0:
+                    reply = QMessageBox.question(
+                        self,
+                        "Reemplazar Venta",
+                        "Actualmente tienes productos en la venta actual. ¿Deseas reemplazarlos con el borrador seleccionado?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    if reply != QMessageBox.StandardButton.Yes:
+                        self.actualizar_contador_borradores()
+                        return
+
+                self.limpiar_tabla()
+                self.limpiar_campos()
+
+                # Cargar datos de cliente
+                cli = borrador.get("cliente", {})
+                self.InputCedula.setText(cli.get("cedula", ""))
+                self.InputNombreCli.setText(cli.get("nombre", ""))
+                self.InputDireccion.setText(cli.get("direccion", ""))
+                self.InputTelefonoCli.setText(cli.get("telefono", ""))
+
+                # Cargar domicilio y descuento
+                dom = borrador.get("domicilio", 0.0)
+                des = borrador.get("descuento", 0.0)
+                self.InputDomicilio.setText(str(dom) if dom else "")
+                if hasattr(self, 'InputDescuento'):
+                    self.InputDescuento.setText(str(des) if des else "")
+
+                # Cargar items
+                for item in borrador.get("items", []):
+                    rowPos = self.tableWidget.rowCount()
+                    self.tableWidget.insertRow(rowPos)
+
+                    vals = [
+                        (0, item.get("codigo", ""), None),
+                        (1, item.get("nombre", ""), None),
+                        (2, item.get("marca", ""), None),
+                        (3, item.get("categoria", ""), None),
+                        (4, item.get("lote_nombre", ""), item.get("id_lote")),
+                        (5, str(item.get("cantidad", 1)), None),
+                        (6, str(item.get("precio_unitario", 0)), None),
+                        (7, str(item.get("total", 0)), None),
+                    ]
+                    for col, val_str, user_data in vals:
+                        table_item = QTableWidgetItem(str(val_str))
+                        table_item.setFlags(table_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                        table_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                        if user_data is not None:
+                            table_item.setData(Qt.ItemDataRole.UserRole, user_data)
+                        self.tableWidget.setItem(rowPos, col, table_item)
+
+                borrador_id = borrador.get("id")
+                if borrador_id:
+                    eliminar_borrador(borrador_id)
+
+                self.actualizar_total()
+                enviar_notificacion("Éxito", "Borrador cargado correctamente en la venta.")
+
+        # SIEMPRE actualizar el contador al cerrar el diálogo (incluso si solo se canceló o se eliminaron borradores dentro)
+        self.actualizar_contador_borradores()
 
     def obtener_valor_domicilio(self):
         if self.InputDomicilio.isEnabled():

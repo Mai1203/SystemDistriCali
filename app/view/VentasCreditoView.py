@@ -25,10 +25,14 @@ from ..controllers.lote_crud import (
     obtener_lote_por_id,
 )
 from ..configuracion import obtener_precio_lote, obtener_tipo_venta, obtener_precio_producto
+from PyQt6.QtWidgets import QInputDialog
 from ..ui import Ui_VentasCredito
 from .LoteSeleccionDialog import LoteSeleccionDialog
+from .BorradoresDialog import BorradoresDialog
 from ..utils.autocomplementado import configurar_autocompletado
 from ..utils.formateador import formatear_numero
+from ..utils.borradores_manager import guardar_borrador, cargar_borradores, eliminar_borrador
+from ..utils.enviar_notifi import enviar_notificacion
 
 # Standard library imports
 import os
@@ -105,12 +109,20 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         # Botones y tabla
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
+        if hasattr(self, 'BtnGuardarBorrador'):
+            self.BtnGuardarBorrador.clicked.connect(self.guardar_borrador_venta)
+        if hasattr(self, 'BtnCargarBorrador'):
+            self.BtnCargarBorrador.clicked.connect(self.abrir_dialogo_borradores)
         self.BtnAgregar.clicked.connect(self.procesar_codigo)
         self.BtnGenerarVentaCredito.clicked.connect(self.generar_venta)
         self.TablaVentasCredito.cellClicked.connect(self.cargar_datos)
         self.TablaVentasCredito.itemChanged.connect(self.actualizar_total)
 
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.actualizar_contador_borradores()
 
     def _on_lote_cambiado(self, index):
         lote_id = self.ComboLote.currentData()
@@ -1101,6 +1113,138 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             QMessageBox.warning(
                 self, "Error", "Por favor, selecciona un producto para eliminar."
             )
+
+    def actualizar_contador_borradores(self):
+        if hasattr(self, 'BtnCargarBorrador'):
+            borradores = cargar_borradores(solo_credito=True)
+            n = len(borradores)
+            self.BtnCargarBorrador.setText(f" Ver Borradores ({n})" if n > 0 else " Ver Borradores")
+
+    def guardar_borrador_venta(self):
+        if self.TablaVentasCredito.rowCount() == 0:
+            QMessageBox.warning(self, "Atención", "No hay productos en la venta para poner en espera.")
+            return
+
+        ref, ok = QInputDialog.getText(
+            self,
+            "Poner Venta a Crédito en Espera",
+            "Nombre o referencia para este pedido (ej: Nombre del cliente):",
+            text=self.InputNombreCli.text().strip() or ""
+        )
+        if not ok:
+            return
+
+        cliente_data = {
+            "cedula": self.InputCedula.text().strip(),
+            "nombre": self.InputNombreCli.text().strip(),
+            "direccion": self.InputDireccion.text().strip(),
+            "telefono": self.InputTelefonoCli.text().strip(),
+        }
+
+        items = []
+        for row in range(self.TablaVentasCredito.rowCount()):
+            item_cod = self.TablaVentasCredito.item(row, 0)
+            item_nom = self.TablaVentasCredito.item(row, 1)
+            item_mar = self.TablaVentasCredito.item(row, 2)
+            item_cat = self.TablaVentasCredito.item(row, 3)
+            item_lot = self.TablaVentasCredito.item(row, 4)
+            item_can = self.TablaVentasCredito.item(row, 5)
+            item_pre = self.TablaVentasCredito.item(row, 6)
+            item_tot = self.TablaVentasCredito.item(row, 7)
+
+            id_lote = item_lot.data(Qt.ItemDataRole.UserRole) if item_lot else None
+            items.append({
+                "codigo": item_cod.text() if item_cod else "",
+                "nombre": item_nom.text() if item_nom else "",
+                "marca": item_mar.text() if item_mar else "",
+                "categoria": item_cat.text() if item_cat else "",
+                "lote_nombre": item_lot.text() if item_lot else "",
+                "id_lote": id_lote,
+                "cantidad": int(item_can.text()) if item_can and item_can.text().isdigit() else 1,
+                "precio_unitario": float(item_pre.text()) if item_pre else 0.0,
+                "total": float(item_tot.text()) if item_tot else 0.0,
+            })
+
+        guardar_borrador(
+            referencia=ref.strip(),
+            cliente_data=cliente_data,
+            items=items,
+            domicilio=0.0,
+            descuento=0.0,
+            tipo_venta=4,
+        )
+
+        self.TablaVentasCredito.setRowCount(0)
+        self.limpiar_campos()
+        self.InputCedula.clear()
+        self.InputNombreCli.clear()
+        self.InputDireccion.clear()
+        self.InputTelefonoCli.clear()
+        self.actualizar_total()
+        self.actualizar_contador_borradores()
+
+        QMessageBox.information(self, "Venta en Espera", "La venta actual a crédito ha sido guardada en borradores.")
+
+    def abrir_dialogo_borradores(self):
+        dlg = BorradoresDialog(solo_credito=True, parent=self)
+        res = dlg.exec()
+        if res == BorradoresDialog.DialogCode.Accepted:
+            borrador = dlg.borrador_seleccionado
+            if borrador:
+                if self.TablaVentasCredito.rowCount() > 0:
+                    reply = QMessageBox.question(
+                        self,
+                        "Reemplazar Venta",
+                        "Actualmente tienes productos en la venta actual. ¿Deseas reemplazarlos con el borrador seleccionado?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    if reply != QMessageBox.StandardButton.Yes:
+                        self.actualizar_contador_borradores()
+                        return
+
+                self.TablaVentasCredito.setRowCount(0)
+                self.limpiar_campos()
+
+                # Cargar datos de cliente
+                cli = borrador.get("cliente", {})
+                self.InputCedula.setText(cli.get("cedula", ""))
+                self.InputNombreCli.setText(cli.get("nombre", ""))
+                self.InputDireccion.setText(cli.get("direccion", ""))
+                self.InputTelefonoCli.setText(cli.get("telefono", ""))
+
+                # Cargar items
+                for item in borrador.get("items", []):
+                    rowPos = self.TablaVentasCredito.rowCount()
+                    self.TablaVentasCredito.insertRow(rowPos)
+
+                    vals = [
+                        (0, item.get("codigo", ""), None),
+                        (1, item.get("nombre", ""), None),
+                        (2, item.get("marca", ""), None),
+                        (3, item.get("categoria", ""), None),
+                        (4, item.get("lote_nombre", ""), item.get("id_lote")),
+                        (5, str(item.get("cantidad", 1)), None),
+                        (6, str(item.get("precio_unitario", 0)), None),
+                        (7, str(item.get("total", 0)), None),
+                    ]
+                    for col, val_str, user_data in vals:
+                        table_item = QTableWidgetItem(str(val_str))
+                        table_item.setFlags(table_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                        table_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                        if user_data is not None:
+                            table_item.setData(Qt.ItemDataRole.UserRole, user_data)
+                        self.TablaVentasCredito.setItem(rowPos, col, table_item)
+
+                borrador_id = borrador.get("id")
+                if borrador_id:
+                    eliminar_borrador(borrador_id)
+
+                self.actualizar_total()
+                QMessageBox.information(self, "Éxito", "Borrador cargado correctamente en la venta.")
+
+        # SIEMPRE actualizar el contador al cerrar el diálogo
+        self.actualizar_contador_borradores()
 
     def calcular_subtotal(self):
         subtotal = 0.0

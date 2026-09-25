@@ -301,10 +301,26 @@ def actualizar_producto(
             .all()
         )
         if lotes:
+            ultimo_lote = lotes[0]
+            if precio_costo is not None:
+                ultimo_lote.Precio_costo = precio_costo
+            if precio_venta_1 is not None:
+                ultimo_lote.Precio_venta_1 = precio_venta_1
+            if precio_venta_2 is not None:
+                ultimo_lote.Precio_venta_2 = precio_venta_2
+            if precio_venta_3 is not None:
+                ultimo_lote.Precio_venta_3 = precio_venta_3
+            if precio_venta_4 is not None:
+                ultimo_lote.Precio_venta_4 = precio_venta_4
+
+            ultimo_lote.Ganancia_1 = calcular_ganancia(ultimo_lote.Precio_venta_1, ultimo_lote.Precio_costo)
+            ultimo_lote.Ganancia_2 = calcular_ganancia(ultimo_lote.Precio_venta_2, ultimo_lote.Precio_costo)
+            ultimo_lote.Ganancia_3 = calcular_ganancia(ultimo_lote.Precio_venta_3, ultimo_lote.Precio_costo)
+            ultimo_lote.Ganancia_4 = calcular_ganancia(ultimo_lote.Precio_venta_4, ultimo_lote.Precio_costo)
+
             sum_lotes = sum(l.Stock_actual for l in lotes)
             diferencia = stock_actual - sum_lotes
             if diferencia != 0:
-                ultimo_lote = lotes[0]
                 nuevo_stock_ultimo = ultimo_lote.Stock_actual + diferencia
                 if nuevo_stock_ultimo >= 0:
                     ultimo_lote.Stock_actual = nuevo_stock_ultimo

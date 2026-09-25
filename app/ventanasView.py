@@ -174,6 +174,7 @@ class MainApp(QWidget):
         self.ventas.configurar_tipo_venta(indice)
         self.ventas.LabelVentasA.setText(tipo_venta)
         self.stacked_widget.setCurrentWidget(self.ventas)
+        self.navbar.set_combo_active(True)
 
     def seleccionar_tipo_por_factura(self, factura_completa):
         tipo_factura = factura_completa["Factura"]["TipoFactura"]
