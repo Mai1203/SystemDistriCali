@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QUrl, QThread, pyqtSignal
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PyQt6 import QtWidgets  # Para poder reasignar QMessageBox si es necesario
+from PyQt6 import QtWidgets, sip  # Para poder reasignar QMessageBox si es necesario y verificar objetos C++ eliminados
 
 
 from app.database.config import load_config, is_configured
@@ -123,9 +123,13 @@ class MainWindow(QMainWindow):
         self._startup_worker = StartupWorker(config, parent=self)
         self._startup_worker.finished_signal.connect(self._on_verificacion_inicial_completada)
         self._startup_worker.error_signal.connect(self._on_verificacion_inicial_error)
+        self._startup_worker.finished.connect(self._limpiar_startup_worker)
         self._startup_worker.finished.connect(self._startup_worker.deleteLater)
         print("[DEBUG] Arrancando WorkerThread...", flush=True)
         self._startup_worker.start()
+
+    def _limpiar_startup_worker(self):
+        self._startup_worker = None
 
     def _on_verificacion_inicial_completada(self, result):
         ok, msg = result
@@ -180,11 +184,21 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if respuesta == QMessageBox.StandardButton.Yes:
-            if hasattr(self, '_startup_worker') and self._startup_worker is not None and self._startup_worker.isRunning():
-                self._startup_worker.quit()
-                self._startup_worker.wait(2000)
+            if hasattr(self, '_startup_worker') and self._startup_worker is not None:
+                try:
+                    if not sip.isdeleted(self._startup_worker) and self._startup_worker.isRunning():
+                        self._startup_worker.quit()
+                        self._startup_worker.wait(2000)
+                except RuntimeError:
+                    pass
+                finally:
+                    self._startup_worker = None
+
             if self.MainApp is not None:
-                self.MainApp.detener_listener()
+                try:
+                    self.MainApp.detener_listener()
+                except Exception as e:
+                    logger.error(f"Error al detener listener: {e}")
             event.accept()
         else:
             event.ignore()

@@ -249,6 +249,7 @@ class Respaldo_View(QWidget, Ui_Respaldo):
         _fecha = fecha_actual
 
         def _on_auto_backup_done(exito: bool, mensaje: str):
+            self._auto_backup_worker = None
             from app.utils.logger import logger
             if exito:
                 logger.info(f"Respaldo automático creado: {ruta_respaldo_hoy}")
