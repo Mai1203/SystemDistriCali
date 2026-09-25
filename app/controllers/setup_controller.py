@@ -1,4 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal, QObject
+from PyQt6 import sip
 from app.services.setup_strategies import SetupStrategy
 from app.database.config import save_config
 from app.utils.logger import logger
@@ -36,15 +37,24 @@ class SetupController(QObject):
         self._worker = None
 
     def execute_strategy(self, strategy: SetupStrategy):
-        if self._worker is not None and self._worker.isRunning():
-            self.on_error.emit("Ya hay una configuración en proceso.")
-            return
+        if self._worker is not None:
+            try:
+                if not sip.isdeleted(self._worker) and self._worker.isRunning():
+                    self.on_error.emit("Ya hay una configuración en proceso.")
+                    return
+            except RuntimeError:
+                pass
+            self._worker = None
 
         self._worker = StrategyWorker(strategy)
         self._worker.progress_signal.connect(self.on_progress.emit)
         self._worker.finished_signal.connect(self._handle_result)
+        self._worker.finished.connect(self._limpiar_worker)
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
+
+    def _limpiar_worker(self):
+        self._worker = None
 
     def _handle_result(self, ok: bool, msg: str, config):
         if ok:
