@@ -1490,7 +1490,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
     # ─── BORRADORES ───────────────────────────────────────────────────────────
 
     def guardar_como_borrador(self):
-        """Serializa el estado actual de la vista de crédito y lo guarda como borrador."""
+        """Serializa el estado actual de la vista de crédito y lo guarda como borrador.
+        Guarda solo: códigos de producto + cantidades + info de cliente (si existe) + referencia opcional."""
         if self.TablaVentasCredito.rowCount() == 0:
             QMessageBox.warning(self, "Borrador vacío", "Agrega al menos un producto antes de guardar el borrador.")
             return
@@ -1503,15 +1504,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             if item_lote:
                 id_lote = item_lote.data(Qt.ItemDataRole.UserRole)
             productos.append({
-                "codigo":          _txt(0),
-                "nombre":          _txt(1),
-                "marca":           _txt(2),
-                "categoria":       _txt(3),
-                "lote_nombre":     _txt(4),
-                "id_lote":         id_lote,
-                "cantidad":        _txt(5),
-                "precio_unitario": _txt(6),
-                "subtotal":        _txt(7),
+                "codigo":   _txt(0),
+                "cantidad": _txt(5),
+                "id_lote":  id_lote,
             })
 
         datos = {
@@ -1520,22 +1515,21 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             "cliente_apellido": self.InputApellidoCli.text().strip(),
             "cliente_tel":      self.InputTelefonoCli.text().strip(),
             "cliente_dir":      self.InputDireccion.text().strip(),
-            "total":            self.LabelTotal.text().replace(",", "").replace("$", "").strip(),
             "productos":        productos,
         }
 
-        # Pedir nombre de referencia al usuario
+        # Pedir nombre de referencia al usuario (NO sobrescribe cliente_nombre)
         nombre_ref, ok = QInputDialog.getText(
             self,
             "Guardar Borrador",
-            "Ingresa un nombre de referencia para este borrador (ej. Cliente, mesa, o nota):"
+            "Ingresa un nombre de referencia para este borrador (ej. Mesa 5, Pedido Juan):"
         )
         if not ok:
             return  # El usuario canceló
             
         nombre_ref = nombre_ref.strip()
         if nombre_ref:
-            datos["cliente_nombre"] = nombre_ref
+            datos["referencia"] = nombre_ref
 
         guardar_borrador("credito", datos)
         QMessageBox.information(self, "Borrador guardado", "El borrador se guardó correctamente. Puedes recuperarlo cuando quieras.")
@@ -1547,11 +1541,12 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         dlg.exec()
 
     def cargar_desde_borrador(self, datos: dict):
-        """Restaura el estado de la vista de crédito desde los datos de un borrador."""
+        """Restaura el estado de la vista de crédito desde los datos de un borrador.
+        Los productos se reconstruyen consultando la BD por código usando el precio actual (comboBoxPrecio)."""
         self.TablaVentasCredito.setRowCount(0)
         self.limpiar_campos()
 
-        # Datos del cliente
+        # Datos del cliente (se conservan los reales, no la referencia)
         self.InputCedula.setText(datos.get("cliente_cedula", ""))
         self.InputNombreCli.setText(datos.get("cliente_nombre", ""))
         if hasattr(self, "InputApellidoCli"):
@@ -1559,27 +1554,57 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputTelefonoCli.setText(datos.get("cliente_tel", ""))
         self.InputDireccion.setText(datos.get("cliente_dir", ""))
 
-        # Productos
-        for prod in datos.get("productos", []):
-            rowPos = self.TablaVentasCredito.rowCount()
-            self.TablaVentasCredito.insertRow(rowPos)
-            vals = [
-                (0, prod.get("codigo", ""),          None),
-                (1, prod.get("nombre", ""),           None),
-                (2, prod.get("marca", ""),            None),
-                (3, prod.get("categoria", ""),        None),
-                (4, prod.get("lote_nombre", ""),      prod.get("id_lote")),
-                (5, prod.get("cantidad", ""),          None),
-                (6, prod.get("precio_unitario", ""),  None),
-                (7, prod.get("subtotal", ""),         None),
-            ]
-            for col, text, data in vals:
-                item = QTableWidgetItem(str(text))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                if data is not None:
-                    item.setData(Qt.ItemDataRole.UserRole, data)
-                self.TablaVentasCredito.setItem(rowPos, col, item)
+        # Productos: consultar BD por código para obtener nombre, marca, categoría, precio ACTUAL
+        idx_precio = self.comboBoxPrecio.currentIndex()  # precio actual seleccionado
+        db = SessionLocal()
+        try:
+            for prod in datos.get("productos", []):
+                codigo = prod.get("codigo", "")
+                cantidad = prod.get("cantidad", "1")
+                id_lote = prod.get("id_lote")
+
+                if not codigo:
+                    continue
+
+                producto = obtener_producto_por_id(db, int(codigo))
+                if not producto:
+                    continue
+                producto = producto[0]
+
+                # Precio según comboBoxPrecio actual y lote
+                if id_lote:
+                    lote = obtener_lote_por_id(db, id_lote)
+                    precio_unitario = obtener_precio_lote(lote, idx_precio) if lote else 0
+                    lote_nombre = lote.Numero_Lote if lote else f"LOTE-{id_lote}"
+                else:
+                    precio_unitario = obtener_precio_producto(producto, idx_precio)
+                    lote_nombre = "Sin lote"
+
+                subtotal = float(cantidad) * float(precio_unitario)
+                total_redondeado = round(subtotal / 100) * 100
+
+                rowPos = self.TablaVentasCredito.rowCount()
+                self.TablaVentasCredito.insertRow(rowPos)
+                vals = [
+                    (0, str(producto.ID_Producto),          None),
+                    (1, producto.Nombre,                    None),
+                    (2, str(producto.marcas),               None),
+                    (3, str(producto.categorias),           None),
+                    (4, lote_nombre,                        id_lote),
+                    (5, str(cantidad),                      None),
+                    (6, str(precio_unitario),               None),
+                    (7, str(total_redondeado),              None),
+                ]
+                for col, text, data in vals:
+                    item = QTableWidgetItem(str(text))
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    if data is not None:
+                        item.setData(Qt.ItemDataRole.UserRole, data)
+                    self.TablaVentasCredito.setItem(rowPos, col, item)
+
+        finally:
+            db.close()
 
         self.actualizar_total()
         QMessageBox.information(self, "Borrador cargado", "El borrador se cargó correctamente. Revisa los datos antes de generar la factura.")

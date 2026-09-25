@@ -92,7 +92,7 @@ class BorradoresDialog(QDialog):
 
         header_layout.addLayout(title_layout)
 
-        lbl_subtitle = QLabel("Seleccione un borrador guardado para cargarlo en la venta activa o eliminarlo.")
+        lbl_subtitle = QLabel("Seleccione un borrador para cargarlo en la venta activa o eliminarlo. Columna 'Referencia' = nombre que dio al guardar; 'Cliente' = cliente real.")
         lbl_subtitle.setStyleSheet(f"font-size: 13px; color: {self._MUTED}; background-color: {self._BG_CARD}; padding: 6px 10px; border-radius: 4px;")
         header_layout.addWidget(lbl_subtitle)
         
@@ -100,8 +100,8 @@ class BorradoresDialog(QDialog):
 
         # ── Tabla de Borradores ──
         self.tabla = QTableWidget()
-        self.tabla.setColumnCount(5)
-        self.tabla.setHorizontalHeaderLabels(["ID", "Fecha", "Referencia / Cliente", "Items", "Total Est."])
+        self.tabla.setColumnCount(6)
+        self.tabla.setHorizontalHeaderLabels(["ID", "Fecha", "Referencia", "Cliente", "Items", "Total Est."])
         self.tabla.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tabla.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.tabla.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -112,9 +112,10 @@ class BorradoresDialog(QDialog):
         header = self.tabla.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents) # ID
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents) # Fecha
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)          # Referencia/Cliente
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents) # Items
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents) # Total
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Referencia
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)          # Cliente
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents) # Items
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents) # Total
 
         self.tabla.setStyleSheet(f"""
             QTableWidget {{
@@ -240,11 +241,10 @@ class BorradoresDialog(QDialog):
             datos = b.get("datos", {})
             productos = datos.get("productos", [])
             n_productos = len(productos)
-            
-            # Formatear el total (reemplazar comas/puntos extraños o hacer parse)
+
+            # Formatear el total
             total_str = datos.get("total", "0")
             try:
-                # Intentamos limpiar por si es string '500,000'
                 if isinstance(total_str, str):
                     total_val = float(total_str.replace(",", "").replace("$", "").strip())
                 else:
@@ -256,18 +256,25 @@ class BorradoresDialog(QDialog):
             cliente = datos.get("cliente_nombre", "").strip()
             if not cliente:
                 cliente = "Cliente General"
-            fecha = b.get("fecha", "—")
             
-            # Usar un prefijo corto de ID para no llenar la celda
+            # Referencia del borrador (campo nuevo, separado del cliente)
+            referencia = datos.get("referencia", "").strip()
+            if not referencia:
+                referencia = "—"
+
+            fecha = b.get("fecha", "—")
             id_corto = str(b.get("id", ""))[:6].upper()
 
             # --- Crear items ---
             item_id = QTableWidgetItem(id_corto)
             item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item_id.setData(Qt.ItemDataRole.UserRole, b["id"]) # Guardar ID original
+            item_id.setData(Qt.ItemDataRole.UserRole, b["id"])
 
             item_fecha = QTableWidgetItem(fecha)
             item_fecha.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            item_referencia = QTableWidgetItem(referencia)
+            item_referencia.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
 
             item_cliente = QTableWidgetItem(cliente)
             item_cliente.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
@@ -280,9 +287,10 @@ class BorradoresDialog(QDialog):
 
             self.tabla.setItem(i, 0, item_id)
             self.tabla.setItem(i, 1, item_fecha)
-            self.tabla.setItem(i, 2, item_cliente)
-            self.tabla.setItem(i, 3, item_items)
-            self.tabla.setItem(i, 4, item_total)
+            self.tabla.setItem(i, 2, item_referencia)
+            self.tabla.setItem(i, 3, item_cliente)
+            self.tabla.setItem(i, 4, item_items)
+            self.tabla.setItem(i, 5, item_total)
 
         self.tabla.selectRow(0)
 
