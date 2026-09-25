@@ -153,13 +153,25 @@ class Ui_VentasCredito(object):
         self.InputPrecioUnitario.setMinimumHeight(40)
         self.InputPrecioUnitario.setStyleSheet(_INPUT_QSS)
         inputLayout.addWidget(self.InputPrecioUnitario, 1, 6)
+        # Layout horizontal para los botones de acciones (Eliminar, Guardar, Cargar)
+        action_layout = QtWidgets.QHBoxLayout()
+        action_layout.setSpacing(8)
 
-        self.BtnAgregar = QtWidgets.QPushButton(" Agregar", self.inputCard)
-        self.BtnAgregar.setIcon(qta.icon('fa5s.plus', color='white'))
-        self.BtnAgregar.setMinimumHeight(40)
-        self.BtnAgregar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.BtnAgregar.setStyleSheet(f"background-color: {_PRIMARY}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        inputLayout.addWidget(self.BtnAgregar, 1, 7)
+        self.BtnCargarBorrador = QtWidgets.QPushButton(" Cargar Borrador", self.inputCard)
+        self.BtnCargarBorrador.setObjectName("BtnCargarBorrador")
+        self.BtnCargarBorrador.setMinimumHeight(40)
+        self.BtnCargarBorrador.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnCargarBorrador.setIcon(qta.icon("fa5s.folder-open", color=_TEXT))
+        self.BtnCargarBorrador.setStyleSheet(f"background-color: transparent; color: {_TEXT}; border: 1px solid {_DIVIDER}; border-radius: 8px; font-weight: 600; padding: 0 16px;")
+        action_layout.addWidget(self.BtnCargarBorrador)
+
+        self.BtnGuardarBorrador = QtWidgets.QPushButton(" Guardar Borrador", self.inputCard)
+        self.BtnGuardarBorrador.setObjectName("BtnGuardarBorrador")
+        self.BtnGuardarBorrador.setMinimumHeight(40)
+        self.BtnGuardarBorrador.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.BtnGuardarBorrador.setIcon(qta.icon("fa5s.save", color=_PRIMARY))
+        self.BtnGuardarBorrador.setStyleSheet(f"background-color: transparent; color: {_PRIMARY}; border: 1px solid {_PRIMARY}; border-radius: 8px; font-weight: 600; padding: 0 16px;")
+        action_layout.addWidget(self.BtnGuardarBorrador)
 
         self.BtnEliminar = QtWidgets.QPushButton(" Eliminar Seleccionado", self.inputCard)
         self.BtnEliminar.setObjectName("BtnEliminar")
@@ -167,8 +179,9 @@ class Ui_VentasCredito(object):
         self.BtnEliminar.setMinimumHeight(40)
         self.BtnEliminar.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.BtnEliminar.setStyleSheet(f"background-color: {_DANGER}; color: white; border-radius: 8px; font-weight: 600; padding: 0 16px; text-align: center;")
-        # Posicionarlo en una nueva fila, alineado a la derecha
-        inputLayout.addWidget(self.BtnEliminar, 2, 7, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
+        action_layout.addWidget(self.BtnEliminar)
+
+        inputLayout.addLayout(action_layout, 2, 7, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.rootLayout.addWidget(self.inputCard)
 
@@ -356,6 +369,7 @@ class Ui_VentasCredito(object):
         resumenLayout.addWidget(self.lblNotaPago)
         
         resumenLayout.addStretch()
+
 
         self.BtnGenerarVentaCredito = QtWidgets.QPushButton(" Generar Venta a Crédito", self.resumenCard)
         self.BtnGenerarVentaCredito.setObjectName("BtnGenerarVentaCredito")

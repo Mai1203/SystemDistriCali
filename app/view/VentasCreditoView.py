@@ -23,6 +23,7 @@ from ..controllers.lote_crud import (
     descontar_stock_lote,
     restaurar_stock_lote,
     obtener_lote_por_id,
+    sincronizar_producto_con_lotes,
 )
 from ..configuracion import obtener_precio_lote, obtener_tipo_venta, obtener_precio_producto
 from ..ui import Ui_VentasCredito
@@ -39,6 +40,10 @@ import win32con
 
 
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtWidgets import QInputDialog
+
+from ..utils.borradores_manager import guardar_borrador, cargar_borradores
+from ..view.BorradoresDialog import BorradoresDialog
 
 class VentasCredito_View(QWidget, Ui_VentasCredito):
     def __init__(self, parent=None):
@@ -105,10 +110,15 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         # Botones y tabla
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
-        self.BtnAgregar.clicked.connect(self.procesar_codigo)
         self.BtnGenerarVentaCredito.clicked.connect(self.generar_venta)
         self.TablaVentasCredito.cellClicked.connect(self.cargar_datos)
         self.TablaVentasCredito.itemChanged.connect(self.actualizar_total)
+
+        # ── Botones de Borradores ──
+        if hasattr(self, 'BtnGuardarBorrador'):
+            self.BtnGuardarBorrador.clicked.connect(self.guardar_como_borrador)
+        if hasattr(self, 'BtnCargarBorrador'):
+            self.BtnCargarBorrador.clicked.connect(self.abrir_borradores)
 
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
 
@@ -251,31 +261,43 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         pagado = venta.Total_Deuda - venta.Saldo_Pendiente
 
-        # Obtener los detalles actuales de la factura
+        # Obtener los detalles actuales de la factura (con su lote asociado)
         detalles_actuales = (
             db.query(DetalleFacturas)
             .filter(DetalleFacturas.ID_Factura == id_factura)
             .all()
         )
 
-        productos_actuales = {
-            detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales
+        # Mapear id_producto -> (cantidad, id_lote) de los detalles existentes
+        detalles_actuales_map = {
+            detalle.ID_Producto: (detalle.Cantidad, detalle.ID_Lote)
+            for detalle in detalles_actuales
         }
 
+        # produc_datos = [(codigo, cantidad, precio_unitario, id_lote), ...]
         productos_nuevos = {
-            int(codigo): cantidad for codigo, cantidad, _, _ in produc_datos
+            int(codigo): (cantidad, id_lote)
+            for codigo, cantidad, _, id_lote in produc_datos
         }
 
-        productos_eliminados = set(productos_actuales.keys()) - set(
+        productos_eliminados = set(detalles_actuales_map.keys()) - set(
             productos_nuevos.keys()
         )
 
+        # Restaurar stock de productos eliminados de la factura
         for id_producto in productos_eliminados:
-            cantidad_vendida = productos_actuales[id_producto]
-            producto = (
-                db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-            )
-            producto.Stock_actual += cantidad_vendida
+            cantidad_vendida, id_lote_original = detalles_actuales_map[id_producto]
+            if id_lote_original:
+                # Restaurar stock al lote específico
+                restaurar_stock_lote(db, id_lote_original, cantidad_vendida)
+            else:
+                # Sin lote: ajustar stock del producto y re-sincronizar
+                from app.models.productos import Productos as _Prod
+                prod = db.query(_Prod).filter(_Prod.ID_Producto == id_producto).first()
+                if prod:
+                    prod.Stock_actual += cantidad_vendida
+                    db.flush()
+                    sincronizar_producto_con_lotes(db, id_producto)
             db.delete(
                 db.query(DetalleFacturas)
                 .filter(
@@ -285,8 +307,10 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 .first()
             )
 
-        for id_producto, nueva_cantidad in productos_nuevos.items():
-            if id_producto in productos_actuales:
+        # Actualizar o agregar productos en la factura
+        for id_producto, (nueva_cantidad, id_lote_nuevo) in productos_nuevos.items():
+            if id_producto in detalles_actuales_map:
+                cantidad_anterior, id_lote_original = detalles_actuales_map[id_producto]
                 detalle = (
                     db.query(DetalleFacturas)
                     .filter(
@@ -296,17 +320,37 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     .first()
                 )
 
-                diferencia_cantidad = nueva_cantidad - productos_actuales[id_producto]
+                diferencia = nueva_cantidad - cantidad_anterior
                 detalle.Cantidad = nueva_cantidad
                 detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
 
-                producto = (
-                    db.query(Productos)
-                    .filter(Productos.ID_Producto == id_producto)
-                    .first()
-                )
-                producto.Stock_actual -= diferencia_cantidad
+                # Ajustar stock del lote según la diferencia
+                if diferencia > 0:
+                    # Se piden más unidades → descontar diferencia del lote
+                    lote_id = id_lote_original or id_lote_nuevo
+                    if lote_id:
+                        descontar_stock_lote(db, lote_id, diferencia)
+                    else:
+                        from app.models.productos import Productos as _Prod
+                        prod = db.query(_Prod).filter(_Prod.ID_Producto == id_producto).first()
+                        if prod:
+                            prod.Stock_actual -= diferencia
+                            db.flush()
+                            sincronizar_producto_con_lotes(db, id_producto)
+                elif diferencia < 0:
+                    # Se piden menos unidades → restaurar la diferencia al lote
+                    lote_id = id_lote_original or id_lote_nuevo
+                    if lote_id:
+                        restaurar_stock_lote(db, lote_id, abs(diferencia))
+                    else:
+                        from app.models.productos import Productos as _Prod
+                        prod = db.query(_Prod).filter(_Prod.ID_Producto == id_producto).first()
+                        if prod:
+                            prod.Stock_actual += abs(diferencia)
+                            db.flush()
+                            sincronizar_producto_con_lotes(db, id_producto)
             else:
+                # Producto nuevo en la factura editada
                 precio_unitario = (
                     db.query(Productos)
                     .filter(Productos.ID_Producto == id_producto)
@@ -318,18 +362,23 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 nuevo_detalle = DetalleFacturas(
                     ID_Factura=id_factura,
                     ID_Producto=id_producto,
+                    ID_Lote=id_lote_nuevo,
                     Cantidad=nueva_cantidad,
                     Precio_unitario=precio_unitario,
                     Subtotal=subtotal,
                 )
                 db.add(nuevo_detalle)
 
-                producto = (
-                    db.query(Productos)
-                    .filter(Productos.ID_Producto == id_producto)
-                    .first()
-                )
-                producto.Stock_actual -= nueva_cantidad
+                # Descontar del lote correspondiente
+                if id_lote_nuevo:
+                    descontar_stock_lote(db, id_lote_nuevo, nueva_cantidad)
+                else:
+                    from app.models.productos import Productos as _Prod
+                    prod = db.query(_Prod).filter(_Prod.ID_Producto == id_producto).first()
+                    if prod:
+                        prod.Stock_actual -= nueva_cantidad
+                        db.flush()
+                        sincronizar_producto_con_lotes(db, id_producto)
 
         saldo = deuda - pagado
         actualizar_venta_credito(
@@ -951,6 +1000,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             self.InputCodigo.clear()
             self.InputCodigo.setFocus()
 
+    def obtener_stock_original(self, id_producto):
+        if not getattr(self, 'en_edicion', False):
+            return 0
+        return sum(cant for prod_id, cant in getattr(self, 'cantidades', []) if int(prod_id) == int(id_producto))
+
     def agregar_producto(self, mostrar_mensaje=True):
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
@@ -988,8 +1042,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         try:
             if id_lote:
                 lote = obtener_lote_por_id(db, id_lote)
-                if not lote or lote.Stock_actual < cantidad:
-                    disp = lote.Stock_actual if lote else 0
+                stock_original = self.obtener_stock_original(lote.ID_Producto if lote else int(codigo))
+                disp = (lote.Stock_actual if lote else 0) + stock_original
+                if not lote or cantidad > disp:
                     QMessageBox.warning(
                         self,
                         "Stock insuficiente",
@@ -1000,7 +1055,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 productos = obtener_producto_por_id(db, int(codigo))
                 if productos:
                     producto = productos[0]
-                    stock_disponible = producto.Stock_actual
+                    stock_disponible = producto.Stock_actual + self.obtener_stock_original(producto.ID_Producto)
                     if cantidad > stock_disponible:
                         QMessageBox.warning(
                             self,
@@ -1181,6 +1236,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 if row < self.TablaVentasCredito.rowCount():
                     item_codigo = self.TablaVentasCredito.item(row, 0)
                     item_lote = self.TablaVentasCredito.item(row, 4)
+                    item_cantidad = self.TablaVentasCredito.item(row, 5)
+                    cantidad_anterior = int(item_cantidad.text()) if item_cantidad else 0
                     if item_codigo:
                         codigo = item_codigo.text().strip()
                         id_lote = item_lote.data(Qt.ItemDataRole.UserRole) if item_lote else None
@@ -1203,8 +1260,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 try:
                     if id_lote:
                         lote = obtener_lote_por_id(db, id_lote)
-                        if not lote or cantidad > lote.Stock_actual:
-                            disp = lote.Stock_actual if lote else 0
+                        disp = (lote.Stock_actual if lote else 0) + (cantidad_anterior if self.en_edicion else 0)
+                        if not lote or cantidad > disp:
                             QMessageBox.warning(
                                 self,
                                 "Stock insuficiente",
@@ -1215,7 +1272,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                         productos = obtener_producto_por_id(db, int(codigo))
                         if productos:
                             producto = productos[0]
-                            stock_disponible = producto.Stock_actual
+                            stock_disponible = producto.Stock_actual + (cantidad_anterior if self.en_edicion else 0)
                             if cantidad > stock_disponible:
                                 QMessageBox.warning(
                                     self,
@@ -1429,3 +1486,100 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 self.InputTelefonoCli.setText(datos_cliente.Teléfono)
         except Exception as e:
             print(e)
+
+    # ─── BORRADORES ───────────────────────────────────────────────────────────
+
+    def guardar_como_borrador(self):
+        """Serializa el estado actual de la vista de crédito y lo guarda como borrador."""
+        if self.TablaVentasCredito.rowCount() == 0:
+            QMessageBox.warning(self, "Borrador vacío", "Agrega al menos un producto antes de guardar el borrador.")
+            return
+
+        productos = []
+        for row in range(self.TablaVentasCredito.rowCount()):
+            def _txt(col): return (self.TablaVentasCredito.item(row, col).text() if self.TablaVentasCredito.item(row, col) else "")
+            id_lote = None
+            item_lote = self.TablaVentasCredito.item(row, 4)
+            if item_lote:
+                id_lote = item_lote.data(Qt.ItemDataRole.UserRole)
+            productos.append({
+                "codigo":          _txt(0),
+                "nombre":          _txt(1),
+                "marca":           _txt(2),
+                "categoria":       _txt(3),
+                "lote_nombre":     _txt(4),
+                "id_lote":         id_lote,
+                "cantidad":        _txt(5),
+                "precio_unitario": _txt(6),
+                "subtotal":        _txt(7),
+            })
+
+        datos = {
+            "cliente_cedula":   self.InputCedula.text().strip(),
+            "cliente_nombre":   self.InputNombreCli.text().strip(),
+            "cliente_apellido": self.InputApellidoCli.text().strip(),
+            "cliente_tel":      self.InputTelefonoCli.text().strip(),
+            "cliente_dir":      self.InputDireccion.text().strip(),
+            "total":            self.LabelTotal.text().replace(",", "").replace("$", "").strip(),
+            "productos":        productos,
+        }
+
+        # Pedir nombre de referencia al usuario
+        nombre_ref, ok = QInputDialog.getText(
+            self,
+            "Guardar Borrador",
+            "Ingresa un nombre de referencia para este borrador (ej. Cliente, mesa, o nota):"
+        )
+        if not ok:
+            return  # El usuario canceló
+            
+        nombre_ref = nombre_ref.strip()
+        if nombre_ref:
+            datos["cliente_nombre"] = nombre_ref
+
+        guardar_borrador("credito", datos)
+        QMessageBox.information(self, "Borrador guardado", "El borrador se guardó correctamente. Puedes recuperarlo cuando quieras.")
+
+    def abrir_borradores(self):
+        """Abre el diálogo de borradores de crédito y carga el seleccionado."""
+        dlg = BorradoresDialog("credito", parent=self)
+        dlg.borrador_seleccionado.connect(self.cargar_desde_borrador)
+        dlg.exec()
+
+    def cargar_desde_borrador(self, datos: dict):
+        """Restaura el estado de la vista de crédito desde los datos de un borrador."""
+        self.TablaVentasCredito.setRowCount(0)
+        self.limpiar_campos()
+
+        # Datos del cliente
+        self.InputCedula.setText(datos.get("cliente_cedula", ""))
+        self.InputNombreCli.setText(datos.get("cliente_nombre", ""))
+        if hasattr(self, "InputApellidoCli"):
+            self.InputApellidoCli.setText(datos.get("cliente_apellido", ""))
+        self.InputTelefonoCli.setText(datos.get("cliente_tel", ""))
+        self.InputDireccion.setText(datos.get("cliente_dir", ""))
+
+        # Productos
+        for prod in datos.get("productos", []):
+            rowPos = self.TablaVentasCredito.rowCount()
+            self.TablaVentasCredito.insertRow(rowPos)
+            vals = [
+                (0, prod.get("codigo", ""),          None),
+                (1, prod.get("nombre", ""),           None),
+                (2, prod.get("marca", ""),            None),
+                (3, prod.get("categoria", ""),        None),
+                (4, prod.get("lote_nombre", ""),      prod.get("id_lote")),
+                (5, prod.get("cantidad", ""),          None),
+                (6, prod.get("precio_unitario", ""),  None),
+                (7, prod.get("subtotal", ""),         None),
+            ]
+            for col, text, data in vals:
+                item = QTableWidgetItem(str(text))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                if data is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, data)
+                self.TablaVentasCredito.setItem(rowPos, col, item)
+
+        self.actualizar_total()
+        QMessageBox.information(self, "Borrador cargado", "El borrador se cargó correctamente. Revisa los datos antes de generar la factura.")

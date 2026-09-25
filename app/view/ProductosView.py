@@ -142,6 +142,8 @@ class Productos_View(QWidget, Ui_Productos):
         self.BtnIngresarProducto.setVisible(True)
         self.BtnActualizar.setVisible(False)
         self.InputCodigo.setReadOnly(False)
+        self.InputCantidad.setReadOnly(False)
+        self.InputCantidad.setToolTip("")
         self.LabelTituloFormulario.setText("Registrar producto")
         self.BadgeModo.setText("● NUEVO PRODUCTO")
         self.BadgeModo.setObjectName("BadgeNuevo")
@@ -159,6 +161,24 @@ class Productos_View(QWidget, Ui_Productos):
         self.BadgeModo.setObjectName("BadgeEditando")
         self.BadgeModo.style().unpolish(self.BadgeModo)
         self.BadgeModo.style().polish(self.BadgeModo)
+
+        # Bloquear campo de cantidad si tiene > 1 lote
+        try:
+            from app.database.session import SessionLocal
+            from app.controllers.lote_crud import obtener_lotes_por_producto
+            db = SessionLocal()
+            try:
+                lotes = obtener_lotes_por_producto(db, int(codigo))
+                if len(lotes) > 1:
+                    self.InputCantidad.setReadOnly(True)
+                    self.InputCantidad.setToolTip("Este producto tiene múltiples lotes. Usa el botón 'Gestión de Lotes' para modificar el stock.")
+                else:
+                    self.InputCantidad.setReadOnly(False)
+                    self.InputCantidad.setToolTip("")
+            finally:
+                db.close()
+        except Exception:
+            self.InputCantidad.setReadOnly(False)
 
     def _doble_clic_editar(self, row, col):
         """Abre el formulario de edición para la fila seleccionada."""
@@ -221,6 +241,42 @@ class Productos_View(QWidget, Ui_Productos):
 
     def showEvent(self, event):
         super().showEvent(event)
+        
+        # --- AUTO-FIX STOCK DESINCRONIZADO ---
+        try:
+            db_sync = SessionLocal()
+            from app.models.productos import Productos as _P
+            from app.models.lotes import LoteProducto as _L
+            from sqlalchemy import func, desc
+            
+            productos_todos = db_sync.query(_P).all()
+            for p in productos_todos:
+                stock_producto = p.Stock_actual or 0
+                total_lotes = db_sync.query(func.coalesce(func.sum(_L.Stock_actual), 0)).filter(_L.ID_Producto == p.ID_Producto).scalar()
+                
+                if stock_producto != total_lotes:
+                    diferencia = stock_producto - total_lotes
+                    lote_objetivo = db_sync.query(_L).filter(_L.ID_Producto == p.ID_Producto).order_by(desc(_L.ID_Lote)).first()
+                    if lote_objetivo:
+                        nuevo_stock = max(0, lote_objetivo.Stock_actual + diferencia)
+                        lote_objetivo.Stock_actual = nuevo_stock
+                        lote_objetivo.Estado = nuevo_stock > 0
+                    else:
+                        nuevo_lote = _L(
+                            ID_Producto=p.ID_Producto, Numero_Lote="LOTE-RECONCILIACION",
+                            Stock_inicial=stock_producto, Stock_actual=stock_producto,
+                            Precio_costo=p.Precio_costo or 0, Precio_venta_1=p.Precio_venta_1 or 0,
+                            Precio_venta_2=p.Precio_venta_2 or 0, Precio_venta_3=p.Precio_venta_3 or 0,
+                            Precio_venta_4=p.Precio_venta_4 or 0, Estado=stock_producto > 0,
+                            Proveedor="Ajuste automático", Notas="Lote creado para arreglar desincronización"
+                        )
+                        db_sync.add(nuevo_lote)
+            db_sync.commit()
+            db_sync.close()
+        except Exception as e:
+            print(f"Error auto-arreglando stock: {e}")
+        # ------------------------------------
+
         self.Contenido.setCurrentWidget(self.PanelListado)
         self.InputBuscador.clear()
         self.limpiar_tabla_productos()

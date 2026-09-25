@@ -79,36 +79,38 @@ class MainApp(QWidget):
 
         # Conectar los botones del Navbar
         self.navbar.comboVentas.activated.connect(self.cambiar_tipo_venta)
+        # Seleccionar por defecto la primera opción de ventas y activar el combo
         self.cambiar_tipo_venta(0)
+        self.navbar.set_combo_active(True)
         self.navbar.BtnCaja.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.caja)
+            lambda: self._ir_a(self.caja, self.navbar.BtnCaja)
         )
         self.navbar.BtnCredito.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.ventasCredito)
+            lambda: self._ir_a(self.ventasCredito, self.navbar.BtnCredito)
         )
         self.navbar.BtnEgreso.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.egreso)
+            lambda: self._ir_a(self.egreso, self.navbar.BtnEgreso)
         )
         self.navbar.BtnRespaldo.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.respaldo_view)
+            lambda: self._ir_a(self.respaldo_view, self.navbar.BtnRespaldo)
         )
         self.navbar.BtnProductos.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.productos)
+            lambda: self._ir_a(self.productos, self.navbar.BtnProductos)
         )
         self.navbar.BtnCrediFactura.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.crediFactura)
+            lambda: self._ir_a(self.crediFactura, self.navbar.BtnCrediFactura)
         )
         self.navbar.BtnFacturas.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.facturas)
+            lambda: self._ir_a(self.facturas, self.navbar.BtnFacturas)
         )
         self.navbar.BtnReportes.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.reportes)
+            lambda: self._ir_a(self.reportes, self.navbar.BtnReportes)
         )
         self.navbar.BtnControlUsuario.clicked.connect(
             lambda: self.stacked_widget.setCurrentWidget(self.control_usuario_view)
         )
         self.navbar.BtnClientes.clicked.connect(
-            lambda: self.stacked_widget.setCurrentWidget(self.Clientes)
+            lambda: self._ir_a(self.Clientes, self.navbar.BtnClientes)
         )
 
         self.facturas.enviar_facturas_A.connect(self.cambiar_a_ventasA)
@@ -122,6 +124,22 @@ class MainApp(QWidget):
         # Inicializar Listener de eventos en tiempo real (PostgreSQL LISTEN/NOTIFY)
         self.realtime_listener = None
         self._iniciar_realtime_listener()
+
+    def _ir_a(self, widget, boton=None):
+        """Navega a una vista y marca el botón del navbar correspondiente."""
+        self.stacked_widget.setCurrentWidget(widget)
+        if boton is not None:
+            boton.setChecked(True)
+            # Si se navega a otro lado, asegurarse de apagar el comboVentas
+            self.navbar.set_combo_active(False)
+        else:
+            # Si no hay botón, desmarcar todos en el grupo (ej. al ir a Ventas que es combo)
+            checked_btn = self.navbar.button_group.checkedButton()
+            if checked_btn:
+                self.navbar.button_group.setExclusive(False)
+                checked_btn.setChecked(False)
+                self.navbar.button_group.setExclusive(True)
+
 
     def _iniciar_realtime_listener(self):
         """Inicia el hilo de escucha en tiempo real (PostgreSQL LISTEN/NOTIFY)."""
@@ -173,7 +191,8 @@ class MainApp(QWidget):
         tipo_venta = obtener_tipo_venta(indice)["nombre"]
         self.ventas.configurar_tipo_venta(indice)
         self.ventas.LabelVentasA.setText(tipo_venta)
-        self.stacked_widget.setCurrentWidget(self.ventas)
+        self._ir_a(self.ventas, None)
+        self.navbar.set_combo_active(True)
 
     def seleccionar_tipo_por_factura(self, factura_completa):
         tipo_factura = factura_completa["Factura"]["TipoFactura"]
@@ -188,7 +207,8 @@ class MainApp(QWidget):
     def cambiar_a_ventasA(self, factura_completa):
         try:
             self.seleccionar_tipo_por_factura(factura_completa)
-            self.stacked_widget.setCurrentWidget(self.ventas)
+            self._ir_a(self.ventas, None)
+            self.navbar.set_combo_active(True)
             self.ventas.cargar_información(factura_completa)
         except Exception as e:
             print(f"Error al cargar datos VentasA: {e}")
@@ -196,7 +216,8 @@ class MainApp(QWidget):
     def cambiar_a_ventasB(self, factura_completa):
         try:
             self.seleccionar_tipo_por_factura(factura_completa)
-            self.stacked_widget.setCurrentWidget(self.ventas)
+            self._ir_a(self.ventas, None)
+            self.navbar.set_combo_active(True)
             self.ventas.cargar_información(factura_completa)
         except Exception as e:
             print(f"Error al cargar datos VentasB: {e}")

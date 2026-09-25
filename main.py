@@ -26,6 +26,7 @@ from app.database.config import load_config, is_configured
 from app.database.engine import get_engine, reset_engine
 from app.database.session import SessionLocal
 from app.database.database import init_db
+import app.database.events  # <--- Eventos de sincronización Lote-Producto
 from app.services.connection_service import test_connection
 from app.utils.logger import logger
 from app.utils.enviar_notifi import (

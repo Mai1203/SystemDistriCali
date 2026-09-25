@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_, cast, String
+from sqlalchemy import func, or_, cast, String, desc
 from app.models.productos import Productos
 from app.models.productos import Marcas
 from app.models.productos import Categorias
@@ -287,9 +287,67 @@ def actualizar_producto(
         )
 
     if stock_actual is not None:
-        producto_existente.Stock_actual = stock_actual
-        # Actualizar estado según el nuevo stock_actual
-        producto_existente.Estado = cambiar_estado(stock_actual)
+        # Propagar el cambio de stock al lote más reciente activo
+        from app.models.lotes import LoteProducto
+        stock_anterior = producto_existente.Stock_actual or 0
+        diferencia = stock_actual - stock_anterior
+
+        if diferencia != 0:
+            # Buscar el lote más reciente con stock > 0, o simplemente el último
+            lote_objetivo = (
+                db.query(LoteProducto)
+                .filter(LoteProducto.ID_Producto == id_producto, LoteProducto.Stock_actual > 0)
+                .order_by(desc(LoteProducto.ID_Lote))
+                .first()
+            )
+            if not lote_objetivo:
+                lote_objetivo = (
+                    db.query(LoteProducto)
+                    .filter(LoteProducto.ID_Producto == id_producto)
+                    .order_by(desc(LoteProducto.ID_Lote))
+                    .first()
+                )
+
+            if lote_objetivo:
+                nuevo_stock_lote = max(0, lote_objetivo.Stock_actual + diferencia)
+                lote_objetivo.Stock_actual = nuevo_stock_lote
+                lote_objetivo.Estado = nuevo_stock_lote > 0
+            else:
+                # Si no hay lotes, crear uno automático con el stock nuevo
+                ganancia_1 = calcular_ganancia(producto_existente.Precio_venta_1 or 0, producto_existente.Precio_costo or 0)
+                ganancia_2 = calcular_ganancia(producto_existente.Precio_venta_2 or 0, producto_existente.Precio_costo or 0)
+                ganancia_3 = calcular_ganancia(producto_existente.Precio_venta_3 or 0, producto_existente.Precio_costo or 0)
+                ganancia_4 = calcular_ganancia(producto_existente.Precio_venta_4 or 0, producto_existente.Precio_costo or 0)
+                nuevo_lote = LoteProducto(
+                    ID_Producto=id_producto,
+                    Numero_Lote="LOTE-AUTO",
+                    Stock_inicial=stock_actual,
+                    Stock_actual=stock_actual,
+                    Precio_costo=producto_existente.Precio_costo or 0,
+                    Precio_venta_1=producto_existente.Precio_venta_1 or 0,
+                    Precio_venta_2=producto_existente.Precio_venta_2 or 0,
+                    Precio_venta_3=producto_existente.Precio_venta_3 or 0,
+                    Precio_venta_4=producto_existente.Precio_venta_4 or 0,
+                    Ganancia_1=ganancia_1,
+                    Ganancia_2=ganancia_2,
+                    Ganancia_3=ganancia_3,
+                    Ganancia_4=ganancia_4,
+                    Estado=stock_actual > 0,
+                    Proveedor="Ajuste manual",
+                    Notas="Lote creado automáticamente por ajuste de stock",
+                )
+                db.add(nuevo_lote)
+
+        # Recalcular Producto.Stock_actual como suma de lotes
+        db.flush()
+        total_lotes = (
+            db.query(func.coalesce(func.sum(LoteProducto.Stock_actual), 0))
+            .filter(LoteProducto.ID_Producto == id_producto)
+            .scalar()
+        )
+        producto_existente.Stock_actual = total_lotes
+        producto_existente.Estado = cambiar_estado(total_lotes)
+
     if stock_min is not None:
         producto_existente.Stock_min = stock_min
 

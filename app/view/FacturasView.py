@@ -14,6 +14,7 @@ from ..controllers.pago_credito_crud import obtener_pagos_credito
 from ..controllers.producto_crud import *
 from ..controllers.tipo_ingreso_crud import *
 from ..controllers.ingresos_crud import *
+from ..controllers.lote_crud import restaurar_stock_lote, obtener_lotes_por_producto, sincronizar_producto_con_lotes
 from ..utils.enviar_notifi import enviar_notificacion
 from ..utils.formateador import formatear_factura_completa
 
@@ -112,17 +113,27 @@ class Facturas_View(QWidget, Ui_Facturas):
 
             factura_completa = obtener_factura_completa(self.db, id_factura)
             
-            productos = factura_completa["Detalles"]
-            
-            for producto in productos:
-                id_producto = producto["ID_Producto"]
-                cantidad = producto["Cantidad"]
-                
-                producto = obtener_producto_por_id(self.db, id_producto)
-                
-                stock = producto[0].Stock_actual
-                cantidad = cantidad + stock
-                actualizar_producto(db=self.db, id_producto=id_producto, stock_actual=cantidad)
+            for detalle in factura_completa["Detalles"]:
+                id_producto = detalle["ID_Producto"]
+                cantidad = detalle["Cantidad"]
+                id_lote = detalle.get("ID_Lote")  # el ID del lote al que pertenece el detalle
+
+                if id_lote:
+                    # Restaurar stock al lote específico
+                    restaurar_stock_lote(self.db, id_lote, cantidad)
+                else:
+                    # Sin lote registrado: restaurar al lote más reciente del producto
+                    lotes = obtener_lotes_por_producto(self.db, id_producto)
+                    if lotes:
+                        restaurar_stock_lote(self.db, lotes[0].ID_Lote, cantidad)
+                    else:
+                        # Fallback: ajuste directo + sincronizar
+                        from app.models.productos import Productos as _P
+                        prod = self.db.query(_P).filter(_P.ID_Producto == id_producto).first()
+                        if prod:
+                            prod.Stock_actual += cantidad
+                            self.db.flush()
+                            sincronizar_producto_con_lotes(self.db, id_producto)
                 
             eliminar_factura(self.db, id_factura)
             

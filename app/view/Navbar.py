@@ -29,7 +29,7 @@ class Navbar_View(QWidget, Ui_Navbar):
         self.comboVentas.setIconSize(QtCore.QSize(18, 18))
         
         # Estilo integrado con el nuevo diseño
-        self.comboVentas.setStyleSheet("""
+        self._qss_combo_normal = """
             QComboBox {
                 background-color: transparent;
                 border: none;
@@ -49,9 +49,7 @@ class Navbar_View(QWidget, Ui_Navbar):
                 width: 20px;
                 border: none;
             }
-            QComboBox::down-arrow {
-                image: none; /* Podemos omitir la flecha nativa si queremos que parezca un btn normal */
-            }
+            QComboBox::down-arrow { image: none; }
             QComboBox QAbstractItemView {
                 background-color: #FFFFFF;
                 border: 1px solid #E2DAE1;
@@ -60,7 +58,40 @@ class Navbar_View(QWidget, Ui_Navbar):
                 selection-color: white;
                 outline: none;
             }
-        """)
+        """
+        
+        self._qss_combo_activo = """
+            QComboBox {
+                background-color: #862D6D;
+                border: none;
+                color: #FFFFFF;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            QComboBox:hover {
+                background-color: #6E2259;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border: none;
+            }
+            QComboBox::down-arrow { image: none; }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #E2DAE1;
+                border-radius: 8px;
+                selection-background-color: #862D6D;
+                selection-color: white;
+                outline: none;
+                color: #201A24;
+            }
+        """
+        self.comboVentas.setStyleSheet(self._qss_combo_normal)
 
         # Reemplazamos BtnVentas por comboVentas
         self.rootLayout.replaceWidget(self.BtnVentas, self.comboVentas)
@@ -83,6 +114,23 @@ class Navbar_View(QWidget, Ui_Navbar):
         self.lblUserAvatar.setPixmap(
             qta.icon("fa5s.user", color="#FFFFFF").pixmap(22, 22)
         )
+
+        # Cuando se hace clic en cualquier botón normal, des-iluminar el comboVentas
+        self.button_group.buttonClicked.connect(lambda: self.set_combo_active(False))
+
+    def set_combo_active(self, active: bool):
+        """Cambia el estilo visual del QComboBox para que parezca marcado/desmarcado."""
+        import qtawesome as qta
+        if active:
+            self.comboVentas.setStyleSheet(self._qss_combo_activo)
+            # Actualizamos el ícono a blanco si es necesario, pero los items del comboBox 
+            # ya se inicializaron con un ícono. Si queremos cambiar el ícono del ComboBox entero:
+            for i in range(self.comboVentas.count()):
+                self.comboVentas.setItemIcon(i, qta.icon('fa5s.shopping-cart', color='#FFFFFF'))
+        else:
+            self.comboVentas.setStyleSheet(self._qss_combo_normal)
+            for i in range(self.comboVentas.count()):
+                self.comboVentas.setItemIcon(i, qta.icon('fa5s.shopping-cart', color='#201A24'))
 
     def actualizar_usuario_rol(self, usuario):
         """Actualiza nombre, rol y ícono del usuario activo en el Navbar."""

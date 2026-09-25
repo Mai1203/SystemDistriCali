@@ -20,6 +20,7 @@ from ..controllers.lote_crud import (
     descontar_stock_lote,
     restaurar_stock_lote,
     obtener_lote_por_id,
+    sincronizar_producto_con_lotes,
 )
 from ..ui import Ui_VentasA
 from .LoteSeleccionDialog import LoteSeleccionDialog
@@ -36,6 +37,10 @@ import win32print
 import win32ui
 import win32con
 import datetime
+from PyQt6.QtWidgets import QInputDialog
+
+from ..utils.borradores_manager import guardar_borrador, cargar_borradores
+from ..view.BorradoresDialog import BorradoresDialog
 
 
 class VentasA_View(QWidget, Ui_VentasA):
@@ -126,11 +131,16 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.BtnFacturaB.clicked.connect(self.cambiar_a_ventanab)
         self.BtnGenerarVenta.clicked.connect(self.generar_venta)
         self.BtnEliminar.clicked.connect(self.eliminar_fila)
-        self.BtnAgregar.clicked.connect(self.procesar_codigo)
         if hasattr(self, 'BtnCrearCliente'):
             self.BtnCrearCliente.clicked.connect(self.crear_cliente_rapido)
         self.tableWidget.cellClicked.connect(self.cargar_datos)
         self.tableWidget.itemChanged.connect(self.actualizar_total)
+
+        # ── Botones de Borradores ──
+        if hasattr(self, 'BtnGuardarBorrador'):
+            self.BtnGuardarBorrador.clicked.connect(self.guardar_como_borrador)
+        if hasattr(self, 'BtnCargarBorrador'):
+            self.BtnCargarBorrador.clicked.connect(self.abrir_borradores)
 
         # Timer
         self.timer.timeout.connect(self.procesar_codigo_y_agregar)
@@ -471,9 +481,18 @@ class VentasA_View(QWidget, Ui_VentasA):
                     if id_lote:
                         descontar_stock_lote(db, id_lote, quantity)
                     else:
-                        producto = obtener_producto_por_id(db, int(codigo))[0]
-                        stock_actual = producto.Stock_actual - quantity
-                        actualizar_producto(db, id_producto=int(codigo), stock_actual=stock_actual)
+                        # Sin lote explícito → descontar del lote más reciente activo
+                        lotes = obtener_lotes_por_producto(db, int(codigo), solo_disponibles=True)
+                        if lotes:
+                            descontar_stock_lote(db, lotes[0].ID_Lote, quantity)
+                        else:
+                            # Fallback: ajuste directo + sincronizar
+                            from app.models.productos import Productos as _P
+                            prod = db.query(_P).filter(_P.ID_Producto == int(codigo)).first()
+                            if prod:
+                                prod.Stock_actual = max(0, prod.Stock_actual - quantity)
+                                db.flush()
+                                sincronizar_producto_con_lotes(db, int(codigo))
 
                 id_factura = self.guardar_factura(
                     db,
@@ -622,6 +641,114 @@ class VentasA_View(QWidget, Ui_VentasA):
         self.tipo_venta_original = None
         self.LabelVentasA.setText(obtener_tipo_venta(self.tipo_venta)["nombre"])
 
+    # ─── BORRADORES ───────────────────────────────────────────────────────────
+
+    def guardar_como_borrador(self):
+        """Serializa el estado actual de la vista y lo guarda como borrador normal."""
+        if self.tableWidget.rowCount() == 0:
+            QMessageBox.warning(self, "Borrador vacío", "Agrega al menos un producto antes de guardar el borrador.")
+            return
+
+        productos = []
+        for row in range(self.tableWidget.rowCount()):
+            def _txt(col): return (self.tableWidget.item(row, col).text() if self.tableWidget.item(row, col) else "")
+            id_lote = None
+            item_lote = self.tableWidget.item(row, 4)
+            if item_lote:
+                id_lote = item_lote.data(Qt.ItemDataRole.UserRole)
+            productos.append({
+                "codigo":          _txt(0),
+                "nombre":          _txt(1),
+                "marca":           _txt(2),
+                "categoria":       _txt(3),
+                "lote_nombre":     _txt(4),
+                "id_lote":         id_lote,
+                "cantidad":        _txt(5),
+                "precio_unitario": _txt(6),
+                "subtotal":        _txt(7),
+            })
+
+        datos = {
+            "tipo_venta":     self.tipo_venta,
+            "cliente_cedula": self.InputCedula.text().strip(),
+            "cliente_nombre": self.InputNombreCli.text().strip(),
+            "cliente_tel":    self.InputTelefonoCli.text().strip(),
+            "cliente_dir":    self.InputDireccion.text().strip(),
+            "domicilio":      self.InputDomicilio.text().strip(),
+            "descuento":      self.InputDescuento.text().strip(),
+            "metodo_pago":    self.MetodoPagoBox.currentText(),
+            "total":          self.LabelTotal.text().replace(",", "").replace("$", "").strip(),
+            "productos":      productos,
+        }
+
+        # Pedir nombre de referencia al usuario
+        nombre_ref, ok = QInputDialog.getText(
+            self,
+            "Guardar Borrador",
+            "Ingresa un nombre de referencia para este borrador (ej. Cliente, mesa, o nota):"
+        )
+        if not ok:
+            return  # El usuario canceló
+            
+        nombre_ref = nombre_ref.strip()
+        if nombre_ref:
+            datos["cliente_nombre"] = nombre_ref
+
+        guardar_borrador("normal", datos)
+        QMessageBox.information(self, "Borrador guardado", "El borrador se guardó correctamente. Puedes recuperarlo cuando quieras.")
+
+    def abrir_borradores(self):
+        """Abre el diálogo de borradores y carga el seleccionado."""
+        dlg = BorradoresDialog("normal", parent=self)
+        dlg.borrador_seleccionado.connect(self.cargar_desde_borrador)
+        dlg.exec()
+
+    def cargar_desde_borrador(self, datos: dict):
+        """Restaura el estado de la vista desde los datos de un borrador."""
+        self.limpiar_tabla()
+        self.limpiar_campos()
+        self.limpiar_datos_cliente()
+
+        # Datos del cliente
+        self.InputCedula.setText(datos.get("cliente_cedula", ""))
+        self.InputNombreCli.setText(datos.get("cliente_nombre", ""))
+        self.InputTelefonoCli.setText(datos.get("cliente_tel", ""))
+        self.InputDireccion.setText(datos.get("cliente_dir", ""))
+        self.InputDomicilio.setText(datos.get("domicilio", ""))
+        self.InputDescuento.setText(datos.get("descuento", ""))
+
+        # Método de pago
+        idx = self.MetodoPagoBox.findText(datos.get("metodo_pago", "Efectivo"))
+        if idx >= 0:
+            self.MetodoPagoBox.setCurrentIndex(idx)
+
+        # Productos
+        for prod in datos.get("productos", []):
+            rowPos = self.tableWidget.rowCount()
+            self.tableWidget.insertRow(rowPos)
+            vals = [
+                (0, prod.get("codigo", ""),          None),
+                (1, prod.get("nombre", ""),           None),
+                (2, prod.get("marca", ""),            None),
+                (3, prod.get("categoria", ""),        None),
+                (4, prod.get("lote_nombre", ""),      prod.get("id_lote")),
+                (5, prod.get("cantidad", ""),          None),
+                (6, prod.get("precio_unitario", ""),  None),
+                (7, prod.get("subtotal", ""),         None),
+            ]
+            for col, text, data in vals:
+                item = QTableWidgetItem(str(text))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                if data is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, data)
+                self.tableWidget.setItem(rowPos, col, item)
+
+        self.actualizar_total()
+        QMessageBox.information(self, "Borrador cargado", "El borrador se cargó correctamente. Revisa los datos antes de generar la factura.")
+
+
+
     def actualizar_factura(
         self,
         db,
@@ -634,43 +761,106 @@ class VentasA_View(QWidget, Ui_VentasA):
         factura_pagada=True,
     ):
         detalles_actuales = db.query(DetalleFacturas).filter(DetalleFacturas.ID_Factura == id_factura).all()
-        productos_actuales = {detalle.ID_Producto: detalle.Cantidad for detalle in detalles_actuales}
-        productos_nuevos = {int(codigo): cantidad for codigo, cantidad, _, _ in produc_datos}
-        productos_eliminados = set(productos_actuales.keys()) - set(productos_nuevos.keys())
+        # Mapear id_producto -> (cantidad, id_lote) de los detalles existentes
+        detalles_actuales_map = {
+            d.ID_Producto: (d.Cantidad, d.ID_Lote) for d in detalles_actuales
+        }
+        # produc_datos = [(codigo, cantidad, precio_unitario, id_lote), ...]
+        productos_nuevos = {
+            int(codigo): (cantidad, id_lote)
+            for codigo, cantidad, _, id_lote in produc_datos
+        }
+        productos_eliminados = set(detalles_actuales_map.keys()) - set(productos_nuevos.keys())
 
+        # Restaurar stock de productos eliminados de la factura
         for id_producto in productos_eliminados:
-            cantidad_vendida = productos_actuales[id_producto]
-            producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-            producto.Stock_actual += cantidad_vendida
+            cantidad_vendida, id_lote_original = detalles_actuales_map[id_producto]
+            if id_lote_original:
+                restaurar_stock_lote(db, id_lote_original, cantidad_vendida)
+            else:
+                lotes = obtener_lotes_por_producto(db, id_producto)
+                if lotes:
+                    restaurar_stock_lote(db, lotes[0].ID_Lote, cantidad_vendida)
+                else:
+                    from app.models.productos import Productos as _P
+                    prod = db.query(_P).filter(_P.ID_Producto == id_producto).first()
+                    if prod:
+                        prod.Stock_actual += cantidad_vendida
+                        db.flush()
+                        sincronizar_producto_con_lotes(db, id_producto)
             db.delete(db.query(DetalleFacturas).filter(
                 DetalleFacturas.ID_Factura == id_factura,
                 DetalleFacturas.ID_Producto == id_producto
             ).first())
 
-        for id_producto, nueva_cantidad in productos_nuevos.items():
-            if id_producto in productos_actuales:
+        # Actualizar o agregar productos en la factura
+        for id_producto, (nueva_cantidad, id_lote_nuevo) in productos_nuevos.items():
+            if id_producto in detalles_actuales_map:
+                cantidad_anterior, id_lote_original = detalles_actuales_map[id_producto]
                 detalle = db.query(DetalleFacturas).filter(
                     DetalleFacturas.ID_Factura == id_factura,
                     DetalleFacturas.ID_Producto == id_producto
                 ).first()
-                diferencia_cantidad = nueva_cantidad - productos_actuales[id_producto]
+                diferencia = nueva_cantidad - cantidad_anterior
                 detalle.Cantidad = nueva_cantidad
                 detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
-                producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
-                producto.Stock_actual -= diferencia_cantidad
+
+                lote_id = id_lote_original or id_lote_nuevo
+                if diferencia > 0:
+                    if lote_id:
+                        descontar_stock_lote(db, lote_id, diferencia)
+                    else:
+                        lotes = obtener_lotes_por_producto(db, id_producto, solo_disponibles=True)
+                        if lotes:
+                            descontar_stock_lote(db, lotes[0].ID_Lote, diferencia)
+                        else:
+                            from app.models.productos import Productos as _P
+                            prod = db.query(_P).filter(_P.ID_Producto == id_producto).first()
+                            if prod:
+                                prod.Stock_actual -= diferencia
+                                db.flush()
+                                sincronizar_producto_con_lotes(db, id_producto)
+                elif diferencia < 0:
+                    if lote_id:
+                        restaurar_stock_lote(db, lote_id, abs(diferencia))
+                    else:
+                        lotes = obtener_lotes_por_producto(db, id_producto)
+                        if lotes:
+                            restaurar_stock_lote(db, lotes[0].ID_Lote, abs(diferencia))
+                        else:
+                            from app.models.productos import Productos as _P
+                            prod = db.query(_P).filter(_P.ID_Producto == id_producto).first()
+                            if prod:
+                                prod.Stock_actual += abs(diferencia)
+                                db.flush()
+                                sincronizar_producto_con_lotes(db, id_producto)
             else:
+                # Producto nuevo en la factura editada
                 producto = db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
                 precio_unitario = obtener_precio_producto(producto, self.tipo_venta)
                 subtotal = nueva_cantidad * precio_unitario
                 nuevo_detalle = DetalleFacturas(
                     ID_Factura=id_factura,
                     ID_Producto=id_producto,
+                    ID_Lote=id_lote_nuevo,
                     Cantidad=nueva_cantidad,
                     Precio_unitario=precio_unitario,
                     Subtotal=subtotal,
                 )
                 db.add(nuevo_detalle)
-                producto.Stock_actual -= nueva_cantidad
+                if id_lote_nuevo:
+                    descontar_stock_lote(db, id_lote_nuevo, nueva_cantidad)
+                else:
+                    lotes = obtener_lotes_por_producto(db, id_producto, solo_disponibles=True)
+                    if lotes:
+                        descontar_stock_lote(db, lotes[0].ID_Lote, nueva_cantidad)
+                    else:
+                        from app.models.productos import Productos as _P
+                        prod = db.query(_P).filter(_P.ID_Producto == id_producto).first()
+                        if prod:
+                            prod.Stock_actual -= nueva_cantidad
+                            db.flush()
+                            sincronizar_producto_con_lotes(db, id_producto)
 
         id_metodo_pago = obtener_metodo_pago_por_nombre(db, payment_method)
 
@@ -995,6 +1185,11 @@ class VentasA_View(QWidget, Ui_VentasA):
             self.InputCodigo.clear()
             self.InputCodigo.setFocus()
 
+    def obtener_stock_original(self, id_producto):
+        if not getattr(self, 'en_edicion', False):
+            return 0
+        return sum(cant for prod_id, cant in getattr(self, 'cantidades', []) if int(prod_id) == int(id_producto))
+
     def agregar_producto(self, mostrar_mensaje=True):
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
@@ -1030,8 +1225,9 @@ class VentasA_View(QWidget, Ui_VentasA):
         try:
             if id_lote:
                 lote = obtener_lote_por_id(db, id_lote)
-                if not lote or lote.Stock_actual < cantidad:
-                    disp = lote.Stock_actual if lote else 0
+                stock_original = self.obtener_stock_original(lote.ID_Producto if lote else int(codigo))
+                disp = (lote.Stock_actual if lote else 0) + stock_original
+                if not lote or cantidad > disp:
                     QMessageBox.warning(
                         self,
                         "Stock insuficiente",
@@ -1042,7 +1238,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 productos = obtener_producto_por_id(db, int(codigo))
                 if productos:
                     producto = productos[0]
-                    stock_disponible = producto.Stock_actual
+                    stock_disponible = producto.Stock_actual + self.obtener_stock_original(producto.ID_Producto)
                     if cantidad > stock_disponible:
                         QMessageBox.warning(
                             self,
@@ -1242,6 +1438,9 @@ class VentasA_View(QWidget, Ui_VentasA):
                 if row < self.tableWidget.rowCount():
                     item_codigo = self.tableWidget.item(row, 0)
                     item_lote = self.tableWidget.item(row, 4)
+                    item_cantidad = self.tableWidget.item(row, 5)
+                    cantidad_anterior = int(item_cantidad.text()) if item_cantidad else 0
+                    
                     if item_codigo:
                         codigo = item_codigo.text().strip()
                         id_lote = item_lote.data(Qt.ItemDataRole.UserRole) if item_lote else None
@@ -1256,14 +1455,15 @@ class VentasA_View(QWidget, Ui_VentasA):
                 try:
                     if id_lote:
                         lote = obtener_lote_por_id(db, id_lote)
-                        if not lote or cantidad > lote.Stock_actual:
-                            disp = lote.Stock_actual if lote else 0
+                        stock_original = self.obtener_stock_original(lote.ID_Producto if lote else int(codigo))
+                        disp = (lote.Stock_actual if lote else 0) + stock_original
+                        if not lote or cantidad > disp:
                             QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock en este lote. Solo quedan {disp} unidades.")
                             return
                     else:
                         productos = obtener_producto_por_id(db, int(codigo))
                         if productos:
-                            stock_disponible = productos[0].Stock_actual
+                            stock_disponible = productos[0].Stock_actual + self.obtener_stock_original(productos[0].ID_Producto)
                             if cantidad > stock_disponible:
                                 QMessageBox.warning(self, "Stock insuficiente", f"No hay suficiente stock para esta venta. Solo quedan {stock_disponible} unidades.")
                                 return

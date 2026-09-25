@@ -26,6 +26,8 @@ def init_db():
         historial,
         lotes,
     )  # Importar todos los modelos para registro en Base.metadata
+    
+    import app.database.events  # Registrar eventos automáticos de SQLAlchemy
 
     current_engine = db_manager.get_engine()
 
