@@ -135,6 +135,32 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             finally:
                 db.close()
 
+    def _detectar_precio_index(self, detalles):
+        if not detalles:
+            return 0
+
+        db = SessionLocal()
+        try:
+            for idx in range(4):
+                coincidencias = 0
+                for detalle in detalles:
+                    try:
+                        id_producto = int(detalle.get("ID_Producto"))
+                    except (TypeError, ValueError):
+                        continue
+                    producto = obtener_producto_por_id(db, id_producto)
+                    if not producto:
+                        continue
+                    precio_detalle = float(detalle.get("Precio_Unitario", 0) or 0)
+                    precio_esperado = float(obtener_precio_producto(producto[0], idx))
+                    if abs(precio_detalle - precio_esperado) < 0.01:
+                        coincidencias += 1
+                if coincidencias == len(detalles):
+                    return idx
+        finally:
+            db.close()
+        return self.comboBoxPrecio.currentIndex() if self.comboBoxPrecio.count() else 0
+
     def cargar_información(self, factura_completa, id_venta_credito=None):
         factura = factura_completa["Factura"]
         cliente = factura_completa["Cliente"]
@@ -144,8 +170,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.id_venta_credito = id_venta_credito
         self.en_edicion = True
         self.LabelVentasA.setText("Editando Credi Factura")
-        self.comboBoxPrecio.setCurrentIndex(0)
-        self.comboBoxPrecio.setEnabled(False)
+        self.comboBoxPrecio.setEnabled(True)
+        self.comboBoxPrecio.setCurrentIndex(self._detectar_precio_index(detalles))
 
         self.TablaVentasCredito.setRowCount(len(detalles))
         self.cantidades = []
