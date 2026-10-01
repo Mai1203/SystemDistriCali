@@ -189,8 +189,11 @@ def buscar_productos(db: Session, busqueda: str):
     """
     Busca productos por código, nombre, marca o categoría.
     """
-    if not busqueda:
+    if not busqueda or not busqueda.strip():
         return None
+
+    busqueda_limpia = busqueda.strip()
+    busqueda_lower = busqueda_limpia.casefold()
 
     productos = (
         db.query(
@@ -215,11 +218,16 @@ def buscar_productos(db: Session, busqueda: str):
         .join(Categorias, Productos.ID_Categoria == Categorias.ID_Categoria)
         .filter(
             or_(
-                Productos.Nombre.like(f"%{busqueda}%"),
-                cast(Productos.ID_Producto, String).like(f"%{busqueda}%"),
-                Marcas.Nombre.like(f"%{busqueda}%"),
-                Categorias.Nombre.like(f"%{busqueda}%"),
+                Productos.Nombre.like(f"%{busqueda_limpia}%"),
+                cast(Productos.ID_Producto, String).like(f"%{busqueda_limpia}%"),
+                Marcas.Nombre.like(f"%{busqueda_limpia}%"),
+                Categorias.Nombre.like(f"%{busqueda_limpia}%"),
             )
+        )
+        .order_by(
+            (func.lower(Productos.Nombre) == busqueda_lower).desc(),
+            (func.lower(Productos.Nombre).like(f"{busqueda_lower}%")).desc(),
+            Productos.ID_Producto.asc(),
         )
         .all()
     )

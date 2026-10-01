@@ -28,7 +28,7 @@ from ..configuracion import obtener_precio_producto, obtener_tipo_venta, obtener
 from ..services.ventas_service import calcular_total_venta, validar_pago
 from ..services.form_validation_service import validar_campos_requeridos
 from ..utils.formateador import formatear_numero
-from ..utils.autocomplementado import configurar_autocompletado
+from ..utils.autocomplementado import configurar_autocompletado, extraer_codigo_y_nombre_producto
 
 # Standard library imports
 import os
@@ -612,6 +612,7 @@ class VentasA_View(QWidget, Ui_VentasA):
             -----------------------------------------------------------------------------------------------------
             Subtotal: {subtotal_formateado}
             Envío: {delivery_fee_formateado}
+            Descuento: {descuento_formateado}
             Total: {total_formateado}
             Método de Pago: {payment_method}
             -----------------------------------------------------------------------------------------------------
@@ -1095,6 +1096,14 @@ class VentasA_View(QWidget, Ui_VentasA):
 
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
+
+        if nombre:
+            codigo_extraido, nombre_extraido = extraer_codigo_y_nombre_producto(nombre)
+            if codigo_extraido:
+                codigo = codigo_extraido
+                nombre = nombre_extraido
+                self.InputCodigo.setText(codigo)
+                self.InputNombre.setText(nombre)
 
         db = SessionLocal()
         try:

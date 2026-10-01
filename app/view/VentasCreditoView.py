@@ -28,7 +28,7 @@ from ..controllers.lote_crud import (
 from ..configuracion import obtener_precio_lote, obtener_tipo_venta, obtener_precio_producto
 from ..ui import Ui_VentasCredito
 from .LoteSeleccionDialog import LoteSeleccionDialog
-from ..utils.autocomplementado import configurar_autocompletado
+from ..utils.autocomplementado import configurar_autocompletado, extraer_codigo_y_nombre_producto
 from ..utils.formateador import formatear_numero
 
 # Standard library imports
@@ -668,6 +668,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             -----------------------------------------------------------------------------------------------------
             Deuda Total: {subtotal_formateado}
             Envío: {delivery_fee_formateado}
+            Descuento: ${0:,.2f}
             Fecha Limite: {limite_pago_formateado}
             -----------------------------------------------------------------------------------------------------
 
@@ -879,6 +880,14 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         codigo = self.InputCodigo.text().strip()
         nombre = self.InputNombre.text().strip()
         idx_precio = self.comboBoxPrecio.currentIndex()
+
+        if nombre:
+            codigo_extraido, nombre_extraido = extraer_codigo_y_nombre_producto(nombre)
+            if codigo_extraido:
+                codigo = codigo_extraido
+                nombre = nombre_extraido
+                self.InputCodigo.setText(codigo)
+                self.InputNombre.setText(nombre)
 
         db = SessionLocal()
         try:
@@ -1612,4 +1621,4 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             db.close()
 
         self.actualizar_total()
-        QMessageBox.information(self, "Borrador cargado", "El borrador se cargó correctamente. Revisa los datos antes de generar la factura.")
+        QMessageBox.information(self, "Borrador cargado", "El borrador se cargó correctamente. Revisa los datos antes de generar la factura.")
