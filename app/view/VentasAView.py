@@ -162,7 +162,10 @@ class VentasA_View(QWidget, Ui_VentasA):
         cliente = factura_completa["Cliente"]
         detalles = factura_completa["Detalles"]
 
-        subtotal = sum(detalle["Subtotal"] for detalle in detalles)
+        subtotal = sum(
+            detalle["Cantidad"] * detalle["Precio_Unitario"]
+            for detalle in detalles
+        )
         descuento = factura["Descuento"]
         total = subtotal - descuento
         payment_method = factura["MetodoPago"]
@@ -190,7 +193,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 lote_nombre,
                 detalle["Cantidad"],
                 detalle["Precio_Unitario"],
-                detalle["Subtotal"],
+                detalle["Cantidad"] * detalle["Precio_Unitario"],
             ]
             for column, valor in enumerate(valores):
                 item = QTableWidgetItem(str(valor))
@@ -278,7 +281,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     nuevo_precio = float(obtener_precio_producto(productos[0], self.tipo_venta)) if productos else 0.0
 
                 nuevo_total = cantidad * nuevo_precio
-                nuevo_total_redondeado = round(nuevo_total / 100) * 100
+                nuevo_total_redondeado = nuevo_total
 
                 item_precio = QTableWidgetItem(str(nuevo_precio))
                 item_precio.setFlags(item_precio.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -1292,7 +1295,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                     return
 
             total = cantidad * precio_unitario
-            total_redondeado = round(total / 100) * 100
+            total_redondeado = total
 
             rowPosition = self.tableWidget.rowCount()
             self.tableWidget.insertRow(rowPosition)
@@ -1511,7 +1514,7 @@ class VentasA_View(QWidget, Ui_VentasA):
                 self.tableWidget.setItem(row, 6, QTableWidgetItem(str(precio_unitario)))
                 self.tableWidget.item(row, 6).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 total = cantidad * precio_unitario
-                total_redondeado = round(total / 100) * 100
+                total_redondeado = total
                 self.tableWidget.setItem(row, 7, QTableWidgetItem(str(total_redondeado)))
                 self.tableWidget.item(row, 7).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 

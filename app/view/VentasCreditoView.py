@@ -95,6 +95,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputPrecioUnitario.returnPressed.connect(self.actualizar_datos)
         self.InputCedula.returnPressed.connect(self._on_cedula_return)
         self.InputCedula.textChanged.connect(self.validar_campos)
+        self.InputDescuento.textChanged.connect(self.actualizar_total)
         self.comboBoxPrecio.currentIndexChanged.connect(self.cambiar_precio)
         self.ComboLote.currentIndexChanged.connect(self._on_lote_cambiado)
         configurar_autocompletado(
@@ -178,6 +179,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         for row, detalle in enumerate(detalles):
             self.cantidades.append((detalle["ID_Producto"], detalle["Cantidad"]))
             lote_nombre = detalle.get("Lote", "LOTE")
+            subtotal_linea = detalle["Cantidad"] * detalle["Precio_Unitario"]
             valores = [
                 detalle["ID_Producto"],
                 detalle["Producto"],
@@ -186,7 +188,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 lote_nombre,
                 detalle["Cantidad"],
                 detalle["Precio_Unitario"],
-                detalle["Subtotal"],
+                subtotal_linea,
             ]
             for column, valor in enumerate(valores):
                 item = QTableWidgetItem(str(valor))
@@ -201,6 +203,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputApellidoCli.setText(str(cliente["Apellido"]))
         self.InputTelefonoCli.setText(str(cliente["Teléfono"]))
         self.InputDireccion.setText(str(cliente["Direccion"]))
+        self.InputDescuento.setText(str(factura.get("Descuento", 0) or 0))
         self.actualizar_total()
 
     # def cargar_información(self, factura_completa, id_venta_credito=None):
@@ -280,6 +283,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         produc_datos,
         usuario_actual_id,
         deuda,
+        descuento,
         limite_pago,
     ):
         venta_credito = obtener_ventaCredito_id(db, self.id_venta_credito)
@@ -417,6 +421,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         factura = db.query(Facturas).filter(Facturas.ID_Factura == id_factura).first()
         factura.ID_Usuario = usuario_actual_id
+        factura.Descuento = descuento
 
         crear_historial_modificacion(
             db=db,
@@ -550,8 +555,23 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 produc_datos.append((codigo, quantity, precio_unitario, id_lote))
 
             subtotal = sum(item[3] for item in items)
-            total = subtotal
-            delivery_fee = 0.0
+            try:
+                descuento = float(self.InputDescuento.text().strip() or 0)
+            except ValueError:
+                QMessageBox.warning(self, "Descuento inválido", "Ingrese un descuento numérico válido.")
+                db.close()
+                return
+
+            if descuento < 0 or descuento > subtotal:
+                QMessageBox.warning(
+                    self,
+                    "Descuento inválido",
+                    "El descuento debe estar entre $0 y el subtotal de los productos.",
+                )
+                db.close()
+                return
+
+            total = subtotal - descuento
             
             if total <= 0:
                 QMessageBox.critical(self, "Error", "No se pueden generar ventas por un total de $0 pesos.")
@@ -564,7 +584,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     self.invoice_number,
                     produc_datos,
                     self.usuario_actual_id,
-                    subtotal,
+                    total,
+                    descuento,
                     limite_pago,
                 )
                 mensaje = "Factura actualizada exitosamente."
@@ -590,9 +611,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     "Efectivo",
                     produc_datos,
                     "0.00",
-                    0.0,
+                    descuento,
                     self.usuario_actual_id,
-                    subtotal,
+                    total,
                     limite_pago,
                 )
                 self.invoice_number = f"0000{id_factura}"
@@ -608,11 +629,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             limite_pago_formateado = limite_pago.strftime("%d/%m/%Y") if hasattr(limite_pago, 'strftime') else str(limite_pago)
             subtotal_formateado = f"${subtotal:,.2f}"
             total_formateado = f"${total:,.2f}"
-            delivery_fee = float(delivery_fee)
-            if delivery_fee.is_integer():
-                delivery_fee_formateado = f"${int(delivery_fee):,.0f}"
-            else:
-                delivery_fee_formateado = f"${delivery_fee:,.2f}"
+            descuento_formateado = f"${descuento:,.2f}"
 
             direccion = client_address
             direccion_linea1 = direccion[:35]
@@ -692,9 +709,9 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
             totales = f"""
             -----------------------------------------------------------------------------------------------------
-            Deuda Total: {subtotal_formateado}
-            Envío: {delivery_fee_formateado}
-            Descuento: ${0:,.2f}
+            Subtotal: {subtotal_formateado}
+            Descuento: {descuento_formateado}
+            Deuda Total: {total_formateado}
             Fecha Limite: {limite_pago_formateado}
             -----------------------------------------------------------------------------------------------------
 
@@ -807,6 +824,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         self.InputApellidoCli.setText("")
         self.InputTelefonoCli.setText("")
         self.InputDireccion.setText("")
+        self.InputDescuento.clear()
         self.LimitePagoBox.setCurrentIndex(0)
         self.LabelSubtotal.setText("$ 0")
         self.LabelTotal.setText("$ 0")
@@ -1112,7 +1130,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     return
 
             total = cantidad * precio_unitario
-            total_redondeado = round(total / 100) * 100
+            total_redondeado = total
 
             rowPosition = self.TablaVentasCredito.rowCount()
             self.TablaVentasCredito.insertRow(rowPosition)
@@ -1187,6 +1205,12 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
     def actualizar_total(self):
         subtotal = self.calcular_subtotal()
+        try:
+            descuento = float(self.InputDescuento.text().strip() or 0)
+        except ValueError:
+            descuento = 0.0
+        total = max(0.0, subtotal - descuento)
+
         if subtotal.is_integer():
             subtotal_formateado = f"$ {formatear_numero(int(subtotal))}"
         else:
@@ -1194,7 +1218,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         self.LabelSubtotal.setText(subtotal_formateado)
 
-        total = subtotal
         if total.is_integer():
             total_formateado = f"$ {formatear_numero(int(total))}"
         else:
@@ -1342,7 +1365,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     Qt.AlignmentFlag.AlignCenter
                 )
                 total = cantidad * precio_unitario
-                total_redondeado = round(total / 100) * 100
+                total_redondeado = total
                 self.TablaVentasCredito.setItem(row, 7, QTableWidgetItem(str(total_redondeado)))
                 self.TablaVentasCredito.item(row, 7).setTextAlignment(
                     Qt.AlignmentFlag.AlignCenter
@@ -1500,7 +1523,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 self.TablaVentasCredito.setItem(row, 6, item_p)
 
                 total = cantidad * precio
-                total_redondeado = round(total / 100) * 100
+                total_redondeado = total
                 item_tot = QTableWidgetItem(str(total_redondeado))
                 item_tot.setFlags(item_tot.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 item_tot.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1621,7 +1644,7 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                     lote_nombre = "Sin lote"
 
                 subtotal = float(cantidad) * float(precio_unitario)
-                total_redondeado = round(subtotal / 100) * 100
+                total_redondeado = subtotal
 
                 rowPos = self.TablaVentasCredito.rowCount()
                 self.TablaVentasCredito.insertRow(rowPos)

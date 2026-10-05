@@ -408,8 +408,8 @@ class Facturas_View(QWidget, Ui_Facturas):
                 items.append((d["Producto"], d["Cantidad"], d["Precio_Unitario"], d["Subtotal"]))
 
             subtotal = sum(d["Subtotal"] for d in detalles)
-            delivery_fee = factura.get("Descuento", 0)
-            total = subtotal - delivery_fee
+            descuento = float(factura.get("Descuento", 0) or 0)
+            total = subtotal - descuento
             payment_method = factura.get("MetodoPago", "")
             invoice_number = f"0000{factura['ID_Factura']}"
             
@@ -421,12 +421,7 @@ class Facturas_View(QWidget, Ui_Facturas):
             fecha_actual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             subtotal_formateado = f"${subtotal:,.2f}"
             total_formateado = f"${total:,.2f}"
-
-            delivery_fee = float(delivery_fee)
-            if delivery_fee.is_integer():
-                delivery_fee_formateado = f"${int(delivery_fee):,.0f}"
-            else:
-                delivery_fee_formateado = f"${delivery_fee:,.2f}"
+            descuento_formateado = f"${descuento:,.2f}"
 
             direccion = client_address
             direccion_linea1 = direccion[:35]
@@ -503,7 +498,7 @@ class Facturas_View(QWidget, Ui_Facturas):
             totales = f"""
             -----------------------------------------------------------------------------------------------------
             Subtotal: {subtotal_formateado}
-            Envío: {delivery_fee_formateado}
+            Descuento: {descuento_formateado}
             Total: {total_formateado}
             Método de Pago: {payment_method}
             -----------------------------------------------------------------------------------------------------

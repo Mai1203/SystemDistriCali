@@ -282,6 +282,14 @@ class Ui_VentasCredito(object):
         self.LimitePagoBox.setStyleSheet(_INPUT_QSS)
         self.LimitePagoBox.addItems(["15 días", "30 días", "45 días", "60 días"])
         gridCli.addWidget(self.LimitePagoBox, 3, 2)
+
+        gridCli.addWidget(self._mk_lbl("Descuento Global"), 4, 0)
+        self.InputDescuento = QtWidgets.QLineEdit(self.clienteCard)
+        self.InputDescuento.setObjectName("InputDescuento")
+        self.InputDescuento.setMinimumHeight(40)
+        self.InputDescuento.setPlaceholderText("Ej: 500")
+        self.InputDescuento.setStyleSheet(_INPUT_QSS)
+        gridCli.addWidget(self.InputDescuento, 5, 0)
         
         clienteLayout.addLayout(gridCli)
         bottomLayout.addWidget(self.clienteCard)
