@@ -76,6 +76,9 @@ class Ui_VentasA(object):
         inputLayout = QtWidgets.QGridLayout(self.inputCard)
         inputLayout.setContentsMargins(20, 20, 20, 20)
         inputLayout.setSpacing(12)
+        for column in (0, 2, 3, 4, 5):
+            inputLayout.setColumnStretch(column, 1)
+        inputLayout.setColumnStretch(1, 3)
 
         # Labels Row 0
         inputLayout.addWidget(self._mk_lbl("Código"), 0, 0)
