@@ -522,7 +522,7 @@ class Ui_Productos(object):
         # Ajuste de columnas
         self.TablaProductos.horizontalHeader().setStretchLastSection(True)
         self.TablaProductos.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeMode.Stretch
+            1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
         listado.addWidget(self.TablaProductos, stretch=1)
         self.Contenido.addWidget(self.PanelListado)
