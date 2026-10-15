@@ -13,6 +13,7 @@ from ..controllers.facturas_crud import *
 from ..controllers.pago_credito_crud import *
 from ..utils.enviar_notifi import enviar_notificacion
 from ..utils.formateador import formatear_factura_completa
+from .VerFacturaDialog import VerFacturaDialog
 from datetime import datetime
 
 class CrediFactura_View(QWidget, Ui_FacturasCredito):
@@ -227,14 +228,25 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
 
             venta = venta_credito[0]
             factura_completa = obtener_factura_completa(db, venta.ID_Factura)
+            if not factura_completa:
+                QMessageBox.warning(self, "Factura", "No se encontró el detalle de la factura.")
+                return
+
             credito = {
                 "Total_Deuda": venta.Total_Deuda,
                 "Saldo_Pendiente": venta.Saldo_Pendiente,
                 "Fecha_Limite": venta.Fecha_Limite,
             }
             pagos = obtener_pagos_credito(db, venta.ID_Venta_Credito)
-            texto = formatear_factura_completa(factura_completa, credito, pagos)
-            QMessageBox.information(self, "Ver factura de crédito", texto)
+            
+            dialog = VerFacturaDialog(
+                factura_completa=factura_completa,
+                credito=credito,
+                pagos=pagos,
+                parent=self,
+                titulo="Ver factura de crédito",
+            )
+            dialog.exec()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo consultar la factura: {e}")
         finally:

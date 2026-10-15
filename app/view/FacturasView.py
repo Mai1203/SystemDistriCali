@@ -17,6 +17,7 @@ from ..controllers.ingresos_crud import *
 from ..controllers.lote_crud import restaurar_stock_lote, obtener_lotes_por_producto, sincronizar_producto_con_lotes
 from ..utils.enviar_notifi import enviar_notificacion
 from ..utils.formateador import formatear_factura_completa
+from .VerFacturaDialog import VerFacturaDialog
 
 
 class Facturas_View(QWidget, Ui_Facturas):
@@ -367,8 +368,30 @@ class Facturas_View(QWidget, Ui_Facturas):
                 QMessageBox.warning(self, "Factura", "No se encontró la factura seleccionada.")
                 return
 
-            texto = formatear_factura_completa(factura_completa)
-            QMessageBox.information(self, "Ver factura", texto)
+            venta_credito = next(
+                (
+                    venta for venta in obtener_ventas_credito(db)
+                    if venta.ID_Factura == ids[0]
+                ),
+                None,
+            )
+            credito = None
+            pagos = None
+            if venta_credito:
+                credito = {
+                    "Total_Deuda": venta_credito.Total_Deuda,
+                    "Saldo_Pendiente": venta_credito.Saldo_Pendiente,
+                    "Fecha_Limite": venta_credito.Fecha_Limite,
+                }
+                pagos = obtener_pagos_credito(db, venta_credito.ID_Venta_Credito)
+
+            dialog = VerFacturaDialog(
+                factura_completa=factura_completa,
+                credito=credito,
+                pagos=pagos,
+                parent=self,
+            )
+            dialog.exec()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo consultar la factura: {e}")
         finally:
