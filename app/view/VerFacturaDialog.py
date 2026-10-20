@@ -1,11 +1,11 @@
 """
 Diálogo modal para visualizar el detalle completo de facturas y credifacturas.
 Incluye área scrollable para facturas con múltiples productos, vista estructurada
-y vista en formato ticket térmico, con diseño alineado al sistema Lady Nail.
+y vista previa de impresión, con diseño alineado al sistema Lady Nail.
 """
 
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -20,13 +20,14 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QAbstractItemView,
-    QPlainTextEdit,
+    QTextBrowser,
     QTabWidget,
-    QApplication,
+    QMessageBox,
 )
 import qtawesome as qta
 
-from ..utils.formateador import formatear_numero, formatear_factura_completa
+from ..utils.formateador import formatear_numero
+from ..services.printing_service import build_invoice_html, print_invoice
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -182,16 +183,6 @@ QHeaderView::section {{
     border: none;
     padding: 7px 6px;
 }}
-QPlainTextEdit {{
-    background-color: {_CARD_BG};
-    border: 1px solid {_BORDER};
-    border-radius: 8px;
-    padding: 12px;
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 12px;
-    color: {_TEXT};
-    line-height: 1.4;
-}}
 """
 
 
@@ -216,17 +207,13 @@ class VerFacturaDialog(QDialog):
         factura_completa: dict,
         credito: dict = None,
         pagos: list = None,
-        texto: str = None,
         titulo: str = None,
-        imprimir_callback = None,
         parent = None,
     ):
         super().__init__(parent)
         self.factura_completa = factura_completa or {}
         self.credito = credito
         self.pagos = pagos or []
-        self.texto_ticket = texto
-        self.imprimir_callback = imprimir_callback
 
         self._factura = self.factura_completa.get("Factura", {})
         self._cliente = self.factura_completa.get("Cliente", {})
@@ -236,9 +223,9 @@ class VerFacturaDialog(QDialog):
         if titulo:
             self.setWindowTitle(titulo)
         elif self.credito:
-            self.setWindowTitle(f"Factura de Crédito #{id_factura}")
+            self.setWindowTitle(f"Factura de venta a crédito #{id_factura}")
         else:
-            self.setWindowTitle(f"Detalle de Factura #{id_factura}")
+            self.setWindowTitle(f"Factura de venta #{id_factura}")
 
         self.resize(800, 680)
         self.setMinimumSize(680, 520)
@@ -255,18 +242,18 @@ class VerFacturaDialog(QDialog):
         header_frame = self._build_header()
         root_layout.addWidget(header_frame, 0)
 
-        # ── 2. Contenedor de Pestañas (Detalle y Formato Ticket) ────
+        # ── 2. Contenedor de pestañas (detalle y vista de impresión) ─
         self.tab_widget = QTabWidget(self)
         self.tab_widget.setContentsMargins(16, 10, 16, 6)
 
         tab_detalle = self._build_tab_detalle()
-        tab_ticket = self._build_tab_ticket()
+        tab_impresion = self._build_tab_impresion()
 
         icon_detalle = qta.icon("fa5s.list-alt", color=_PRIMARY)
-        icon_ticket = qta.icon("fa5s.receipt", color=_PRIMARY)
+        icon_impresion = qta.icon("fa5s.file-invoice", color=_PRIMARY)
 
         self.tab_widget.addTab(tab_detalle, icon_detalle, " Detalle de Factura")
-        self.tab_widget.addTab(tab_ticket, icon_ticket, " Formato Ticket")
+        self.tab_widget.addTab(tab_impresion, icon_impresion, " Vista de impresión")
 
         root_layout.addWidget(self.tab_widget, 1)
 
@@ -287,7 +274,7 @@ class VerFacturaDialog(QDialog):
 
         # Ícono
         lbl_icon = QLabel()
-        icon_name = "fa5s.file-invoice-dollar" if self.credito else "fa5s.receipt"
+        icon_name = "fa5s.file-invoice-dollar"
         lbl_icon.setPixmap(qta.icon(icon_name, color=_PRIMARY).pixmap(32, 32))
         layout.addWidget(lbl_icon)
 
@@ -298,7 +285,7 @@ class VerFacturaDialog(QDialog):
         id_factura = self._factura.get("ID_Factura", "-")
         tipo_factura = self._factura.get("TipoFactura", "Venta")
 
-        lbl_title = QLabel(f"FACTURA #{id_factura}")
+        lbl_title = QLabel(f"FACTURA DE VENTA #{id_factura}")
         lbl_title.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {_PRIMARY};")
         title_box.addWidget(lbl_title)
 
@@ -805,28 +792,22 @@ class VerFacturaDialog(QDialog):
         return card
 
     # ─────────────────────────────────────────────────────────────
-    #  Pestaña 2: Formato Ticket Térmico
+    #  Pestaña 2: Vista previa del documento impreso
     # ─────────────────────────────────────────────────────────────
-    def _build_tab_ticket(self) -> QWidget:
+    def _build_tab_impresion(self) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        lbl_desc = QLabel("Vista previa en texto plano (equivalente a tirilla térmica):")
+        lbl_desc = QLabel("Vista previa de la factura comercial de página completa:")
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {_MUTED};")
         layout.addWidget(lbl_desc)
 
-        # Generar texto si no se proveyó
-        if not self.texto_ticket:
-            self.texto_ticket = formatear_factura_completa(
-                self.factura_completa, self.credito, self.pagos
-            )
-
-        text_edit = QPlainTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setPlainText(self.texto_ticket)
-        layout.addWidget(text_edit)
+        preview = QTextBrowser()
+        preview.setHtml(build_invoice_html(self.factura_completa, self.credito))
+        preview.setOpenExternalLinks(False)
+        layout.addWidget(preview)
 
         return container
 
@@ -863,7 +844,27 @@ class VerFacturaDialog(QDialog):
         layout.addLayout(resumen_box)
         layout.addStretch()
 
-        # Botón Cerrar
+        # Botones de impresión y cierre
+        btn_imprimir = QPushButton(" Imprimir factura")
+        btn_imprimir.setIcon(qta.icon("fa5s.print", color="#FFFFFF"))
+        btn_imprimir.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {_PRIMARY_HOVER};
+                color: #FFFFFF;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 18px;
+                font-family: {_FONT};
+                font-size: 13px;
+                font-weight: 600;
+            }}
+            QPushButton:hover {{
+                background-color: {_PRIMARY_ACTIVE};
+            }}
+        """)
+        btn_imprimir.clicked.connect(self._imprimir_factura)
+        layout.addWidget(btn_imprimir)
+
         btn_cerrar = QPushButton(" Cerrar")
         btn_cerrar.setIcon(qta.icon("fa5s.times", color="#FFFFFF"))
         btn_cerrar.setStyleSheet(f"""
@@ -888,3 +889,14 @@ class VerFacturaDialog(QDialog):
         layout.addWidget(btn_cerrar)
 
         return bar
+
+    def _imprimir_factura(self):
+        try:
+            if print_invoice(self, self.factura_completa, self.credito):
+                QMessageBox.information(
+                    self, "Impresión", "Factura enviada a la impresora correctamente."
+                )
+        except Exception as error:
+            QMessageBox.critical(
+                self, "Error de impresión", f"No se pudo imprimir la factura: {error}"
+            )

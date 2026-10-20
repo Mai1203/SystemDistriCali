@@ -403,8 +403,8 @@ class Ui_Facturas(object):
         self.BtnVerCancelarVenta = self._make_btn(
             "BtnVerCancelarVenta", "Cancelar Venta", _CANCEL_BTN_QSS, icon_cancel
         )
-        self.BtnImprimirTicket = self._make_btn(
-            "BtnImprimirTicket", "Imprimir Ticket", _SECONDARY_BTN_QSS, icon_print
+        self.BtnImprimirFactura = self._make_btn(
+            "BtnImprimirFactura", "Imprimir factura", _SECONDARY_BTN_QSS, icon_print
         )
         
         actions_layout.addStretch()
@@ -412,7 +412,7 @@ class Ui_Facturas(object):
         actions_layout.addWidget(self.BtnVerFactura)
         actions_layout.addWidget(self.BtnEditarFactura)
         actions_layout.addWidget(self.BtnVerCancelarVenta)
-        actions_layout.addWidget(self.BtnImprimirTicket)
+        actions_layout.addWidget(self.BtnImprimirFactura)
         actions_layout.addStretch()
         
         self.verticalLayout_3.addWidget(self.frame_actions, 0)
@@ -456,7 +456,7 @@ class Ui_Facturas(object):
             self.BtnVerFactura,
             self.BtnEditarFactura,
             self.BtnVerCancelarVenta,
-            self.BtnImprimirTicket
+            self.BtnImprimirFactura
         ):
             btn.setMinimumHeight(btn_h)
 

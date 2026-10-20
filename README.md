@@ -15,10 +15,10 @@ El proyecto está desarrollado en **Python** y utiliza diversas librerías para 
   - Alertas y notificaciones en tiempo real.
   - Exportación de datos a Excel y generación de reportes en PDF.
 
-- **Facturación y Generación de Tickets**:
-  - Generación de facturas electrónicas y tickets.
-  - Cálculo de descuentos y totales con alta precisión.
-  - Impresión directa a través de impresoras locales.
+- **Facturación e impresión**:
+  - Facturas comerciales de página completa con detalle de productos, descuentos y totales.
+  - Selección de impresora Windows y de papel Carta (215,9 × 279,4 mm) u Oficio Colombia (215,9 × 330,2 mm), según los tamaños que reporte el controlador.
+  - Recibos de abono impresos con el mismo sistema centralizado.
 
 - **Gestión de Ventas a Crédito**:
   - Seguimiento de pagos y deudas.

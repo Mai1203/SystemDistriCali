@@ -34,9 +34,6 @@ from ..utils.formateador import formatear_numero
 # Standard library imports
 import os
 import locale
-import win32print
-import win32ui
-import win32con
 
 
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -44,6 +41,7 @@ from PyQt6.QtWidgets import QInputDialog
 
 from ..utils.borradores_manager import guardar_borrador, cargar_borradores
 from ..view.BorradoresDialog import BorradoresDialog
+from ..services.printing_service import print_invoice
 
 class VentasCredito_View(QWidget, Ui_VentasCredito):
     def __init__(self, parent=None):
@@ -619,114 +617,34 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                 self.invoice_number = f"0000{id_factura}"
                 mensaje = "Factura generada exitosamente."
 
-            # Impresión del ticket (no requiere cambios de PyQt6)
-            max_lines_per_page = 30
-            current_line = 0
-            empresa_nombre = "Distri Magik"
-            empresa_direccion = "Cali, Colombia"
-            empresa_telefono = "315-038-66-18"
-            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            limite_pago_formateado = limite_pago.strftime("%d/%m/%Y") if hasattr(limite_pago, 'strftime') else str(limite_pago)
-            subtotal_formateado = f"${subtotal:,.2f}"
-            total_formateado = f"${total:,.2f}"
-            descuento_formateado = f"${descuento:,.2f}"
-
-            direccion = client_address
-            direccion_linea1 = direccion[:35]
-            direccion_linea2 = direccion[35:] if len(direccion) > 35 else ""
-
-            impresora = win32print.GetDefaultPrinter()
-            hDC = win32ui.CreateDC()
-            hDC.CreatePrinterDC(impresora)
-            hDC.StartDoc("Ticket de Venta")
-            hDC.StartPage()
-
-            font_encabezado = win32ui.CreateFont({
-                "name": "Lucida Console",
-                "height": 28,
-                "weight": win32con.FW_BOLD,
-            })
-            font_size = 18
-            line_height = font_size + 10
-            font = win32ui.CreateFont({
-                "name": "Lucida Console",
-                "height": font_size,
-                "weight": win32con.FW_BOLD,
-            })
-            hDC.SelectObject(font_encabezado)
-
-            printer_width = hDC.GetDeviceCaps(win32con.HORZRES)
-            center_x = printer_width // 2
-            x, y = 2, 2 + 5 * line_height
-
-            for i, linea in enumerate([empresa_nombre, empresa_direccion, empresa_telefono, fecha_actual]):
-                text_size = hDC.GetTextExtent(linea)
-                text_width = text_size[0]
-                hDC.TextOut(center_x - (text_width // 2), 50 + (i * line_height), linea)
-            y += line_height
-            hDC.SelectObject(font)
-
-            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
-            y += line_height
-            hDC.TextOut(x, y, "Crédito")
-            y += line_height
-            hDC.TextOut(x, y, f"COT No. {self.invoice_number}")
-            y += line_height
-            hDC.TextOut(x, y, f"Cliente: {client_name}")
-            y += line_height
-            hDC.TextOut(x, y, f"Cédula: {client_id}")
-            y += line_height
-            hDC.TextOut(x, y, f"Teléfono: {client_phone}")
-            y += line_height
-            hDC.TextOut(x, y, f"Dirección: {direccion_linea1}")
-            y += line_height
-            if direccion_linea2:
-                hDC.TextOut(x, y, direccion_linea2)
-                y += line_height
-
-            hDC.TextOut(x, y, "-----------------------------------------------------------------------------------------------------------------")
-            y += line_height
-            header = "{:<18} {:>6} {:>10} {:>10}".format("Producto", "Cant.", "Precio", "Total")
-            hDC.TextOut(x, y, header)
-            y += line_height
-
-            for item in items:
-                nombre_producto = item[0].strip().replace('\n', ' ')[:18].ljust(18)
-                cantidad = str(item[1])
-                precio_unitario = f"{item[2]:,.0f}".replace(",", ".")
-                total_producto = f"{item[3]:,.0f}".replace(",", ".")
-                linea = "{:<18} {:>6} {:>10} {:>10}".format(
-                    nombre_producto, cantidad, precio_unitario, total_producto
-                )
-                hDC.TextOut(x, y, linea)
-                y += line_height
-                current_line += 1
-                if current_line >= max_lines_per_page:
-                    hDC.EndPage()
-                    hDC.StartPage()
-                    y = 2
-                    current_line = 0
-
-            totales = f"""
-            -----------------------------------------------------------------------------------------------------
-            Subtotal: {subtotal_formateado}
-            Descuento: {descuento_formateado}
-            Deuda Total: {total_formateado}
-            Fecha Limite: {limite_pago_formateado}
-            -----------------------------------------------------------------------------------------------------
-
-            ¡Gracias por tu compra!
-            """
-            for line in totales.split("\n"):
-                hDC.TextOut(x, y, line.strip())
-                y += line_height
-
-            hDC.EndPage()
-            hDC.EndDoc()
-            hDC.DeleteDC()
-
+            factura_impresion = obtener_factura_completa(
+                db, int(self.invoice_number)
+            )
             db.close()
             QMessageBox.information(self, "Éxito", mensaje)
+            if factura_impresion:
+                try:
+                    print_invoice(
+                        self,
+                        factura_impresion,
+                        {
+                            "Total_Deuda": total,
+                            "Saldo_Pendiente": total,
+                            "Fecha_Limite": limite_pago,
+                        },
+                    )
+                except Exception as error:
+                    QMessageBox.warning(
+                        self,
+                        "Factura guardada",
+                        f"La factura se guardó, pero no se pudo imprimir: {error}",
+                    )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Factura guardada",
+                    "La factura se guardó, pero no fue posible cargar sus datos para imprimir.",
+                )
 
         except Exception as e:
             QMessageBox.critical(

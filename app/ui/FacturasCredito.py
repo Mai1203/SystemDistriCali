@@ -411,15 +411,15 @@ class Ui_FacturasCredito(object):
         self.BtnEditarFactura = self._make_btn(
             "BtnEditarFactura", "Editar Factura", _SECONDARY_BTN_QSS, icon_edit
         )
-        self.BtnImprimirTicket = self._make_btn(
-            "BtnImprimirTicket", "Imprimir Ticket", _SECONDARY_BTN_QSS, icon_print
+        self.BtnImprimirFactura = self._make_btn(
+            "BtnImprimirFactura", "Imprimir factura", _SECONDARY_BTN_QSS, icon_print
         )
         
         actions_layout.addStretch()
         actions_layout.addWidget(self.BtnAgregarAbono)
         actions_layout.addWidget(self.BtnVerFactura)
         actions_layout.addWidget(self.BtnEditarFactura)
-        actions_layout.addWidget(self.BtnImprimirTicket)
+        actions_layout.addWidget(self.BtnImprimirFactura)
         actions_layout.addStretch()
         
         self.verticalLayout_3.addWidget(self.frame_actions, 0)
@@ -462,7 +462,7 @@ class Ui_FacturasCredito(object):
             self.BtnAgregarAbono,
             self.BtnVerFactura,
             self.BtnEditarFactura,
-            self.BtnImprimirTicket
+            self.BtnImprimirFactura
         ):
             btn.setMinimumHeight(btn_h)
 
