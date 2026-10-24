@@ -26,11 +26,8 @@ from PyQt6.QtWidgets import (
 )
 import qtawesome as qta
 
-from ..services.printing_service import (
-    build_invoice_html,
-    open_printer_settings,
-    print_invoice,
-)
+from ..utils.formateador import formatear_numero
+from ..services.printing_service import build_invoice_html
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -847,48 +844,7 @@ class VerFacturaDialog(QDialog):
         layout.addLayout(resumen_box)
         layout.addStretch()
 
-        # Botones de impresión y cierre
-        btn_configurar = QPushButton(" Configurar impresora")
-        btn_configurar.setIcon(qta.icon("fa5s.cog", color=_TEXT))
-        btn_configurar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #FFFFFF;
-                color: {_TEXT};
-                border: 1px solid {_BORDER};
-                border-radius: 6px;
-                padding: 8px 14px;
-                font-family: {_FONT};
-                font-size: 13px;
-                font-weight: 500;
-            }}
-            QPushButton:hover {{
-                background-color: {_BG};
-                border-color: {_BORDER_HOVER};
-            }}
-        """)
-        btn_configurar.clicked.connect(self._configurar_impresora)
-        layout.addWidget(btn_configurar)
-
-        btn_imprimir = QPushButton(" Imprimir factura")
-        btn_imprimir.setIcon(qta.icon("fa5s.print", color="#FFFFFF"))
-        btn_imprimir.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {_PRIMARY_HOVER};
-                color: #FFFFFF;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 18px;
-                font-family: {_FONT};
-                font-size: 13px;
-                font-weight: 600;
-            }}
-            QPushButton:hover {{
-                background-color: {_PRIMARY_ACTIVE};
-            }}
-        """)
-        btn_imprimir.clicked.connect(self._imprimir_factura)
-        layout.addWidget(btn_imprimir)
-
+        # Botón de cierre
         btn_cerrar = QPushButton(" Cerrar")
         btn_cerrar.setIcon(qta.icon("fa5s.times", color="#FFFFFF"))
         btn_cerrar.setStyleSheet(f"""
@@ -913,17 +869,3 @@ class VerFacturaDialog(QDialog):
         layout.addWidget(btn_cerrar)
 
         return bar
-
-    def _configurar_impresora(self):
-        open_printer_settings(self)
-
-    def _imprimir_factura(self):
-        try:
-            if print_invoice(self, self.factura_completa, self.credito):
-                QMessageBox.information(
-                    self, "Impresión", "Factura enviada a la impresora correctamente."
-                )
-        except Exception as error:
-            QMessageBox.critical(
-                self, "Error de impresión", f"No se pudo imprimir la factura: {error}"
-            )

@@ -418,8 +418,9 @@ def _send_pdf_to_printer(
         painter.end()
         pdf_doc.close()
 
-    if printer.error() != QPrinter.PrinterError.NoError:
-        raise RuntimeError(f"Error devuelto por la impresora: {printer.error().name}")
+    # En PyQt6, el estado de la impresora se consulta mediante printerState()
+    if printer.printerState() == QPrinter.PrinterState.Error:
+        raise RuntimeError("La impresora reportó un estado de error al procesar el trabajo.")
 
     return True
 
