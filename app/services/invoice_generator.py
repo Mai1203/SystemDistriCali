@@ -31,13 +31,37 @@ from app.utils.logger import logger
 # Rutas y constantes
 _ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 _LOGO_PATH = _ASSETS_DIR / "LogoDistriMagik.png"
+_LOGO_GRAYSCALE_PATH = _ASSETS_DIR / "LogoDistriMagik_grayscale.png"
 _COMPANY_NAME = "Distri Magik"
 _COMPANY_PHONE = "315-038-66-18"
 _COMPANY_ADDRESS = "Cali, Colombia"
 
+
+def _get_grayscale_logo_path() -> Path:
+    """Devuelve la ruta al logo de Distri Magik con filtro de escala de grises aplicado."""
+    if not _LOGO_PATH.is_file():
+        return _LOGO_PATH
+    if not _LOGO_GRAYSCALE_PATH.is_file():
+        try:
+            from PIL import Image as PILImage
+            img = PILImage.open(_LOGO_PATH)
+            if img.mode == "RGBA":
+                r, g, b, a = img.split()
+                gray = PILImage.merge("RGB", (r, g, b)).convert("L")
+                gray_rgba = PILImage.merge("RGBA", (gray, gray, gray, a))
+                gray_rgba.save(_LOGO_GRAYSCALE_PATH)
+            else:
+                img.convert("L").save(_LOGO_GRAYSCALE_PATH)
+        except Exception as e:
+            logger.warning(f"No se pudo generar logo en escala de grises: {e}")
+            return _LOGO_PATH
+    return _LOGO_GRAYSCALE_PATH
+
+
 # Paleta cromática institucional Distri Magik
 _COLOR_NAVY = colors.HexColor("#162033")
 _COLOR_NAVY_LIGHT = colors.HexColor("#2D3D60")
+_COLOR_DARK = _COLOR_NAVY
 _COLOR_BG_CARD = colors.HexColor("#F8FAFC")
 _COLOR_BORDER = colors.HexColor("#E2E8F0")
 _COLOR_BORDER_STRONG = colors.HexColor("#CBD5E1")
@@ -275,9 +299,10 @@ def generate_invoice_pdf(
     # ─────────────────────────────────────────────────────────────
     # Bloque Izquierdo: Logo y teléfono
     left_elements = []
-    if _LOGO_PATH.is_file():
+    logo_file = _get_grayscale_logo_path()
+    if logo_file.is_file():
         # Escalar manteniendo aspecto
-        logo_img = Image(str(_LOGO_PATH), width=42 * mm, height=18 * mm)
+        logo_img = Image(str(logo_file), width=42 * mm, height=18 * mm)
         logo_img.hAlign = "LEFT"
         left_elements.append(logo_img)
     else:
@@ -301,7 +326,8 @@ def generate_invoice_pdf(
         [Paragraph("FACTURA N.º", badge_label_style)],
         [Paragraph(invoice_number_str, badge_value_style)],
     ]
-    badge_table = Table(badge_data, colWidths=[55 * mm])
+    badge_w = 56 * mm
+    badge_table = Table(badge_data, colWidths=[badge_w])
     badge_table.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
@@ -313,8 +339,22 @@ def generate_invoice_pdf(
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ])
     )
-    badge_table.hAlign = "RIGHT"
-    right_elements.append(badge_table)
+    col_r_w = printable_w * 0.48
+    badge_outer = Table(
+        [["", badge_table]],
+        colWidths=[max(0, col_r_w - badge_w), badge_w],
+    )
+    badge_outer.setStyle(
+        TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ])
+    )
+    right_elements.append(badge_outer)
     right_elements.append(Spacer(1, 2 * mm))
     right_elements.append(
         Paragraph(f"<b>Fecha de Emisión:</b><br/>{fecha_emision}", meta_right_style)
@@ -338,7 +378,7 @@ def generate_invoice_pdf(
     story.append(Spacer(1, 4 * mm))
 
     # ─────────────────────────────────────────────────────────────
-    # 2. SECCIÓN FACTURAR A (Tarjeta de Cliente con Barra Navy)
+    # 2. SECCIÓN FACTURAR A (Tarjeta de Cliente con Barra Oscura)
     # ─────────────────────────────────────────────────────────────
     customer_navy_bar = Table(
         [[Paragraph("FACTURAR A", header_navy_bar_style)]],
@@ -346,7 +386,7 @@ def generate_invoice_pdf(
     )
     customer_navy_bar.setStyle(
         TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), _COLOR_NAVY),
+            ("BACKGROUND", (0, 0), (-1, -1), _COLOR_DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -354,33 +394,41 @@ def generate_invoice_pdf(
         ])
     )
 
-    col_w = printable_w / 4.0
+    # 2 columnas y 2 filas espaciosas
+    col_w = printable_w * 0.50
     customer_grid_data = [
         [
-            Paragraph("NOMBRE DEL CLIENTE", client_label_style),
-            Paragraph("CÉDULA / NIT", client_label_style),
-            Paragraph("CONTACTO", client_label_style),
-            Paragraph("DIRECCIÓN", client_label_style),
+            [
+                Paragraph("NOMBRE DEL CLIENTE", client_label_style),
+                Paragraph(nombre_cliente, client_value_style),
+            ],
+            [
+                Paragraph("CÉDULA / NIT", client_label_style),
+                Paragraph(cedula_cliente, client_value_style),
+            ],
         ],
         [
-            Paragraph(nombre_cliente, client_value_style),
-            Paragraph(cedula_cliente, client_value_style),
-            Paragraph(contacto_cliente, client_value_style),
-            Paragraph(direccion_cliente, client_value_style),
+            [
+                Paragraph("CONTACTO", client_label_style),
+                Paragraph(contacto_cliente, client_value_style),
+            ],
+            [
+                Paragraph("DIRECCIÓN", client_label_style),
+                Paragraph(direccion_cliente, client_value_style),
+            ],
         ],
     ]
-    customer_grid = Table(customer_grid_data, colWidths=[col_w, col_w, col_w, col_w])
+    customer_grid = Table(customer_grid_data, colWidths=[col_w, col_w])
     customer_grid.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
             ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, 0), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-            ("TOPPADDING", (0, 1), (-1, 1), 1),
-            ("BOTTOMPADDING", (0, 1), (-1, 1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, _COLOR_BORDER),
         ])
     )
 
@@ -636,8 +684,9 @@ def generate_credit_receipt_pdf(
 
     # Encabezado
     left_elements = []
-    if _LOGO_PATH.is_file():
-        left_elements.append(Image(str(_LOGO_PATH), width=42 * mm, height=18 * mm))
+    logo_file = _get_grayscale_logo_path()
+    if logo_file.is_file():
+        left_elements.append(Image(str(logo_file), width=42 * mm, height=18 * mm))
     else:
         left_elements.append(Paragraph(f"<b>{_COMPANY_NAME}</b>", title_style))
     left_elements.append(Spacer(1, 2 * mm))
