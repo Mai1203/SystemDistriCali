@@ -1,22 +1,49 @@
-"""Shared Windows printing for full-page invoices and credit receipts."""
+"""Servicio de impresión de facturas y recibos de abono para SystemDistriCali.
+
+Soporta reconocimiento automático de impresoras, configuración persistente,
+papel Carta y Oficio Colombia, y reproducción fiel de la plantilla comercial.
+"""
 
 from datetime import date, datetime
 from html import escape
+import os
 from pathlib import Path
+import tempfile
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from PyQt6.QtCore import QMarginsF
-from PyQt6.QtGui import QPageLayout, QPageSize, QTextDocument
+from PyQt6.QtCore import QMarginsF, QPointF, QRectF, QSize, QSizeF
+from PyQt6.QtGui import QImage, QPainter, QPageLayout, QPageSize, QTextDocument
+from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPushButton,
     QVBoxLayout,
 )
 
+from app.services.invoice_generator import (
+    generate_credit_receipt_pdf,
+    generate_invoice_pdf,
+)
+from app.services.printer_config import (
+    PAPER_CARTA,
+    PAPER_DIMENSIONS_MM,
+    PAPER_OFICIO,
+    ConfigurarImpresoraDialog,
+    find_printer_info,
+    get_available_printers,
+    load_printer_config,
+    save_printer_config,
+    validate_printer_ready,
+)
+from app.utils.logger import logger
 
 _PAPER_SIZES_MM = {
     "Carta": (215.9, 279.4),
@@ -28,7 +55,10 @@ _LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "LogoDistriMagik.p
 
 
 def _supported_paper_sizes(printer_info):
+    """Mantiene compatibilidad con utilidades y tests existentes."""
     options = {}
+    if not printer_info:
+        return options
     for page_size in printer_info.supportedPageSizes():
         width, height = page_size.size(QPageSize.Unit.Millimeter).width(), page_size.size(
             QPageSize.Unit.Millimeter
@@ -40,6 +70,8 @@ def _supported_paper_sizes(printer_info):
 
 
 class _PrintSettingsDialog(QDialog):
+    """Diálogo retrocompatible con la versión previa para pruebas unitarias."""
+
     def __init__(self, printers, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Configuración de impresión")
@@ -66,17 +98,20 @@ class _PrintSettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
-        default_name = QPrinterInfo.defaultPrinter().printerName()
+        default_name = ""
+        try:
+            default_name = QPrinterInfo.defaultPrinter().printerName()
+        except Exception:
+            pass
+
         for printer_info in printers:
             name = printer_info.printerName()
             label = f"{name} (predeterminada)" if name == default_name else name
-            self.printer_combo.addItem(
-                label, printer_info
-            )
+            self.printer_combo.addItem(label, printer_info)
 
         for index in range(self.printer_combo.count()):
             printer_info = self.printer_combo.itemData(index)
-            if printer_info.printerName() == default_name:
+            if printer_info and printer_info.printerName() == default_name:
                 self.printer_combo.setCurrentIndex(index)
                 break
 
@@ -165,6 +200,7 @@ def _document_shell(body):
 
 
 def build_invoice_html(factura_completa, credito=None):
+    """Mantiene compatibilidad con tests unitarios existentes."""
     factura = factura_completa.get("Factura", {})
     cliente = factura_completa.get("Cliente", {})
     detalles = factura_completa.get("Detalles", [])
@@ -246,6 +282,7 @@ def build_invoice_html(factura_completa, credito=None):
 
 
 def build_credit_receipt_html(factura_completa, venta, pagos, abono):
+    """Mantiene compatibilidad con tests unitarios existentes."""
     cliente = factura_completa.get("Cliente", {})
     invoice = factura_completa.get("Factura", {})
     nombre_cliente = " ".join(
@@ -289,72 +326,250 @@ def build_credit_receipt_html(factura_completa, venta, pagos, abono):
     return _document_shell(body)
 
 
-def _print_html(parent, document_html, title):
-    printers = QPrinterInfo.availablePrinters()
-    if not printers:
-        QMessageBox.warning(
-            parent,
-            "Impresión no disponible",
-            "Windows no detecta impresoras instaladas. Conecte o configure una impresora e intente nuevamente.",
+def open_printer_settings(parent=None) -> bool:
+    """Abre el diálogo de configuración de impresora de forma voluntaria desde la UI.
+
+    Retorna True si el usuario guardó los cambios.
+    """
+    dialog = ConfigurarImpresoraDialog(parent)
+    return dialog.exec() == QDialog.DialogCode.Accepted
+
+
+def _resolve_page_size(printer_info: QPrinterInfo, paper_type: str) -> QPageSize:
+    """Determina el QPageSize adecuado según la configuración y el driver de la impresora."""
+    target_w, target_h = PAPER_DIMENSIONS_MM.get(paper_type, PAPER_DIMENSIONS_MM[PAPER_CARTA])
+
+    # Buscar coincidencia exacta en las páginas reportadas por la impresora
+    for supported in printer_info.supportedPageSizes():
+        w = supported.size(QPageSize.Unit.Millimeter).width()
+        h = supported.size(QPageSize.Unit.Millimeter).height()
+        if abs(w - target_w) <= 2.0 and abs(h - target_h) <= 2.0:
+            return supported
+
+    # Si es Oficio y la impresora no lo tiene por nombre, buscar Carta o tamaño personalizado
+    if paper_type == PAPER_OFICIO:
+        return QPageSize(
+            QSizeF(target_w, target_h),
+            QPageSize.Unit.Millimeter,
+            "Oficio Colombia",
         )
-        return False
 
-    dialog = _PrintSettingsDialog(printers, parent)
-    if dialog.exec() != QDialog.DialogCode.Accepted:
-        return False
+    return QPageSize(QPageSize.PageSizeId.Letter)
 
-    printer_info, page_size = dialog.selection()
-    if printer_info is None or page_size is None:
-        QMessageBox.warning(
-            parent,
-            "Configuración incompleta",
-            "Seleccione una impresora y un tamaño de papel compatible.",
-        )
-        return False
 
+def _send_pdf_to_printer(
+    pdf_path: str, printer_info: QPrinterInfo, paper_type: str, document_title: str
+) -> bool:
+    """Renderiza e imprime un PDF directamente a través de QPdfDocument y QPainter sobre QPrinter."""
     printer = QPrinter(QPrinter.PrinterMode.HighResolution)
     printer.setPrinterName(printer_info.printerName())
+    printer.setDocName(document_title)
     printer.setResolution(300)
+
+    page_size = _resolve_page_size(printer_info, paper_type)
     layout = QPageLayout(
         page_size,
         QPageLayout.Orientation.Portrait,
-        QMarginsF(12, 12, 12, 12),
+        QMarginsF(0, 0, 0, 0),  # Los márgenes ya están calculados dentro del PDF
         QPageLayout.Unit.Millimeter,
     )
-    if not printer.setPageLayout(layout):
-        QMessageBox.warning(
-            parent,
-            "Configuración no disponible",
-            f"No se pudo aplicar el tamaño de papel seleccionado en {printer_info.printerName()}.",
-        )
-        return False
+    printer.setPageLayout(layout)
 
-    document = QTextDocument()
-    document.setHtml(document_html)
-    document.setPageSize(printer.pageLayout().paintRect(QPageLayout.Unit.Point).size())
-    document.print(printer)
-    if printer.error() != QPrinter.PrinterError.NoError:
-        QMessageBox.critical(
-            parent,
-            "Error de impresión",
-            f"No se pudo enviar «{title}» a {printer_info.printerName()}. "
-            "Revise que la impresora esté conectada y que el controlador funcione.",
+    pdf_doc = QPdfDocument(None)
+    pdf_doc.load(pdf_path)
+    page_count = pdf_doc.pageCount()
+
+    if page_count == 0:
+        pdf_doc.close()
+        raise RuntimeError("El archivo de factura generado está vacío.")
+
+    painter = QPainter()
+    if not painter.begin(printer):
+        pdf_doc.close()
+        raise RuntimeError(
+            f"No se pudo iniciar el trabajo de impresión en «{printer_info.printerName()}». "
+            "Verifique que la impresora esté conectada y en línea."
         )
-        return False
+
+    try:
+        paint_rect = printer.pageLayout().paintRectPixels(printer.resolution())
+        for page_idx in range(page_count):
+            if page_idx > 0:
+                printer.newPage()
+
+            pts = pdf_doc.pagePointSize(page_idx)
+            # Calcular tamaño de rasterizado óptimo a 300 DPI
+            dpi_factor = printer.resolution() / 72.0
+            raster_size = QSize(
+                int(pts.width() * dpi_factor),
+                int(pts.height() * dpi_factor),
+            )
+            qimage = pdf_doc.render(page_idx, raster_size)
+
+            if not qimage.isNull():
+                target_rect = QRectF(
+                    paint_rect.x(),
+                    paint_rect.y(),
+                    paint_rect.width(),
+                    paint_rect.height(),
+                )
+                painter.drawImage(target_rect, qimage)
+    finally:
+        painter.end()
+        pdf_doc.close()
+
+    if printer.error() != QPrinter.PrinterError.NoError:
+        raise RuntimeError(f"Error devuelto por la impresora: {printer.error().name}")
+
     return True
 
 
-def print_invoice(parent, factura_completa, credito=None):
-    return _print_html(
-        parent,
-        build_invoice_html(factura_completa, credito),
-        "Factura de venta",
-    )
+def _handle_printing_error(
+    parent,
+    pdf_path: str,
+    error_msg: str,
+    pdf_generator_fn: Callable[[str, str], str],
+    document_title: str,
+) -> bool:
+    """Manejo de errores asistido con opciones de: Reintentar, Cambiar Impresora o Guardar PDF."""
+    msg_box = QMessageBox(parent)
+    msg_box.setIcon(QMessageBox.Icon.Critical)
+    msg_box.setWindowTitle("Error de Impresión")
+    msg_box.setText(f"Ocurrió un inconveniente al imprimir «{document_title}»:")
+    msg_box.setInformativeText(f"{error_msg}\n\n¿Cómo desea proceder?")
+
+    btn_reintentar = msg_box.addButton("Reintentar", QMessageBox.ButtonRole.ActionRole)
+    btn_cambiar = msg_box.addButton("Cambiar Impresora", QMessageBox.ButtonRole.ActionRole)
+    btn_guardar_pdf = msg_box.addButton("Guardar como PDF", QMessageBox.ButtonRole.ActionRole)
+    btn_cancelar = msg_box.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+
+    msg_box.exec()
+    clicked = msg_box.clickedButton()
+
+    if clicked == btn_reintentar:
+        return _execute_print_pipeline(parent, pdf_generator_fn, document_title)
+
+    if clicked == btn_cambiar:
+        if open_printer_settings(parent):
+            return _execute_print_pipeline(parent, pdf_generator_fn, document_title)
+        return False
+
+    if clicked == btn_guardar_pdf:
+        save_path, _ = QFileDialog.getSaveFileName(
+            parent,
+            f"Guardar {document_title}",
+            f"{document_title.replace(' ', '_')}.pdf",
+            "Archivos PDF (*.pdf)",
+        )
+        if save_path:
+            try:
+                import shutil
+                shutil.copyfile(pdf_path, save_path)
+                QMessageBox.information(
+                    parent,
+                    "Archivo Guardado",
+                    f"El documento se guardó exitosamente en:\n{save_path}",
+                )
+                return True
+            except Exception as e:
+                QMessageBox.critical(
+                    parent, "Error", f"No se pudo guardar el archivo PDF: {e}"
+                )
+        return False
+
+    return False
 
 
-def print_credit_receipt(parent, factura_completa, venta, pagos, abono):
-    return _print_html(
-        parent,
-        build_credit_receipt_html(factura_completa, venta, pagos, abono),
-        "Recibo de abono",
-    )
+def _execute_print_pipeline(
+    parent,
+    pdf_generator_fn: Callable[[str, str], str],
+    document_title: str,
+) -> bool:
+    """Ejecuta el flujo completo de verificación, generación y envío a la impresora."""
+    config = load_printer_config()
+
+    # 1. Comprobar si está configurada
+    if not config.get("configured") or not config.get("printer_name"):
+        dialog = ConfigurarImpresoraDialog(
+            parent,
+            reason_message="Configure la impresora y tamaño de papel por primera vez.",
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return False
+        config = load_printer_config()
+
+    # 2. Validar que la impresora configurada exista y esté disponible
+    is_ready, reason, printer_info = validate_printer_ready(config)
+    if not is_ready:
+        dialog = ConfigurarImpresoraDialog(
+            parent,
+            reason_message=f"{reason}\nPor favor seleccione una impresora disponible para continuar.",
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return False
+        config = load_printer_config()
+        printer_info = find_printer_info(config.get("printer_name", ""))
+        if not printer_info:
+            QMessageBox.warning(
+                parent,
+                "Impresión no disponible",
+                "No se pudo inicializar la impresora seleccionada.",
+            )
+            return False
+
+    paper_type = config.get("paper_type", PAPER_CARTA)
+
+    # 3. Generar PDF temporal adaptado a la hoja configurada
+    temp_fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="factura_distri_")
+    os.close(temp_fd)
+
+    try:
+        pdf_generator_fn(temp_pdf_path, paper_type)
+
+        # 4. Enviar directamente a la impresora (silencioso y automático)
+        _send_pdf_to_printer(temp_pdf_path, printer_info, paper_type, document_title)
+        logger.info(
+            f"Documento «{document_title}» enviado exitosamente a {printer_info.printerName()} ({paper_type})."
+        )
+        return True
+    except Exception as exc:
+        logger.error(f"Fallo al imprimir {document_title}: {exc}")
+        return _handle_printing_error(
+            parent, temp_pdf_path, str(exc), pdf_generator_fn, document_title
+        )
+    finally:
+        try:
+            if os.path.exists(temp_pdf_path):
+                os.remove(temp_pdf_path)
+        except Exception:
+            pass
+
+
+def print_invoice(
+    parent, factura_completa: Dict[str, Any], credito: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Imprime automáticamente una factura comercial en hoja Carta u Oficio Colombia.
+
+    Reconoce la impresora preconfigurada e imprime en segundo plano sin interrupciones.
+    Si la impresora no está configurada o se desconecta, asiste al usuario para reconfigurarla.
+    """
+    def _generate(out_path: str, paper_type: str) -> str:
+        return generate_invoice_pdf(factura_completa, out_path, paper_type, credito)
+
+    raw_id = factura_completa.get("Factura", {}).get("ID_Factura", "")
+    title = f"Factura N.º {raw_id}" if raw_id else "Factura de venta"
+    return _execute_print_pipeline(parent, _generate, title)
+
+
+def print_credit_receipt(
+    parent, factura_completa: Dict[str, Any], venta: Any, pagos: List[Any], abono: float
+) -> bool:
+    """Imprime automáticamente un recibo de abono para créditos en hoja Carta u Oficio Colombia."""
+    def _generate(out_path: str, paper_type: str) -> str:
+        return generate_credit_receipt_pdf(
+            factura_completa, venta, pagos, abono, out_path, paper_type
+        )
+
+    raw_id = factura_completa.get("Factura", {}).get("ID_Factura", "")
+    title = f"Recibo de Abono Factura N.º {raw_id}" if raw_id else "Recibo de abono"
+    return _execute_print_pipeline(parent, _generate, title)
