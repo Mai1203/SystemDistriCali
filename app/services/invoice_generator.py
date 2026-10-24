@@ -621,7 +621,11 @@ def generate_credit_receipt_pdf(
     output_path: str,
     paper_type: str = PAPER_CARTA,
 ) -> str:
-    """Genera el PDF del Recibo de Abono para ventas a crédito con diseño institucional."""
+    """Genera el PDF del Recibo de Abono con la misma estructura visual de la factura de venta.
+
+    Incluye: encabezado con logo, seccion FACTURAR A (2x2), tabla completa de productos,
+    resumen de credito (Deuda Total / Abono Actual / Saldo Pendiente) e historial de abonos.
+    """
     page_w, page_h = PAGE_DIMENSIONS.get(paper_type, PAGE_DIMENSIONS[PAPER_CARTA])
     margin_lr = 12 * mm
     margin_tb = 12 * mm
@@ -638,89 +642,355 @@ def generate_credit_receipt_pdf(
 
     factura = factura_completa.get("Factura", {})
     cliente = factura_completa.get("Cliente", {})
+    detalles = factura_completa.get("Detalles", [])
+
     raw_id = factura.get("ID_Factura", "")
     try:
         invoice_number_str = f"{int(raw_id):08d}"
     except (ValueError, TypeError):
         invoice_number_str = str(raw_id or "00000000")
 
-    nombre_cliente = " ".join(
+    nombre_cliente   = " ".join(
         p for p in (cliente.get("Nombre"), cliente.get("Apellido")) if p
     ) or "Consumidor Final"
-    cedula_cliente = str(cliente.get("ID_Cliente") or "No registrada")
+    cedula_cliente    = str(cliente.get("ID_Cliente") or "No registrada")
+    contacto_cliente  = str(cliente.get("Telefono") or cliente.get("Telefono") or "No registrado")
+    direccion_cliente = str(cliente.get("Direccion") or cliente.get("Direccion") or "No registrada")
+    metodo_pago       = factura.get("MetodoPago", "Credito")
+    fecha_emision     = _format_datetime(factura.get("Fecha_Factura") or datetime.now())
 
-    total_deuda = float(getattr(venta, "Total_Deuda", 0) or 0)
+    total_deuda    = float(getattr(venta, "Total_Deuda", 0) or 0)
     saldo_anterior = float(getattr(venta, "Saldo_Pendiente", 0) or 0)
-    nuevo_saldo = max(0.0, saldo_anterior - float(abono or 0))
-    fecha_limite = _format_datetime(getattr(venta, "Fecha_Limite", None))
+    nuevo_saldo    = max(0.0, saldo_anterior - float(abono or 0))
+    fecha_limite   = _format_datetime(getattr(venta, "Fecha_Limite", None))
 
-    styles = getSampleStyleSheet()
-
+    # Estilos identicos a generate_invoice_pdf
     title_style = ParagraphStyle(
-        "ReceiptTitle",
-        fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=22,
-        textColor=_COLOR_NAVY,
-        alignment=2,
+        "ReceiptTitle", fontName="Helvetica-Bold", fontSize=18, leading=22,
+        textColor=_COLOR_NAVY, alignment=2,
+    )
+    badge_label_style = ParagraphStyle(
+        "BadgeLabel", fontName="Helvetica", fontSize=8, leading=10,
+        textColor=_COLOR_TEXT_MUTED, alignment=1,
+    )
+    badge_value_style = ParagraphStyle(
+        "BadgeValue", fontName="Helvetica-Bold", fontSize=13, leading=16,
+        textColor=_COLOR_NAVY, alignment=1,
     )
     meta_style = ParagraphStyle(
-        "MetaText", fontName="Helvetica", fontSize=8.5, leading=11, textColor=_COLOR_TEXT_MAIN
+        "MetaText", fontName="Helvetica", fontSize=8.5, leading=11,
+        textColor=_COLOR_TEXT_MAIN,
     )
     meta_right_style = ParagraphStyle(
-        "MetaRightText", fontName="Helvetica", fontSize=8.5, leading=11, textColor=_COLOR_TEXT_MAIN, alignment=2
+        "MetaRightText", fontName="Helvetica", fontSize=8.5, leading=11,
+        textColor=_COLOR_TEXT_MAIN, alignment=2,
+    )
+    header_navy_bar_style = ParagraphStyle(
+        "HeaderNavyBar", fontName="Helvetica-Bold", fontSize=9, leading=11,
+        textColor=colors.white,
+    )
+    client_label_style = ParagraphStyle(
+        "ClientLabel", fontName="Helvetica-Bold", fontSize=7.5, leading=9.5,
+        textColor=_COLOR_NAVY,
+    )
+    client_value_style = ParagraphStyle(
+        "ClientValue", fontName="Helvetica", fontSize=8.5, leading=11,
+        textColor=_COLOR_TEXT_MAIN,
     )
     table_header_style = ParagraphStyle(
-        "TableHeader", fontName="Helvetica-Bold", fontSize=8.5, leading=10.5, textColor=colors.white
+        "TableHeader", fontName="Helvetica-Bold", fontSize=8.5, leading=10.5,
+        textColor=colors.white,
     )
     table_cell_style = ParagraphStyle(
-        "TableCell", fontName="Helvetica", fontSize=8, leading=10, textColor=_COLOR_TEXT_MAIN
+        "TableCell", fontName="Helvetica", fontSize=8, leading=10,
+        textColor=_COLOR_TEXT_MAIN,
     )
-    table_cell_right = ParagraphStyle(
-        "TableCellR", fontName="Helvetica", fontSize=8, leading=10, textColor=_COLOR_TEXT_MAIN, alignment=2
+    table_cell_center_style = ParagraphStyle(
+        "TableCellCenter", fontName="Helvetica", fontSize=8, leading=10,
+        textColor=_COLOR_TEXT_MAIN, alignment=1,
+    )
+    table_cell_right_style = ParagraphStyle(
+        "TableCellRight", fontName="Helvetica", fontSize=8, leading=10,
+        textColor=_COLOR_TEXT_MAIN, alignment=2,
     )
 
     story = []
 
-    # Encabezado
+    # 1. ENCABEZADO: Logo + Contacto vs Titulo + Numero + Fecha
     left_elements = []
     logo_file = _get_grayscale_logo_path()
     if logo_file.is_file():
-        left_elements.append(Image(str(logo_file), width=42 * mm, height=18 * mm))
+        logo_img = Image(str(logo_file), width=42 * mm, height=18 * mm)
+        logo_img.hAlign = "LEFT"
+        left_elements.append(logo_img)
     else:
         left_elements.append(Paragraph(f"<b>{_COMPANY_NAME}</b>", title_style))
     left_elements.append(Spacer(1, 2 * mm))
-    left_elements.append(Paragraph(f"<b>Teléfono:</b> {_COMPANY_PHONE}", meta_style))
-    left_elements.append(Paragraph(f"<b>Ubicación:</b> {_COMPANY_ADDRESS}", meta_style))
+    left_elements.append(Paragraph(f"<b>Telefono:</b> {_COMPANY_PHONE}", meta_style))
+    left_elements.append(Paragraph(f"<b>Ubicacion:</b> {_COMPANY_ADDRESS}", meta_style))
 
-    right_elements = [
-        Paragraph("RECIBO DE ABONO", title_style),
-        Spacer(1, 2 * mm),
-        Paragraph(f"<b>Factura Asociada N.º</b> {invoice_number_str}", meta_right_style),
-        Paragraph(f"<b>Fecha de Emisión:</b> {_format_datetime(datetime.now())}", meta_right_style),
+    right_elements = []
+    right_elements.append(Paragraph("RECIBO DE ABONO", title_style))
+    right_elements.append(Spacer(1, 2 * mm))
+
+    badge_data = [
+        [Paragraph("FACTURA N.", badge_label_style)],
+        [Paragraph(invoice_number_str, badge_value_style)],
     ]
+    badge_w = 56 * mm
+    badge_table = Table(badge_data, colWidths=[badge_w])
+    badge_table.setStyle(
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
+            ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER_STRONG),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ])
+    )
+    col_r_w = printable_w * 0.48
+    badge_outer = Table(
+        [["", badge_table]],
+        colWidths=[max(0, col_r_w - badge_w), badge_w],
+    )
+    badge_outer.setStyle(
+        TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ])
+    )
+    right_elements.append(badge_outer)
+    right_elements.append(Spacer(1, 2 * mm))
+    right_elements.append(
+        Paragraph(f"<b>Fecha de Emision:</b><br/>{fecha_emision}", meta_right_style)
+    )
 
-    header_table = Table([[left_elements, right_elements]], colWidths=[printable_w * 0.52, printable_w * 0.48])
+    header_table_data = [[left_elements, right_elements]]
+    header_table = Table(
+        header_table_data,
+        colWidths=[printable_w * 0.52, printable_w * 0.48],
+    )
     header_table.setStyle(
         TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
         ])
     )
     story.append(header_table)
     story.append(Spacer(1, 4 * mm))
 
-    # Cliente
-    client_card = Table(
-        [[
-            Paragraph(f"<b>CLIENTE:</b> {nombre_cliente}", meta_style),
-            Paragraph(f"<b>CÉDULA / NIT:</b> {cedula_cliente}", meta_style),
-            Paragraph(f"<b>FECHA LÍMITE:</b> {fecha_limite}", meta_style),
-        ]],
-        colWidths=[printable_w * 0.45, printable_w * 0.30, printable_w * 0.25],
+    # 2. SECCION FACTURAR A (2 columnas x 2 filas)
+    customer_navy_bar = Table(
+        [[Paragraph("FACTURAR A", header_navy_bar_style)]],
+        colWidths=[printable_w],
     )
-    client_card.setStyle(
+    customer_navy_bar.setStyle(
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), _COLOR_DARK),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ])
+    )
+
+    col_w = printable_w * 0.50
+    customer_grid_data = [
+        [
+            [
+                Paragraph("NOMBRE DEL CLIENTE", client_label_style),
+                Paragraph(nombre_cliente, client_value_style),
+            ],
+            [
+                Paragraph("CEDULA / NIT", client_label_style),
+                Paragraph(cedula_cliente, client_value_style),
+            ],
+        ],
+        [
+            [
+                Paragraph("CONTACTO", client_label_style),
+                Paragraph(contacto_cliente, client_value_style),
+            ],
+            [
+                Paragraph("DIRECCION", client_label_style),
+                Paragraph(direccion_cliente, client_value_style),
+            ],
+        ],
+    ]
+    customer_grid = Table(customer_grid_data, colWidths=[col_w, col_w])
+    customer_grid.setStyle(
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
+            ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, _COLOR_BORDER),
+        ])
+    )
+
+    story.append(customer_navy_bar)
+    story.append(customer_grid)
+    story.append(Spacer(1, 3 * mm))
+
+    # Meta fila: Fecha, Metodo de Pago, Fecha Limite
+    meta_row = Table(
+        [[
+            Paragraph(f"<b>Fecha Factura:</b> {fecha_emision}", meta_style),
+            Paragraph(f"<b>Metodo de Pago:</b> {metodo_pago}", meta_style),
+            Paragraph(f"<b>Fecha Limite Credito:</b> {fecha_limite}", meta_style),
+        ]],
+        colWidths=[printable_w * 0.38, printable_w * 0.30, printable_w * 0.32],
+    )
+    meta_row.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(meta_row)
+    story.append(Spacer(1, 3 * mm))
+
+    # 3. TABLA DE PRODUCTOS (identica a la factura de venta)
+    col_desc_w = printable_w * 0.54
+    col_cant_w = printable_w * 0.12
+    col_unit_w = printable_w * 0.17
+    col_tot_w  = printable_w * 0.17
+
+    products_data = [
+        [
+            Paragraph("DESCRIPCION DEL PRODUCTO", table_header_style),
+            Paragraph("CANT.", table_header_style),
+            Paragraph("P. UNITARIO", ParagraphStyle("TH_R", parent=table_header_style, alignment=2)),
+            Paragraph("TOTAL", ParagraphStyle("TH_R2", parent=table_header_style, alignment=2)),
+        ]
+    ]
+
+    for item in detalles:
+        prod_name  = str(item.get("Producto") or "Producto sin nombre")
+        cant       = item.get("Cantidad", 0)
+        p_unit     = item.get("Precio_Unitario", 0)
+        p_subtotal = item.get("Subtotal", 0)
+
+        products_data.append([
+            Paragraph(prod_name, table_cell_style),
+            Paragraph(str(cant), table_cell_center_style),
+            Paragraph(_format_currency(p_unit), table_cell_right_style),
+            Paragraph(_format_currency(p_subtotal), table_cell_right_style),
+        ])
+
+    if len(products_data) == 1:
+        products_data.append([
+            Paragraph("No hay productos registrados en esta factura.", table_cell_style),
+            Paragraph("-", table_cell_center_style),
+            Paragraph("$ 0,00", table_cell_right_style),
+            Paragraph("$ 0,00", table_cell_right_style),
+        ])
+
+    products_table = Table(
+        products_data,
+        colWidths=[col_desc_w, col_cant_w, col_unit_w, col_tot_w],
+        repeatRows=1,
+    )
+    products_table.setStyle(
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), _COLOR_NAVY),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, 0), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+            ("TOPPADDING", (0, 1), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("LINEBELOW", (0, 1), (-1, -1), 0.5, _COLOR_BORDER),
+        ])
+    )
+    story.append(products_table)
+    story.append(Spacer(1, 3 * mm))
+
+    # 4. RESUMEN DE CREDITO + FORMA DE PAGO + HISTORIAL (KeepTogether)
+    footer_block = []
+
+    # Deuda Total / Abono Actual / Saldo Pendiente
+    summary_w = printable_w * 0.46
+    lbl_tot_style = ParagraphStyle(
+        "LblTot", fontName="Helvetica-Bold", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2
+    )
+    val_tot_style = ParagraphStyle(
+        "ValTot", fontName="Helvetica", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2
+    )
+    val_abono_style = ParagraphStyle(
+        "ValAbono", fontName="Helvetica", fontSize=9, textColor=_COLOR_DISCOUNT, alignment=2
+    )
+    tot_banner_lbl = ParagraphStyle(
+        "TotBannerLbl", fontName="Helvetica-Bold", fontSize=11, textColor=colors.white
+    )
+    tot_banner_val = ParagraphStyle(
+        "TotBannerVal", fontName="Helvetica-Bold", fontSize=12, textColor=colors.white, alignment=2
+    )
+
+    credit_summary_rows = [
+        [Paragraph("DEUDA TOTAL",    lbl_tot_style), Paragraph(_format_currency(total_deuda), val_tot_style)],
+        [Paragraph("ABONO ACTUAL",   lbl_tot_style), Paragraph(_format_currency(abono), val_abono_style)],
+        [Paragraph("SALDO PENDIENTE", tot_banner_lbl), Paragraph(_format_currency(nuevo_saldo), tot_banner_val)],
+    ]
+
+    credit_summary_table = Table(
+        credit_summary_rows,
+        colWidths=[summary_w * 0.48, summary_w * 0.52],
+    )
+    credit_summary_table.setStyle(
+        TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, 1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, 1), 2),
+            ("BACKGROUND", (0, 2), (-1, 2), _COLOR_NAVY),
+            ("TOPPADDING", (0, 2), (-1, 2), 6),
+            ("BOTTOMPADDING", (0, 2), (-1, 2), 6),
+            ("LEFTPADDING", (0, 2), (-1, 2), 8),
+            ("RIGHTPADDING", (0, 2), (-1, 2), 8),
+        ])
+    )
+    credit_summary_table.hAlign = "RIGHT"
+    footer_block.append(credit_summary_table)
+    footer_block.append(Spacer(1, 4 * mm))
+
+    # Tarjeta de Forma de Pago
+    payment_title_style = ParagraphStyle(
+        "PaymentTitle", fontName="Helvetica-Bold", fontSize=8.5, textColor=_COLOR_NAVY
+    )
+    payment_desc_style = ParagraphStyle(
+        "PaymentDesc", fontName="Helvetica", fontSize=8.5, textColor=_COLOR_TEXT_MAIN
+    )
+
+    payment_card = Table(
+        [[
+            [
+                Paragraph("<b>FORMA DE PAGO</b>", payment_title_style),
+                Paragraph(f"Metodo: {metodo_pago}", payment_desc_style),
+                Paragraph(
+                    f"<b>Saldo pendiente:</b> {_format_currency(nuevo_saldo)}"
+                    f"    |    <b>Fecha limite:</b> {fecha_limite}",
+                    payment_desc_style,
+                ),
+            ]
+        ]],
+        colWidths=[printable_w],
+    )
+    payment_card.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
             ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER),
@@ -731,60 +1001,34 @@ def generate_credit_receipt_pdf(
             ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ])
     )
-    story.append(client_card)
-    story.append(Spacer(1, 4 * mm))
+    footer_block.append(payment_card)
+    footer_block.append(Spacer(1, 4 * mm))
 
-    # Resumen de Saldo
-    summary_w = printable_w * 0.5
-    lbl_style = ParagraphStyle("LS", fontName="Helvetica-Bold", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2)
-    val_style = ParagraphStyle("VS", fontName="Helvetica", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2)
-    tot_lbl = ParagraphStyle("TL", fontName="Helvetica-Bold", fontSize=10, textColor=colors.white)
-    tot_val = ParagraphStyle("TV", fontName="Helvetica-Bold", fontSize=11, textColor=colors.white, alignment=2)
-
-    saldo_rows = [
-        [Paragraph("DEUDA TOTAL", lbl_style), Paragraph(_format_currency(total_deuda), val_style)],
-        [Paragraph("ABONO ACTUAL", lbl_style), Paragraph(_format_currency(abono), val_style)],
-        [Paragraph("SALDO PENDIENTE", tot_lbl), Paragraph(_format_currency(nuevo_saldo), tot_val)],
-    ]
-    saldo_table = Table(saldo_rows, colWidths=[summary_w * 0.5, summary_w * 0.5])
-    saldo_table.setStyle(
-        TableStyle([
-            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-            ("TOPPADDING", (0, 0), (-1, 1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, 1), 2),
-            ("BACKGROUND", (0, 2), (-1, 2), _COLOR_NAVY),
-            ("TOPPADDING", (0, 2), (-1, 2), 5),
-            ("BOTTOMPADDING", (0, 2), (-1, 2), 5),
-            ("LEFTPADDING", (0, 2), (-1, 2), 8),
-            ("RIGHTPADDING", (0, 2), (-1, 2), 8),
-        ])
+    # Historial de Abonos Registrados
+    history_section_title_style = ParagraphStyle(
+        "HistTitle", fontName="Helvetica-Bold", fontSize=9, textColor=_COLOR_NAVY
     )
-    saldo_table.hAlign = "RIGHT"
-    story.append(saldo_table)
-    story.append(Spacer(1, 4 * mm))
-
-    # Historial de Abonos
-    story.append(Paragraph("<b>HISTORIAL DE ABONOS REGISTRADOS</b>", meta_style))
-    story.append(Spacer(1, 2 * mm))
+    footer_block.append(Paragraph("HISTORIAL DE ABONOS REGISTRADOS", history_section_title_style))
+    footer_block.append(Spacer(1, 2 * mm))
 
     history_data = [
         [
             Paragraph("FECHA", table_header_style),
-            Paragraph("MONTO", ParagraphStyle("TH_R", parent=table_header_style, alignment=2)),
-            Paragraph("MÉTODO", table_header_style),
+            Paragraph("MONTO", ParagraphStyle("TH_R3", parent=table_header_style, alignment=2)),
+            Paragraph("METODO", table_header_style),
             Paragraph("TIPO", table_header_style),
         ]
     ]
 
     for p in pagos:
-        f_reg = _format_datetime(getattr(p, "Fecha_Registro", None))
-        monto = float(getattr(p, "Monto", 0) or 0)
+        f_reg  = _format_datetime(getattr(p, "Fecha_Registro", None))
+        monto  = float(getattr(p, "Monto", 0) or 0)
         metodo = str(getattr(p, "metodopago", "") or "Efectivo")
-        tipo = str(getattr(p, "tipopago", "") or "Abono")
+        tipo   = str(getattr(p, "tipopago", "") or "Abono")
 
         history_data.append([
             Paragraph(f_reg, table_cell_style),
-            Paragraph(_format_currency(monto), table_cell_right),
+            Paragraph(_format_currency(monto), table_cell_right_style),
             Paragraph(metodo, table_cell_style),
             Paragraph(tipo, table_cell_style),
         ])
@@ -792,15 +1036,15 @@ def generate_credit_receipt_pdf(
     if len(history_data) == 1:
         history_data.append([
             Paragraph("No hay abonos previos registrados.", table_cell_style),
-            Paragraph("$ 0,00", table_cell_right),
+            Paragraph("$ 0,00", table_cell_right_style),
             Paragraph("-", table_cell_style),
             Paragraph("-", table_cell_style),
         ])
 
-    w_f = printable_w * 0.32
-    w_m = printable_w * 0.24
+    w_f   = printable_w * 0.32
+    w_m   = printable_w * 0.24
     w_met = printable_w * 0.24
-    w_t = printable_w * 0.20
+    w_t   = printable_w * 0.20
     history_table = Table(history_data, colWidths=[w_f, w_m, w_met, w_t])
     history_table.setStyle(
         TableStyle([
@@ -813,15 +1057,20 @@ def generate_credit_receipt_pdf(
             ("LINEBELOW", (0, 1), (-1, -1), 0.5, _COLOR_BORDER),
         ])
     )
-    story.append(history_table)
-    story.append(Spacer(1, 5 * mm))
+    footer_block.append(history_table)
+    footer_block.append(Spacer(1, 4 * mm))
 
     thanks_style = ParagraphStyle(
         "Thanks", fontName="Helvetica", fontSize=8, textColor=_COLOR_TEXT_MUTED, alignment=1
     )
-    story.append(
-        Paragraph("¡Gracias por su pago! Conserve este recibo para cualquier reclamación.", thanks_style)
+    footer_block.append(
+        Paragraph(
+            "Gracias por su pago. Conserve este recibo para cualquier reclamacion.",
+            thanks_style,
+        )
     )
+
+    story.append(KeepTogether(footer_block))
 
     def _canvas_factory(*args, **kwargs):
         c = NumberedCanvas(*args, **kwargs)
@@ -830,3 +1079,4 @@ def generate_credit_receipt_pdf(
 
     doc.build(story, canvasmaker=_canvas_factory)
     return output_path
+
