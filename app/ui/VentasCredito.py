@@ -283,7 +283,7 @@ class Ui_VentasCredito(object):
         self.LimitePagoBox.setObjectName("LimitePagoBox")
         self.LimitePagoBox.setMinimumHeight(40)
         self.LimitePagoBox.setStyleSheet(_INPUT_QSS)
-        self.LimitePagoBox.addItems(["15 días", "30 días", "45 días", "60 días"])
+        self.LimitePagoBox.addItems(["15 días","20 días", "30 días", "45 días", "60 días"])
         gridCli.addWidget(self.LimitePagoBox, 3, 2)
 
         gridCli.addWidget(self._mk_lbl("Descuento Global"), 4, 0)
