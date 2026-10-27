@@ -374,12 +374,20 @@ def actualizar_producto(
 # Eliminar un producto
 def eliminar_producto(db: Session, id_producto: int):
     """
-    Elimina un producto por su ID.
+    Elimina un producto por su ID si todavía no aparece en ninguna factura.
     """
     producto_existente = (
         db.query(Productos).filter(Productos.ID_Producto == id_producto).first()
     )
     if not producto_existente:
+        return False
+
+    tiene_ventas = (
+        db.query(DetalleFacturas.ID_Detalle_Factura)
+        .filter(DetalleFacturas.ID_Producto == id_producto)
+        .first()
+    )
+    if tiene_ventas:
         return False
 
     db.delete(producto_existente)

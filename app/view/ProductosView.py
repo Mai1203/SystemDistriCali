@@ -805,10 +805,23 @@ class Productos_View(QWidget, Ui_Productos):
         if respuesta == QtWidgets.QMessageBox.StandardButton.Yes:
             try:
                 self.db = SessionLocal()
+                eliminados = 0
+                protegidos = 0
                 for id_producto in ids:
-                    eliminar_producto(self.db, id_producto)
+                    if eliminar_producto(self.db, id_producto):
+                        eliminados += 1
+                    else:
+                        protegidos += 1
                 self.db.commit()
-                enviar_notificacion("Éxito", "Producto(s) eliminado(s) correctamente.")
+                if protegidos:
+                    enviar_notificacion(
+                        "Advertencia",
+                        f"Se eliminaron {eliminados} producto(s). "
+                        f"No se pudieron eliminar {protegidos} producto(s) "
+                        "porque ya tienen ventas registradas.",
+                    )
+                else:
+                    enviar_notificacion("Éxito", "Producto(s) eliminado(s) correctamente.")
                 self.limpiar_tabla_productos()
                 self.mostrar_productos()
                 self.limpiar_formulario()
