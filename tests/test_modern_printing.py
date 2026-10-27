@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 from PyPDF2 import PdfReader
 from PyQt6.QtGui import QPageSize
 
+from app.services import invoice_generator
 from app.services.invoice_generator import (
     generate_credit_receipt_pdf,
     generate_invoice_pdf,
@@ -184,22 +185,97 @@ def test_credit_receipt_pdf_generation():
         "Cliente": {"ID_Cliente": "999888", "Nombre": "Laura", "Apellido": "Gómez"},
     }
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        pdf_recibo = os.path.join(tmp_dir, "recibo.pdf")
-        generate_credit_receipt_pdf(
-            factura_data,
-            DummyVenta(),
-            [DummyPago()],
-            abono=50000,
-            output_path=pdf_recibo,
-            paper_type=PAPER_OFICIO,
-        )
+    for paper_type, expected_page_size in (
+        (PAPER_CARTA, [0, 0, 612, 792]),
+        (PAPER_OFICIO, [0, 0, 612, 936]),
+    ):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            pdf_recibo = os.path.join(tmp_dir, f"recibo_{paper_type}.pdf")
+            generate_credit_receipt_pdf(
+                factura_data,
+                DummyVenta(),
+                [DummyPago()],
+                abono=50000,
+                output_path=pdf_recibo,
+                paper_type=paper_type,
+            )
 
-        assert os.path.exists(pdf_recibo)
-        reader = PdfReader(pdf_recibo)
-        assert len(reader.pages) == 1
-        text = reader.pages[0].extract_text()
-        assert "RECIBO DE ABONO" in text
-        assert "00000888" in text
-        assert "Laura Gómez" in text
-        assert "HISTORIAL DE ABONOS REGISTRADOS" in text
+            assert os.path.exists(pdf_recibo)
+            reader = PdfReader(pdf_recibo)
+            assert len(reader.pages) == 1
+            assert list(reader.pages[0].mediabox) == expected_page_size
+            text = reader.pages[0].extract_text()
+            assert "RECIBO DE ABONO" in text
+            assert "00000888" in text
+            assert "Laura Gómez" in text
+            assert "HISTORIAL DE ABONOS REGISTRADOS" in text
+            assert "Fecha Factura:" not in text
+            assert "Metodo de Pago:" not in text
+            assert "Fecha Limite Credito:" not in text
+
+
+def test_credit_receipt_print_uses_the_paper_saved_in_appdata():
+    class DummyVenta:
+        Total_Deuda = 500000
+        Saldo_Pendiente = 200000
+        Fecha_Limite = datetime(2026, 11, 30)
+
+    class DummyPago:
+        Fecha_Registro = datetime(2026, 10, 23)
+        Monto = 50000
+        metodopago = "Transferencia"
+        tipopago = "Abono Parcial"
+
+    factura_data = {
+        "Factura": {"ID_Factura": 888},
+        "Cliente": {"ID_Cliente": "999888", "Nombre": "Laura", "Apellido": "Gómez"},
+    }
+
+    for paper_type, expected_page_size in (
+        (PAPER_CARTA, [0, 0, 612, 792]),
+        (PAPER_OFICIO, [0, 0, 612, 936]),
+    ):
+        captured = {}
+        printer_info = MagicMock()
+        printer_info.printerName.return_value = "Impresora de prueba"
+
+        def capture_print(pdf_path, _, configured_paper_type, __):
+            captured["paper_type"] = configured_paper_type
+            captured["page_size"] = list(PdfReader(pdf_path).pages[0].mediabox)
+            return True
+
+        saved_config = {
+            "configured": True,
+            "printer_name": "Impresora de prueba",
+            "paper_type": paper_type,
+        }
+        with patch("app.services.printing_service.load_printer_config", return_value=saved_config), patch(
+            "app.services.printing_service.validate_printer_ready",
+            return_value=(True, "OK", printer_info),
+        ), patch(
+            "app.services.printing_service._send_pdf_to_printer",
+            side_effect=capture_print,
+        ):
+            assert print_credit_receipt(
+                None, factura_data, DummyVenta(), [DummyPago()], abono=50000
+            ) is True
+
+        assert captured["paper_type"] == paper_type
+        assert captured["page_size"] == expected_page_size
+
+
+def test_print_palette_is_black_and_white():
+    palette = (
+        invoice_generator._COLOR_NAVY,
+        invoice_generator._COLOR_NAVY_LIGHT,
+        invoice_generator._COLOR_DARK,
+        invoice_generator._COLOR_BG_CARD,
+        invoice_generator._COLOR_BORDER,
+        invoice_generator._COLOR_BORDER_STRONG,
+        invoice_generator._COLOR_TEXT_MAIN,
+        invoice_generator._COLOR_TEXT_MUTED,
+        invoice_generator._COLOR_DISCOUNT,
+    )
+
+    assert all(color.red == color.green == color.blue for color in palette)
+    assert invoice_generator._COLOR_DISCOUNT == invoice_generator._COLOR_TEXT_MAIN

@@ -58,16 +58,20 @@ def _get_grayscale_logo_path() -> Path:
     return _LOGO_GRAYSCALE_PATH
 
 
-# Paleta cromática institucional Distri Magik
-_COLOR_NAVY = colors.HexColor("#162033")
-_COLOR_NAVY_LIGHT = colors.HexColor("#2D3D60")
-_COLOR_DARK = _COLOR_NAVY
-_COLOR_BG_CARD = colors.HexColor("#F8FAFC")
-_COLOR_BORDER = colors.HexColor("#E2E8F0")
-_COLOR_BORDER_STRONG = colors.HexColor("#CBD5E1")
-_COLOR_TEXT_MAIN = colors.HexColor("#1E293B")
-_COLOR_TEXT_MUTED = colors.HexColor("#64748B")
-_COLOR_DISCOUNT = colors.HexColor("#B91C1C")
+# La impresión comercial se maneja únicamente en blanco y negro.  Mantener la
+# paleta centralizada evita que un valor destacado (por ejemplo, un abono)
+# vuelva a salir en color al modificar una plantilla.
+_COLOR_NAVY = colors.black
+_COLOR_NAVY_LIGHT = colors.black
+_COLOR_DARK = colors.black
+_COLOR_BG_CARD = colors.white
+# Grises neutros para que las tablas se lean sin crear una cuadrícula pesada
+# al imprimir en blanco y negro.
+_COLOR_BORDER = colors.HexColor("#E0E0E0")
+_COLOR_BORDER_STRONG = colors.HexColor("#C7C7C7")
+_COLOR_TEXT_MAIN = colors.black
+_COLOR_TEXT_MUTED = colors.black
+_COLOR_DISCOUNT = colors.black
 
 # Dimensiones en mm convertidas a puntos
 PAGE_DIMENSIONS = {
@@ -103,7 +107,7 @@ class NumberedCanvas(canvas.Canvas):
     def draw_page_decorations(self, total_pages: int):
         self.saveState()
         page_w, page_h = self._pagesize
-        margin_x = 12 * mm
+        margin_x = 15 * mm
         margin_b = 8 * mm
 
         # 1. Encabezado de continuación en páginas subsiguientes (página >= 2)
@@ -160,7 +164,9 @@ def generate_invoice_pdf(
 ) -> str:
     """Genera el PDF de la factura adaptado a Carta u Oficio Colombia con el diseño comercial."""
     page_w, page_h = PAGE_DIMENSIONS.get(paper_type, PAGE_DIMENSIONS[PAPER_CARTA])
-    margin_lr = 12 * mm
+    # Mantiene el contenido, especialmente la tabla de productos, separado
+    # del borde físico tanto en Carta como en Oficio.
+    margin_lr = 15 * mm
     margin_tb = 12 * mm
     printable_w = page_w - (2 * margin_lr)
 
@@ -576,7 +582,7 @@ def generate_invoice_pdf(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
             ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER),
-            ("LINEBEFORE", (0, 0), (0, -1), 3, _COLOR_NAVY),  # Borde izquierdo grueso navy
+            ("LINEBEFORE", (0, 0), (0, -1), 1, _COLOR_BORDER_STRONG),
             ("TOPPADDING", (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -627,7 +633,9 @@ def generate_credit_receipt_pdf(
     resumen de credito (Deuda Total / Abono Actual / Saldo Pendiente) e historial de abonos.
     """
     page_w, page_h = PAGE_DIMENSIONS.get(paper_type, PAGE_DIMENSIONS[PAPER_CARTA])
-    margin_lr = 12 * mm
+    # Mantiene el contenido, especialmente la tabla de productos, separado
+    # del borde físico tanto en Carta como en Oficio.
+    margin_lr = 15 * mm
     margin_tb = 12 * mm
     printable_w = page_w - (2 * margin_lr)
 
@@ -844,24 +852,6 @@ def generate_credit_receipt_pdf(
     story.append(customer_grid)
     story.append(Spacer(1, 3 * mm))
 
-    # Meta fila: Fecha, Metodo de Pago, Fecha Limite
-    meta_row = Table(
-        [[
-            Paragraph(f"<b>Fecha Factura:</b> {fecha_emision}", meta_style),
-            Paragraph(f"<b>Metodo de Pago:</b> {metodo_pago}", meta_style),
-            Paragraph(f"<b>Fecha Limite Credito:</b> {fecha_limite}", meta_style),
-        ]],
-        colWidths=[printable_w * 0.38, printable_w * 0.30, printable_w * 0.32],
-    )
-    meta_row.setStyle(TableStyle([
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(meta_row)
-    story.append(Spacer(1, 3 * mm))
-
     # 3. TABLA DE PRODUCTOS (identica a la factura de venta)
     col_desc_w = printable_w * 0.54
     col_cant_w = printable_w * 0.12
@@ -932,7 +922,7 @@ def generate_credit_receipt_pdf(
         "ValTot", fontName="Helvetica", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2
     )
     val_abono_style = ParagraphStyle(
-        "ValAbono", fontName="Helvetica", fontSize=9, textColor=_COLOR_DISCOUNT, alignment=2
+        "ValAbono", fontName="Helvetica", fontSize=9, textColor=_COLOR_TEXT_MAIN, alignment=2
     )
     tot_banner_lbl = ParagraphStyle(
         "TotBannerLbl", fontName="Helvetica-Bold", fontSize=11, textColor=colors.white
@@ -994,7 +984,7 @@ def generate_credit_receipt_pdf(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _COLOR_BG_CARD),
             ("BOX", (0, 0), (-1, -1), 1, _COLOR_BORDER),
-            ("LINEBEFORE", (0, 0), (0, -1), 3, _COLOR_NAVY),
+            ("LINEBEFORE", (0, 0), (0, -1), 1, _COLOR_BORDER_STRONG),
             ("TOPPADDING", (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -1070,7 +1060,11 @@ def generate_credit_receipt_pdf(
         )
     )
 
-    story.append(KeepTogether(footer_block))
+    # El historial puede crecer con cada abono.  Solo mantenemos juntos el
+    # resumen y la forma de pago; el historial queda libre para continuar en
+    # otra página del formato configurado en vez de sobrepasar el borde inferior.
+    story.append(KeepTogether(footer_block[:3]))
+    story.extend(footer_block[3:])
 
     def _canvas_factory(*args, **kwargs):
         c = NumberedCanvas(*args, **kwargs)

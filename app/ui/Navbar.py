@@ -61,6 +61,7 @@ _ICONS = {
     "BtnFacturas":     ("fa5s.file-alt",       _TEXT, "#FFFFFF"),
     "BtnReportes":     ("fa5s.chart-line",     _TEXT, "#FFFFFF"),
     "BtnClientes":     ("fa5s.users",          _TEXT, "#FFFFFF"),
+    "BtnImpresora":    ("fa5s.print",          _TEXT, "#FFFFFF"),
 }
 
 
@@ -113,6 +114,17 @@ class Ui_Navbar(object):
         self._create_menu_button(Navbar, "BtnFacturas",     "Factura")
         self._create_menu_button(Navbar, "BtnReportes",     "Reportes")
         self._create_menu_button(Navbar, "BtnClientes",     "Clientes")
+
+        self.rootLayout.addSpacing(12)
+
+        # ── CONFIGURACIÓN ──
+        self.LabelConfiguracion = QtWidgets.QLabel("CONFIGURACIÓN", parent=Navbar)
+        self.LabelConfiguracion.setStyleSheet(
+            f"color: {_MUTED}; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; border: none; padding: 4px 6px;"
+        )
+        self.rootLayout.addWidget(self.LabelConfiguracion)
+
+        self._create_menu_button(Navbar, "BtnImpresora", "Impresora")
 
         self.rootLayout.addStretch()
 

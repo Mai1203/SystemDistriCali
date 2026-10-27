@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 
 from ..ui import Ui_Navbar
 from ..configuracion import TIPOS_VENTA
+from ..services.printing_service import open_printer_settings
 
 
 class Navbar_View(QWidget, Ui_Navbar):
@@ -110,6 +111,10 @@ class Navbar_View(QWidget, Ui_Navbar):
         self.button_group.addButton(self.BtnFacturas)
         self.button_group.addButton(self.BtnReportes)
         self.button_group.addButton(self.BtnClientes)
+        self.button_group.addButton(self.BtnImpresora)
+
+        # Conectar BtnImpresora para abrir la configuración de impresora
+        self.BtnImpresora.clicked.connect(self._abrir_config_impresora)
 
         self.lblUserAvatar.setPixmap(
             qta.icon("fa5s.user", color="#FFFFFF").pixmap(22, 22)
@@ -133,7 +138,7 @@ class Navbar_View(QWidget, Ui_Navbar):
                 self.comboVentas.setItemIcon(i, qta.icon('fa5s.shopping-cart', color='#201A24'))
 
     def actualizar_usuario_rol(self, usuario):
-        """Actualiza nombre, rol y ícono del usuario activo en el Navbar."""
+        """Actualiza nombre, rol e icono del usuario activo en el Navbar."""
         nombre = usuario.Nombre
         if " " in nombre:
             nombre = nombre.split(" ")[0]
@@ -143,7 +148,7 @@ class Navbar_View(QWidget, Ui_Navbar):
         rol_nombre = "Administrador" if usuario.ID_Rol == 1 else "Asesor"
         self.lblUserRole.setText(rol_nombre)
 
-        # Ícono SVG según el rol (sin PNGs)
+        # Icono SVG segun el rol (sin PNGs)
         if usuario.ID_Rol == 1:
             icon_name = "fa5s.user-shield"  # Admin = escudo
         else:
@@ -151,3 +156,9 @@ class Navbar_View(QWidget, Ui_Navbar):
         self.lblUserAvatar.setPixmap(
             qta.icon(icon_name, color="#FFFFFF").pixmap(22, 22)
         )
+
+    def _abrir_config_impresora(self):
+        """Abre el dialogo de configuracion de impresora y restaura el estado del boton."""
+        # Deseleccionar el boton (es solo accion, no navegacion)
+        self.BtnImpresora.setChecked(False)
+        open_printer_settings(self)
