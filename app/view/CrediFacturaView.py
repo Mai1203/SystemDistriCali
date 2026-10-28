@@ -294,7 +294,9 @@ class CrediFactura_View(QWidget, Ui_FacturasCredito):
                 "Saldo_Pendiente": venta.Saldo_Pendiente,
                 "Fecha_Limite": venta.Fecha_Limite,
             }
-            if print_invoice(self, factura_completa, credito):
+            pagos = obtener_pagos_credito(db, venta.ID_Venta_Credito)
+            credito["pagos"] = pagos
+            if print_invoice(self, factura_completa, credito, pagos=pagos):
                 enviar_notificacion(
                     "Éxito", "Factura enviada a la impresora correctamente."
                 )

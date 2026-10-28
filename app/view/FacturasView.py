@@ -420,14 +420,17 @@ class Facturas_View(QWidget, Ui_Facturas):
                 None,
             )
             credito = None
+            pagos = None
             if venta_credito:
                 credito = {
                     "Total_Deuda": venta_credito.Total_Deuda,
                     "Saldo_Pendiente": venta_credito.Saldo_Pendiente,
                     "Fecha_Limite": venta_credito.Fecha_Limite,
                 }
+                pagos = obtener_pagos_credito(db, venta_credito.ID_Venta_Credito)
+                credito["pagos"] = pagos
 
-            if print_invoice(self, factura_completa, credito):
+            if print_invoice(self, factura_completa, credito, pagos=pagos):
                 enviar_notificacion(
                     "Éxito", "Factura enviada a la impresora correctamente."
                 )

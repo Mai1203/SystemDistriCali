@@ -805,7 +805,7 @@ class VerFacturaDialog(QDialog):
         layout.addWidget(lbl_desc)
 
         preview = QTextBrowser()
-        preview.setHtml(build_invoice_html(self.factura_completa, self.credito))
+        preview.setHtml(build_invoice_html(self.factura_completa, self.credito, self.pagos))
         preview.setOpenExternalLinks(False)
         layout.addWidget(preview)
 

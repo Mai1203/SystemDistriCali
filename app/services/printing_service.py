@@ -199,8 +199,11 @@ def _document_shell(body):
     """
 
 
-def build_invoice_html(factura_completa, credito=None):
+def build_invoice_html(factura_completa, credito=None, pagos=None):
     """Mantiene compatibilidad con tests unitarios existentes."""
+    if pagos is None and credito and isinstance(credito, dict):
+        pagos = credito.get("pagos")
+
     factura = factura_completa.get("Factura", {})
     cliente = factura_completa.get("Cliente", {})
     detalles = factura_completa.get("Detalles", [])
@@ -244,6 +247,27 @@ def build_invoice_html(factura_completa, credito=None):
             f"{_escape(_format_date(credito.get('Fecha_Limite')))}</p>"
         )
 
+    payment_history_html = ""
+    if pagos is not None:
+        p_rows = "".join(
+            "<tr>"
+            f"<td>{_escape(_format_date(getattr(p, 'Fecha_Registro', None) if not isinstance(p, dict) else p.get('Fecha_Registro')))}</td>"
+            f"<td class='number'>{_currency(getattr(p, 'Monto', 0) if not isinstance(p, dict) else p.get('Monto', 0))}</td>"
+            f"<td>{_escape((getattr(p, 'metodopago', '') if not isinstance(p, dict) else p.get('metodopago', '')) or 'Efectivo')}</td>"
+            f"<td>{_escape((getattr(p, 'tipopago', '') if not isinstance(p, dict) else p.get('tipopago', '')) or 'Abono')}</td>"
+            "</tr>"
+            for p in pagos
+        )
+        if not p_rows:
+            p_rows = '<tr><td colspan="4">No hay pagos registrados.</td></tr>'
+        payment_history_html = f"""
+        <div class="section-title">HISTORIAL DE PAGOS</div>
+        <table class="products">
+          <thead><tr><th>FECHA</th><th class="number">MONTO</th><th>MÉTODO</th><th>TIPO</th></tr></thead>
+          <tbody>{p_rows}</tbody>
+        </table>
+        """
+
     body = f"""
     <table class="header"><tr>
       <td>{logo}<br><span class="meta">{_COMPANY_ADDRESS} · Tel. {_COMPANY_PHONE}</span></td>
@@ -276,6 +300,7 @@ def build_invoice_html(factura_completa, credito=None):
     <div class="payment"><b>FORMA DE PAGO</b><br>
       Método de Pago: {_escape(metodo_pago)}
     </div>
+    {payment_history_html}
     <p class="footer"><b>¡Gracias por tu compra!</b></p>
     """
     return _document_shell(body)
@@ -361,19 +386,14 @@ def _send_pdf_to_printer(
     pdf_path: str, printer_info: QPrinterInfo, paper_type: str, document_title: str
 ) -> bool:
     """Renderiza e imprime un PDF directamente a través de QPdfDocument y QPainter sobre QPrinter."""
-    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-    printer.setPrinterName(printer_info.printerName())
+    printer = QPrinter(printer_info, QPrinter.PrinterMode.HighResolution)
     printer.setDocName(document_title)
     printer.setResolution(300)
 
     page_size = _resolve_page_size(printer_info, paper_type)
-    layout = QPageLayout(
-        page_size,
-        QPageLayout.Orientation.Portrait,
-        QMarginsF(0, 0, 0, 0),  # Los márgenes ya están calculados dentro del PDF
-        QPageLayout.Unit.Millimeter,
-    )
-    printer.setPageLayout(layout)
+    printer.setPageSize(page_size)
+    printer.setPageOrientation(QPageLayout.Orientation.Portrait)
+    printer.setFullPage(True)
 
     pdf_doc = QPdfDocument(None)
     pdf_doc.load(pdf_path)
@@ -392,7 +412,13 @@ def _send_pdf_to_printer(
         )
 
     try:
-        paint_rect = printer.pageLayout().paintRectPixels(printer.resolution())
+        viewport = painter.viewport()
+        target_rect = QRectF(
+            0,
+            0,
+            viewport.width(),
+            viewport.height(),
+        )
         for page_idx in range(page_count):
             if page_idx > 0:
                 printer.newPage()
@@ -407,12 +433,6 @@ def _send_pdf_to_printer(
             qimage = pdf_doc.render(page_idx, raster_size)
 
             if not qimage.isNull():
-                target_rect = QRectF(
-                    paint_rect.x(),
-                    paint_rect.y(),
-                    paint_rect.width(),
-                    paint_rect.height(),
-                )
                 painter.drawImage(target_rect, qimage)
     finally:
         painter.end()
@@ -547,7 +567,10 @@ def _execute_print_pipeline(
 
 
 def print_invoice(
-    parent, factura_completa: Dict[str, Any], credito: Optional[Dict[str, Any]] = None
+    parent,
+    factura_completa: Dict[str, Any],
+    credito: Optional[Dict[str, Any]] = None,
+    pagos: Optional[List[Any]] = None,
 ) -> bool:
     """Imprime automáticamente una factura comercial en hoja Carta u Oficio Colombia.
 
@@ -555,7 +578,7 @@ def print_invoice(
     Si la impresora no está configurada o se desconecta, asiste al usuario para reconfigurarla.
     """
     def _generate(out_path: str, paper_type: str) -> str:
-        return generate_invoice_pdf(factura_completa, out_path, paper_type, credito)
+        return generate_invoice_pdf(factura_completa, out_path, paper_type, credito, pagos)
 
     raw_id = factura_completa.get("Factura", {}).get("ID_Factura", "")
     title = f"Factura N.º {raw_id}" if raw_id else "Factura de venta"

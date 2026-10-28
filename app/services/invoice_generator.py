@@ -107,8 +107,8 @@ class NumberedCanvas(canvas.Canvas):
     def draw_page_decorations(self, total_pages: int):
         self.saveState()
         page_w, page_h = self._pagesize
-        margin_x = 15 * mm
-        margin_b = 8 * mm
+        margin_x = 18 * mm
+        margin_b = 15 * mm
 
         # 1. Encabezado de continuación en páginas subsiguientes (página >= 2)
         if self._pageNumber > 1 and self.invoice_number_str:
@@ -161,13 +161,17 @@ def generate_invoice_pdf(
     output_path: str,
     paper_type: str = PAPER_CARTA,
     credito: Optional[Dict[str, Any]] = None,
+    pagos: Optional[List[Any]] = None,
 ) -> str:
     """Genera el PDF de la factura adaptado a Carta u Oficio Colombia con el diseño comercial."""
+    if pagos is None and credito and isinstance(credito, dict):
+        pagos = credito.get("pagos")
+
     page_w, page_h = PAGE_DIMENSIONS.get(paper_type, PAGE_DIMENSIONS[PAPER_CARTA])
     # Mantiene el contenido, especialmente la tabla de productos, separado
     # del borde físico tanto en Carta como en Oficio.
-    margin_lr = 15 * mm
-    margin_tb = 12 * mm
+    margin_lr = 18 * mm
+    margin_tb = 14 * mm
     printable_w = page_w - (2 * margin_lr)
 
     doc = SimpleDocTemplate(
@@ -176,7 +180,7 @@ def generate_invoice_pdf(
         leftMargin=margin_lr,
         rightMargin=margin_lr,
         topMargin=margin_tb,
-        bottomMargin=margin_tb + 4 * mm,  # Espacio para el pie de página
+        bottomMargin=32 * mm,  # Espacio para el pie de página (15mm) + margen generoso como en la plantilla
     )
 
     factura = factura_completa.get("Factura", {})
@@ -592,6 +596,85 @@ def generate_invoice_pdf(
     footer_block.append(payment_card)
     footer_block.append(Spacer(1, 3 * mm))
 
+    # Historial de Pagos (si la factura incluye pagos o es crédito)
+    if pagos is not None:
+        history_section_title_style = ParagraphStyle(
+            "HistTitle", fontName="Helvetica-Bold", fontSize=9, textColor=_COLOR_NAVY
+        )
+        footer_block.append(Paragraph("HISTORIAL DE PAGOS", history_section_title_style))
+        footer_block.append(Spacer(1, 2 * mm))
+
+        history_data = [
+            [
+                Paragraph("FECHA", table_header_style),
+                Paragraph("MONTO", ParagraphStyle("TH_R3", parent=table_header_style, alignment=2)),
+                Paragraph("MÉTODO", table_header_style),
+                Paragraph("TIPO", table_header_style),
+            ]
+        ]
+
+        for p in pagos:
+            f_reg = _format_datetime(
+                getattr(p, "Fecha_Registro", None)
+                if not isinstance(p, dict)
+                else p.get("Fecha_Registro")
+            )
+            monto = float(
+                getattr(p, "Monto", 0)
+                if not isinstance(p, dict)
+                else p.get("Monto", 0) or 0
+            )
+            metodo = str(
+                (
+                    getattr(p, "metodopago", "")
+                    if not isinstance(p, dict)
+                    else p.get("metodopago", "")
+                )
+                or "Efectivo"
+            )
+            tipo = str(
+                (
+                    getattr(p, "tipopago", "")
+                    if not isinstance(p, dict)
+                    else p.get("tipopago", "")
+                )
+                or "Abono"
+            )
+
+            history_data.append([
+                Paragraph(f_reg, table_cell_style),
+                Paragraph(_format_currency(monto), table_cell_right_style),
+                Paragraph(metodo, table_cell_style),
+                Paragraph(tipo, table_cell_style),
+            ])
+
+        if len(history_data) == 1:
+            history_data.append([
+                Paragraph("No hay pagos registrados.", table_cell_style),
+                Paragraph("$ 0,00", table_cell_right_style),
+                Paragraph("-", table_cell_style),
+                Paragraph("-", table_cell_style),
+            ])
+
+        w_f = printable_w * 0.32
+        w_m = printable_w * 0.24
+        w_met = printable_w * 0.24
+        w_t = printable_w * 0.20
+        history_table = Table(history_data, colWidths=[w_f, w_m, w_met, w_t])
+        history_table.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), _COLOR_NAVY),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("LINEBELOW", (0, 1), (-1, -1), 0.5, _COLOR_BORDER),
+            ])
+        )
+        footer_block.append(history_table)
+        footer_block.append(Spacer(1, 3 * mm))
+
     # Frase de agradecimiento
     thanks_style = ParagraphStyle(
         "Thanks",
@@ -607,7 +690,11 @@ def generate_invoice_pdf(
         )
     )
 
-    story.append(KeepTogether(footer_block))
+    if pagos is not None:
+        story.append(KeepTogether(footer_block[:3]))
+        story.extend(footer_block[3:])
+    else:
+        story.append(KeepTogether(footer_block))
 
     # Construir PDF con NumberedCanvas
     def _canvas_factory(*args, **kwargs):
@@ -635,8 +722,8 @@ def generate_credit_receipt_pdf(
     page_w, page_h = PAGE_DIMENSIONS.get(paper_type, PAGE_DIMENSIONS[PAPER_CARTA])
     # Mantiene el contenido, especialmente la tabla de productos, separado
     # del borde físico tanto en Carta como en Oficio.
-    margin_lr = 15 * mm
-    margin_tb = 12 * mm
+    margin_lr = 18 * mm
+    margin_tb = 14 * mm
     printable_w = page_w - (2 * margin_lr)
 
     doc = SimpleDocTemplate(
@@ -645,7 +732,7 @@ def generate_credit_receipt_pdf(
         leftMargin=margin_lr,
         rightMargin=margin_lr,
         topMargin=margin_tb,
-        bottomMargin=margin_tb + 4 * mm,
+        bottomMargin=32 * mm,  # Espacio para el pie de página (15mm) + margen generoso como en la plantilla
     )
 
     factura = factura_completa.get("Factura", {})

@@ -279,3 +279,62 @@ def test_print_palette_is_black_and_white():
 
     assert all(color.red == color.green == color.blue for color in palette)
     assert invoice_generator._COLOR_DISCOUNT == invoice_generator._COLOR_TEXT_MAIN
+
+
+def test_invoice_pdf_includes_payment_history_when_pagos_provided():
+    class DummyPago:
+        Fecha_Registro = datetime(2026, 10, 25, 14, 30)
+        Monto = 75000
+        metodopago = "Transferencia"
+        tipopago = "Abono Parcial"
+
+    sample_invoice = {
+        "Factura": {"ID_Factura": 1500, "Fecha_Factura": datetime(2026, 10, 20, 10, 0)},
+        "Cliente": {"Nombre": "Carlos", "Apellido": "Perez"},
+        "Detalles": [
+            {"Producto": "Kit Manicura", "Cantidad": 1, "Precio_Unitario": 150000, "Subtotal": 150000}
+        ],
+    }
+    credito = {
+        "Total_Deuda": 150000,
+        "Saldo_Pendiente": 75000,
+        "Fecha_Limite": datetime(2026, 11, 20),
+    }
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        pdf_path = os.path.join(tmp_dir, "factura_con_pagos.pdf")
+        generate_invoice_pdf(
+            sample_invoice,
+            pdf_path,
+            paper_type=PAPER_CARTA,
+            credito=credito,
+            pagos=[DummyPago()],
+        )
+        assert os.path.exists(pdf_path)
+
+        reader = PdfReader(pdf_path)
+        text = reader.pages[0].extract_text()
+        assert "HISTORIAL DE PAGOS" in text
+        assert "75.000,00" in text
+        assert "Transferencia" in text
+        assert "Abono Parcial" in text
+
+
+def test_invoice_pdf_without_pagos_omits_payment_history():
+    sample_invoice = {
+        "Factura": {"ID_Factura": 1501, "Fecha_Factura": datetime(2026, 10, 20, 10, 0)},
+        "Cliente": {"Nombre": "Ana", "Apellido": "Rios"},
+        "Detalles": [
+            {"Producto": "Esmalte", "Cantidad": 2, "Precio_Unitario": 10000, "Subtotal": 20000}
+        ],
+    }
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        pdf_path = os.path.join(tmp_dir, "factura_sin_pagos.pdf")
+        generate_invoice_pdf(sample_invoice, pdf_path, paper_type=PAPER_CARTA)
+        assert os.path.exists(pdf_path)
+
+        reader = PdfReader(pdf_path)
+        text = reader.pages[0].extract_text()
+        assert "HISTORIAL DE PAGOS" not in text
+
