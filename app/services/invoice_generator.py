@@ -7,6 +7,7 @@ a la plantilla comercial institucional.
 
 from datetime import date, datetime
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -29,9 +30,36 @@ from app.services.printer_config import PAPER_CARTA, PAPER_OFICIO
 from app.utils.logger import logger
 
 # Rutas y constantes
-_ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
-_LOGO_PATH = _ASSETS_DIR / "LogoDistriMagik.png"
-_LOGO_GRAYSCALE_PATH = _ASSETS_DIR / "LogoDistriMagik_grayscale.png"
+
+
+def _resource_path(relative_path: str) -> Path:
+    """Devuelve la ruta absoluta a un recurso embalado o del árbol de fuentes.
+
+    Funciona tanto en modo desarrollo como en la instalación empaquetada
+    con PyInstaller (mismo orden de búsqueda que printing_service).
+    """
+    candidates = []
+
+    # 1. Bundle de PyInstaller en modo congelado.
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(Path(sys._MEIPASS) / relative_path)
+
+    # 2. Recurso copiado junto al ejecutable por el instalador.
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / relative_path)
+
+    # 3. Modo desarrollo: relativa al archivo de fuentes.
+    candidates.append(Path(__file__).resolve().parents[2] / relative_path)
+
+    for candidato in candidates:
+        if candidato.is_file():
+            return candidato
+
+    return candidates[-1]
+
+
+_LOGO_PATH = _resource_path("assets/LogoDistriMagik.png")
+_LOGO_GRAYSCALE_PATH = _resource_path("assets/LogoDistriMagik_grayscale.png")
 _COMPANY_NAME = "Distri Magik"
 _COMPANY_PHONE = "315-038-66-18"
 _COMPANY_ADDRESS = "Cali, Colombia"

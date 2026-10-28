@@ -7,6 +7,7 @@ papel Carta y Oficio Colombia, y reproducción fiel de la plantilla comercial.
 from datetime import date, datetime
 from html import escape
 import os
+import sys
 from pathlib import Path
 import tempfile
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -51,7 +52,42 @@ _PAPER_SIZES_MM = {
 }
 _COMPANY_ADDRESS = "Cali, Colombia"
 _COMPANY_PHONE = "315-038-66-18"
-_LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "LogoDistriMagik.png"
+
+
+def _resource_path(relative_path: str) -> Path:
+    """Devuelve la ruta absoluta a un recurso (assets, sonidos, etc.).
+
+    Funciona tanto en modo desarrollo (árbol de fuentes) como en la
+    instalación empaquetada con PyInstaller. El orden de búsqueda es:
+      1. Carpeta temporal de extracción del bundle (sys._MEIPASS).
+      2. Carpeta contigua al ejecutable instalado (sys.executable).
+      3. Árbol de desarrollo (__file__).
+
+    Si ninguna candidata existe, se devuelve la última ruta (desarrollo)
+    para conservar el comportamiento previo: ``is_file()`` devuelve False
+    y se muestra el fallback de texto.
+    """
+    candidates = []
+
+    # 1. Bundle de PyInstaller en modo congelado.
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(Path(sys._MEIPASS) / relative_path)
+
+    # 2. Recurso copiado junto al ejecutable por el instalador.
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / relative_path)
+
+    # 3. Modo desarrollo: relativa al archivo de fuentes.
+    candidates.append(Path(__file__).resolve().parents[2] / relative_path)
+
+    for candidato in candidates:
+        if candidato.is_file():
+            return candidato
+
+    return candidates[-1]
+
+
+_LOGO_PATH = _resource_path("assets/LogoDistriMagik.png")
 
 
 def _supported_paper_sizes(printer_info):
