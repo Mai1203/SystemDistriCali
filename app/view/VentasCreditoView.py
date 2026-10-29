@@ -304,8 +304,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
         # produc_datos = [(codigo, cantidad, precio_unitario, id_lote), ...]
         productos_nuevos = {
-            int(codigo): (cantidad, id_lote)
-            for codigo, cantidad, _, id_lote in produc_datos
+            int(codigo): (cantidad, precio_unitario, id_lote)
+            for codigo, cantidad, precio_unitario, id_lote in produc_datos
         }
 
         productos_eliminados = set(detalles_actuales_map.keys()) - set(
@@ -336,7 +336,11 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
             )
 
         # Actualizar o agregar productos en la factura
-        for id_producto, (nueva_cantidad, id_lote_nuevo) in productos_nuevos.items():
+        for id_producto, (
+            nueva_cantidad,
+            precio_unitario,
+            id_lote_nuevo,
+        ) in productos_nuevos.items():
             if id_producto in detalles_actuales_map:
                 cantidad_anterior, id_lote_original = detalles_actuales_map[id_producto]
                 detalle = (
@@ -350,7 +354,8 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
 
                 diferencia = nueva_cantidad - cantidad_anterior
                 detalle.Cantidad = nueva_cantidad
-                detalle.Subtotal = nueva_cantidad * detalle.Precio_unitario
+                detalle.Precio_unitario = precio_unitario
+                detalle.Subtotal = nueva_cantidad * precio_unitario
 
                 # Ajustar stock del lote según la diferencia
                 if diferencia > 0:
@@ -379,12 +384,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
                             sincronizar_producto_con_lotes(db, id_producto)
             else:
                 # Producto nuevo en la factura editada
-                precio_unitario = (
-                    db.query(Productos)
-                    .filter(Productos.ID_Producto == id_producto)
-                    .first()
-                    .Precio_venta_1
-                )
                 subtotal = nueva_cantidad * precio_unitario
 
                 nuevo_detalle = DetalleFacturas(
@@ -429,9 +428,6 @@ class VentasCredito_View(QWidget, Ui_VentasCredito):
         )
 
         db.commit()
-
-        self.invoice_number = None
-        self.id_venta_credito = None
 
     def showEvent(self, event):
         super().showEvent(event)
